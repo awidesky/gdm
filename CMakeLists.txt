@@ -5,10 +5,21 @@ project(GDM
 	HOMEPAGE_URL "https://github.com/awidesky/gdm"
 )
 
+# Is gdm the main project, not a library?
+string(COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" GDM_STANDALONE)
+
+# C++ options
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Build options
+if (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Default type of build is Debug.")
+endif()
 
 option(GDM_USE_GLUTIL "Enable GLUtil module" ON)
 option(GDM_FORCE_GEN_GLAD "Force generate GLAD using CMake/Python" OFF)
-option(GDM_BUILD_EXAMPLES "Build GDM examples" ON)
+option(GDM_BUILD_EXAMPLES "Build GDM examples" ${GDM_STANDALONE})
 
 # -----------------------
 # User-configurable dependency versions
@@ -60,7 +71,7 @@ set(GDM_GLAD_SINGLE_DIR ${GDM_EXTERNAL_DIR}/glad)
 string(FIND "${GDM_GLAD_API}" "gl:core=" GDM_GLAD_IS_GLCORE)
 
 if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
-    message(STATUS "[GDM] Using external glad_debug / glad_release")
+    message(STATUS "Found installed glad_debug and glad_release")
 
     add_library(gdm_glad_debug STATIC
         ${GDM_GLAD_DEBUG_DIR}/src/gl.c
@@ -77,7 +88,7 @@ if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src
     )
 
 elseif (EXISTS ${GDM_GLAD_SINGLE_DIR}/src/gl.c)
-    message(STATUS "[GDM] Using external single glad")
+    message(STATUS "Found installed single glad")
 
     add_library(gdm_glad_single STATIC
         ${GDM_GLAD_SINGLE_DIR}/src/gl.c
@@ -101,6 +112,8 @@ elseif (GDM_GLAD_IS_GLCORE EQUAL 0)
         set(GDM_GLAD_PREGEN_VERSION "4.6")
     endif()
 
+    message(STATUS "Fetching pre-generated glad ${GDM_GLAD_PREGEN_VERSION}" )
+    
     set(GDM_RELEASE_BASE_URL "https://github.com/awidesky/gdm/releases/download/v0.0.1")
 
     FetchContent_Declare(
@@ -140,7 +153,7 @@ elseif (GDM_GLAD_IS_GLCORE EQUAL 0)
 
 else()
     if (GDM_FORCE_GEN_GLAD)
-        message(STATUS "[GDM] Force-generating GLAD")
+        message(STATUS "Force-generating GLAD")
 
         find_package(Python3 REQUIRED)
 
@@ -192,6 +205,7 @@ target_link_libraries(gdm_glad INTERFACE
 # GLM
 # -----------------------
 
+set(GLM_ENABLE_CXX_17 ON)
 use_or_fetch_package(
     NAME glm
     VERSION ${GDM_GLM_VERSION}
