@@ -20,7 +20,7 @@ function(use_or_fetch_package)
 
     if (NOT PKG_NAME OR NOT PKG_VERSION)
         message(FATAL_ERROR
-            "use_or_fetch_package requires NAME, and VERSION"
+            "[${PROJECT_NAME}] use_or_fetch_package requires NAME, and VERSION"
         )
     endif()
 
@@ -33,7 +33,7 @@ function(use_or_fetch_package)
 
     # 1. Prefer external/<name>-<version>
     if (EXISTS ${PKG_EXTERNAL_DIR}/CMakeLists.txt)
-        message(STATUS "Using external ${PKG_NAME} ${PKG_VERSION}" )
+        message(STATUS "[${PROJECT_NAME}] Using external ${PKG_NAME} ${PKG_VERSION}" )
         add_subdirectory(${PKG_EXTERNAL_DIR})
         set(USE_EXTERNAL_PACKAGE TRUE)
     endif()
@@ -45,12 +45,12 @@ function(use_or_fetch_package)
 
         if (${PKG_NAME}_FOUND)
             message(STATUS
-                "Found installed ${PKG_NAME} ${${PKG_NAME}_VERSION}"
+                "[${PROJECT_NAME}] Found installed ${PKG_NAME} ${${PKG_NAME}_VERSION}"
             )
 
         else()
             message(STATUS
-                "${PKG_NAME} version ${PKG_VERSION} not found"
+                "[${PROJECT_NAME}] ${PKG_NAME} version ${PKG_VERSION} not found"
             )
             set(USE_EXTERNAL_PACKAGE TRUE)
         endif()
@@ -62,7 +62,7 @@ function(use_or_fetch_package)
         AND NOT EXISTS ${PKG_EXTERNAL_DIR}/CMakeLists.txt)
 
         message(STATUS
-            "Fetching ${PKG_NAME} ${PKG_GIT_TAG}"
+            "[${PROJECT_NAME}] Fetching ${PKG_NAME} ${PKG_GIT_TAG}"
         )
 
         include(FetchContent)
@@ -91,7 +91,7 @@ function(use_or_fetch_package)
             endforeach()
 
             message(FATAL_ERROR
-                "Failed to resolve ${PKG_NAME} targets. "
+                "[${PROJECT_NAME}] Failed to resolve ${PKG_NAME} targets. "
                 "Candidates: ${PKG_CANDIDATE_TARGETS}"
             )
         endif()
