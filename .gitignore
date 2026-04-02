@@ -75,6 +75,9 @@ dkms.conf
 # Executables
 
 ### CMake ###
+external/*
+build*/
+
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
@@ -572,3 +575,7 @@ FodyWeavers.xsd
 # Additional files built by Visual Studio
 
 # End of https://www.toptal.com/developers/gitignore/api/cmake,c++,c,windows,macos,linux,visualstudio,visualstudiocode
+
+
+# GLUtil is internal library
+!external/glutil/

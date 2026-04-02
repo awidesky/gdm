@@ -1,0 +1,6 @@
+{
+  "cmake.buildDirectory": "${workspaceFolder}/build_vscode",
+  "cmake.configureOnOpen": true,
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build_vscode/compile_commands.json"
+}
