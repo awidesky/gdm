@@ -1,5 +1,5 @@
 # glutil - OpenGL utilities library
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.24)
 project(glutil)
 
 # Library target
