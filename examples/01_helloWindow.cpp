@@ -131,7 +131,7 @@ int main() {
               << GLAD_VERSION_MINOR(gladVersion) << std::endl;
     printOpenGLInfo();
 #if GDM_HAS_GLUTIL
-    glutil::test();
+    //glutil::test();
 #endif
 
     const std::array<float, 18> vertices = {
