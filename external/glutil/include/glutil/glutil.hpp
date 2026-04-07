@@ -8,8 +8,8 @@
 struct LogEntry {
     std::string type;    // Shader / Texture
     std::string status;  // Success / Failed / Warning
-    std::string path;    // ÆÄÀÏ °æ·Î
-    std::string message; // »ó¼¼ ³»¿ë
+    std::string path;    // íŒŒì¼ ê²½ë¡œ
+    std::string message; // ìƒì„¸ ë‚´ìš©
 };
 
 struct PathResolveResult {
@@ -83,9 +83,9 @@ private:
 
 class Model {
 public:
-    std::vector<float> Positions; // x,y,z ¹İº¹
-    std::vector<float> Texcoords; // u,v ¹İº¹
-    std::vector<float> Normals;   // x,y,z ¹İº¹
+    std::vector<float> Positions; // x,y,z ë°˜ë³µ
+    std::vector<float> Texcoords; // u,v ë°˜ë³µ
+    std::vector<float> Normals;   // x,y,z ë°˜ë³µ
 
     std::string LoadedPath;
     bool bHasTexcoord = false;
