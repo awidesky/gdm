@@ -39,7 +39,7 @@ struct ShaderLoadResult {
     }
 
 private:
-    friend class ShaderSourceLoader;
+    friend class ShaderLoader;
 
     GLchar* source = nullptr;
     GLint len = 0;
@@ -57,7 +57,7 @@ private:
     }
 };
 
-class ShaderSourceLoader {
+class ShaderLoader {
 public:
     static bool checkEncoding;
     static ShaderLoadResult LoadFile(const char* inputPath);

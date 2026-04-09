@@ -89,9 +89,9 @@ static GLchar* utf32_to_ascii(const GLchar* data, size_t size, bool littleEndian
     return out;
 }
 
-bool ShaderSourceLoader::checkEncoding = true;
+bool ShaderLoader::checkEncoding = true;
 
-ShaderLoadResult ShaderSourceLoader::LoadFile(const char* inputPath) {
+ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
     ShaderLoadResult result;
 
     if (inputPath == nullptr) {
