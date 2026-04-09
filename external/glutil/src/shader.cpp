@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 static bool isGLSLSupportUTF8() {
     const GLubyte* glslVersionRaw = glGetString(GL_SHADING_LANGUAGE_VERSION);
-    if (glslVersionRaw == nullptr)
+    if (glslVersionRaw == 0)
         return false;
 
     const char* version = reinterpret_cast<const char*>(glslVersionRaw);
@@ -22,14 +22,13 @@ static bool isGLSLSupportUTF8() {
     const int major = version[0] - '0';
     const int minor = version[2] - '0';
 
-    return (major > 4) || (major == 4 && minor >= 20);
+    return major >= 4 && minor >= 2;
 }
 
 static void utf8_to_ascii_replace(GLchar* data, size_t size) {
     for (size_t i = 0; i < size; ++i) {
         unsigned char ch = static_cast<unsigned char>(data[i]);
-        if (ch & 0x80)
-            data[i] = ' ';
+        if (ch & 0x80) data[i] = ' ';
     }
 }
 
@@ -49,13 +48,11 @@ static GLchar* utf16_to_ascii(const GLchar* data, size_t size, bool littleEndian
         i += 2;
 
         if (u >= 0xD800 && u <= 0xDFFF) {
-            if (i + 1 < size)
-                i += 2;
+            if (i + 1 < size) i += 2;
             continue;
         }
 
-        if (u <= 0x7F)
-            out[out_i++] = static_cast<GLchar>(u);
+        if (u <= 0x7F) out[out_i++] = static_cast<GLchar>(u);
     }
 
     outSize = out_i;
@@ -80,8 +77,7 @@ static GLchar* utf32_to_ascii(const GLchar* data, size_t size, bool littleEndian
                 (static_cast<uint32_t>(static_cast<uint8_t>(data[i + 2])) << 8) |
                 static_cast<uint8_t>(data[i + 3]);
 
-        if (u <= 0x7F)
-            out[out_i++] = static_cast<GLchar>(u);
+        if (u <= 0x7F) out[out_i++] = static_cast<GLchar>(u);
     }
 
     outSize = out_i;
