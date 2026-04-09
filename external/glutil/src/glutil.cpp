@@ -1,12 +1,10 @@
 #define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
 #define STB_IMAGE_IMPLEMENTATION
 #include "glutil/glutil.hpp"
-//#include "stb_image.h"
-//#include <GL/glew.h>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
-#include <experimental/filesystem>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -15,7 +13,8 @@
 #include <string.h>
 #include <string>
 #include <vector>
-namespace fs = std::experimental::filesystem;
+
+namespace fs = std::filesystem;
 
 // ----------------------------------
 // ResourceLogger

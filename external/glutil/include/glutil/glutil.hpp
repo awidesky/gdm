@@ -1,7 +1,10 @@
 #ifndef GLUTIL_GLUTIL
 #define GLUTIL_GLUTIL
-#pragma once
 
+#include <glutil/gl.hpp>
+#include <glutil/inspector.hpp>
+
+#include <vector>
 #include <string>
 
 // namespace glutil {
