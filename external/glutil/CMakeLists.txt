@@ -12,12 +12,14 @@ target_sources(glutil
     FILE_SET HEADERS
     BASE_DIRS include
     FILES
+      include/glutil/shader.hpp
       include/glutil/inspector.hpp
       include/glutil/glutil.hpp
 )
 
 target_sources(glutil
   PRIVATE
+    src/shader.cpp
     src/inspector.cpp
     src/glutil.cpp
 )
