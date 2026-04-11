@@ -10,7 +10,7 @@ struct ShaderLoadResult {
     bool ok = false;
     std::string error;
 
-    const GLchar** string() { return &source; }
+    GLchar** string() { return &source; }
     const GLint* lengthPtr() const { return &len; }
     GLint length() const { return len; }
 

@@ -22,7 +22,7 @@ static bool isGLSLSupportUTF8() {
     const int major = version[0] - '0';
     const int minor = version[2] - '0';
 
-    return major >= 4 && minor >= 2;
+    return (major > 4) || (major == 4 && minor >= 2);;
 }
 
 static void utf8_to_ascii_replace(GLchar* data, size_t size) {
@@ -85,6 +85,8 @@ static GLchar* utf32_to_ascii(const GLchar* data, size_t size, bool littleEndian
     return out;
 }
 
+
+
 bool ShaderLoader::checkEncoding = true;
 
 ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
@@ -95,7 +97,7 @@ ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
         return result;
     }
 
-    PathResolveResult pathResult = PathResolve(inputPath);
+    PathResolveResult pathResult = {true, inputPath, inputPath, ""}; //PathResolve(inputPath);
     if (!pathResult.success) {
         result.error = "path resolve failed: " + pathResult.message;
         return result;

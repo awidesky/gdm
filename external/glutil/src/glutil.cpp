@@ -13,7 +13,7 @@
 #include <string.h>
 #include <string>
 #include <vector>
-
+/*
 namespace fs = std::filesystem;
 
 // ----------------------------------
@@ -1028,3 +1028,4 @@ bool Model::LoadOBJ(const std::string& path, bool bFlipV) {
 //         glBindTexture(GL_TEXTURE_2D, ID);
 //     }
 // };
+*/
