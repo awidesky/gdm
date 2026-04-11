@@ -2,6 +2,16 @@
 cmake_minimum_required(VERSION 3.24)
 project(glutil)
 
+file(TO_NATIVE_PATH "${CMAKE_SOURCE_DIR}" GLUTIL_ROOT_DIR)
+# TODO : only when test is enabled
+file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/test" GLUTIL_TEST_DIR)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/config.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/config.hpp
+    @ONLY
+)
+
+
 # Library target
 add_library(glutil)
 
@@ -26,6 +36,7 @@ target_sources(glutil
 
 target_include_directories(glutil PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_link_libraries(glutil PRIVATE
@@ -34,3 +45,22 @@ target_link_libraries(glutil PRIVATE
 
 # C++ standard
 target_compile_features(glutil PRIVATE cxx_std_17)
+
+# Tests (only when GDM is standalone project)
+if (GDM_BUILD_TESTS)
+  add_executable(shaderTest)
+  target_sources(shaderTest
+        PRIVATE test/shaderTest.cpp
+    )
+  target_include_directories(shaderTest
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    )
+  target_link_libraries(shaderTest PRIVATE
+        glutil
+        gdm::gdm
+    )
+  target_compile_features(shaderTest PRIVATE cxx_std_17)
+    
+    # Add test to CTest
+    add_test(NAME shaderTest COMMAND shaderTest)
+endif()

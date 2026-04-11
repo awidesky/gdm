@@ -1,0 +1,10 @@
+#ifndef GLUTIL_CONFIG_HPP_IN
+#define GLUTIL_CONFIG_HPP_IN
+
+#include <filesystem>
+namespace glutil {
+inline const std::filesystem::path ROOT_DIR = R"(@GLUTIL_ROOT_DIR@)";
+inline const std::filesystem::path TEST_ASSET_DIR = R"(@GLUTIL_TEST_DIR@)";
+}
+
+#endif // GLUTIL_CONFIG_HPP_IN

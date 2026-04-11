@@ -19,6 +19,11 @@ endif()
 
 option(GDM_USE_GLUTIL "Enable GLUtil module" ON)
 option(GDM_BUILD_EXAMPLES "Build GDM examples" ${GDM_STANDALONE})
+option(GDM_BUILD_TESTS "Build the GDM/GLUtil test programs" ${GDM_STANDALONE})
+
+if (GDM_BUILD_TESTS)
+    enable_testing()
+endif()
 
 # Dependency providers
 set(GDM_WINDOW_BACKEND "glfw" CACHE STRING
