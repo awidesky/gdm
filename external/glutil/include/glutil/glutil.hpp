@@ -35,28 +35,6 @@ private:
     static std::vector<LogEntry> Logs;
 };
 
-class Shader {
-public:
-    unsigned int ID = 0;
-
-public:
-    Shader() = default;
-    Shader(const char* vertexPath, const char* fragmentPath);
-
-    bool Load(const char* vertexPath, const char* fragmentPath);
-    void Use() const;
-    void Release();
-
-    void SetBool(const std::string& name, bool value) const;
-    void SetInt(const std::string& name, int value) const;
-    void SetFloat(const std::string& name, float value) const;
-
-private:
-    static bool ReadFileToString(const std::string& path, std::string& outText);
-    static GLuint CompileShader(GLenum shaderType, const std::string& source, const std::string& path,
-                                const std::string& shaderLabel);
-};
-
 class Texture {
 public:
     unsigned int ID = 0;
