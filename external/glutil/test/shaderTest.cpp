@@ -58,36 +58,16 @@ static RawFileRead readFileRaw(const fs::path& path) {
     return r;
 }
 
-// Log entry structure for test results
-struct TestLog {
-    std::string encodingName;
-    std::string shaderPath;
-    std::string loaderCompileResult;
-    std::string loaderLinkResult;
-    std::string rawCompileResult;
-    std::string rawLinkResult;
-    int fileSize = 0;
+static std::string trimTrailingNewlines(const std::string& text) {
+    if (text.empty())
+        return text;
 
-    void trimAll() {
-        auto trim = [](const std::string& text) {
-            if (text.empty())
-                return text;
-
-            size_t end = text.size();
-            while (end > 0 && (text[end - 1] == '\n' || text[end - 1] == '\r')) {
-                --end;
-            }
-            return text.substr(0, end);
-        };
-
-        encodingName = trim(encodingName);
-        shaderPath = trim(shaderPath);
-        loaderCompileResult = trim(loaderCompileResult);
-        loaderLinkResult = trim(loaderLinkResult);
-        rawCompileResult = trim(rawCompileResult);
-        rawLinkResult = trim(rawLinkResult);
+    size_t end = text.size();
+    while (end > 0 && (text[end - 1] == '\n' || text[end - 1] == '\r')) {
+        --end;
     }
-};
+    return text.substr(0, end);
+}
 
 static bool compileShaderWithInspector(GLenum shaderType,
                                        const GLchar* src,
@@ -151,7 +131,7 @@ static void compileAndLink(const GLchar* fragmentSource,
 }
 
 // Test function for encoding check in a specific GL context
-static bool testEncodingCheckInContext(int glMajor, int glMinor, std::vector<TestLog>& logs) {
+static bool testEncodingCheckInContext(int glMajor, int glMinor) {
     std::cout << "=== Testing in OpenGL " << glMajor << "." << glMinor << " ===" << std::endl;
 
     // Test shader files in the test/shader directory
@@ -161,50 +141,60 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor, std::vector<Tes
     std::cout << "  Test shader dir: " << testShaderDir.string() << std::endl;
 
     for (const auto& name : encodingNames) {
-        TestLog log;
-        log.encodingName = name;
         fs::path shaderPath = testShaderDir / (name + ".fs");
-        log.shaderPath = shaderPath.string();
+        const std::string shaderPathStr = shaderPath.string();
 
         // Read raw file first (without ShaderLoader)
         RawFileRead rawRead = readFileRaw(shaderPath);
         if (!rawRead.ok) {
-            log.loaderCompileResult = "SKIPPED";
-            log.loaderLinkResult = "SKIPPED";
-            log.rawCompileResult = "SKIPPED";
-            log.rawLinkResult = "SKIPPED";
             std::cout << "  Raw read error: " << rawRead.error << std::endl;
-            logs.push_back(log);
             continue;
         }
 
-        log.fileSize = static_cast<int>(rawRead.data.size());
+        std::string loaderCompileResult;
+        std::string loaderLinkResult;
+        std::string rawCompileResult;
+        std::string rawLinkResult;
+        const int fileSize = static_cast<int>(rawRead.data.size());
+
+        std::cout << "\n[" << name << "]" << std::endl;
+        std::cout << "  Shader Path: " << shaderPathStr << ", File Size: " << fileSize << " bytes" << std::endl;
+
+        // Compile/link with raw file content first
+        compileAndLink(rawRead.data.c_str(),
+                       static_cast<GLint>(rawRead.data.size()),
+                       rawCompileResult,
+                       rawLinkResult);
+
+        rawCompileResult = trimTrailingNewlines(rawCompileResult);
+        rawLinkResult = trimTrailingNewlines(rawLinkResult);
+        std::cout << "  Raw data: " << rawCompileResult << std::endl;
+        if (!rawLinkResult.empty())
+            std::cout << "  Raw Link: " << rawLinkResult << std::endl;
 
         // Test ShaderLoader::loadFile
+        std::cout << "  Loading with ShaderLoader..." << std::endl;
         ShaderLoader::checkEncoding = true;
         ShaderLoadResult loadResult = ShaderLoader::loadFile(shaderPath.string().c_str());
 
         if (loadResult.ok) {
             compileAndLink(loadResult.string()[0],
-                                             loadResult.length(),
-                                             log.loaderCompileResult,
-                                             log.loaderLinkResult);
+                           loadResult.length(),
+                           loaderCompileResult,
+                           loaderLinkResult);
         } else {
             std::cout << "  Loader read error: " << loadResult.error << std::endl;
-            log.loaderCompileResult = "SKIPPED";
-            log.loaderLinkResult = "SKIPPED";
+            loaderCompileResult = "SKIPPED";
+            loaderLinkResult = "SKIPPED";
         }
 
-        // Compile/link with raw file content for comparison
-        compileAndLink(rawRead.data.c_str(),
-                         static_cast<GLint>(rawRead.data.size()),
-                         log.rawCompileResult,
-                         log.rawLinkResult);
+        loaderCompileResult = trimTrailingNewlines(loaderCompileResult);
+        loaderLinkResult = trimTrailingNewlines(loaderLinkResult);
+        std::cout << "  ShaderLoader: " << loaderCompileResult << std::endl;
+        if (!loaderLinkResult.empty())
+            std::cout << "  Loader Link: " << loaderLinkResult << std::endl;
 
         loadResult.destroy();
-        log.trimAll();
-        
-        logs.push_back(log);
     }
 
     return true;
@@ -216,8 +206,6 @@ static void testShaderEncodingCheck(int contextMajor, int contextMinor) {
     std::cout << "  Shader Encoding Check Test" << std::endl;
     std::cout << "========================================" << std::endl;
     
-    std::vector<TestLog> allLogs;
-    
     // Get current GL context info
     const GLubyte* glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);
     const GLubyte* glVersion = glGetString(GL_VERSION);
@@ -227,16 +215,7 @@ static void testShaderEncodingCheck(int contextMajor, int contextMinor) {
     std::cout << "  GLSL Version: " << (const char*)glslVersion << std::endl;
     
     // Perform test in current context
-    testEncodingCheckInContext(contextMajor, contextMinor, allLogs);
-    
-    for (const auto& log : allLogs) {
-        std::cout << "\n[" << log.encodingName << "]" << std::endl;
-        std::cout << "  Shader Path: " << log.shaderPath << ", File Size: " << log.fileSize << " bytes" << std::endl;
-        std::cout << "  Raw data: " << log.rawCompileResult << std::endl;
-        if(!log.rawLinkResult.empty()) std::cout << "  Raw Link: " << log.rawLinkResult << std::endl;
-        std::cout << "  ShaderLoader: " << log.loaderCompileResult << std::endl;
-        if(!log.loaderLinkResult.empty())std::cout << "  Loader Link: " << log.loaderLinkResult << std::endl;
-    }
+    testEncodingCheckInContext(contextMajor, contextMinor);
     
     std::cout << "=== [END] Testing in OpenGL " << contextMajor << "." << contextMinor << " ===" << std::endl;
 }

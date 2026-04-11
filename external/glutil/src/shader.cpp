@@ -153,7 +153,7 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
                 static_cast<unsigned char>(buffer[1]) == 0xBB &&
                 static_cast<unsigned char>(buffer[2]) == 0xBF) {
             buffer[0] = buffer[1] = buffer[2] = ' ';
-            LOG_WARNING() << "Detected charset: UTF-8 BOM (replace BOM to space character...)";
+            LOG_WARNING() << "Detected charset: UTF-8 BOM (replacing BOM to space character...)";
             // In GLSL 4.20+, noo-ASCII character is allowed in comment,
             // as long as the source is UTF-8. So, we don't replace non-ASCII characters.
             // NOTE : When non-ASCII character is used outside a comment,
@@ -163,8 +163,7 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
                 LOG_WARNING() << "Current GLSL version allows non-ASCII character in UTF-8 in comments.";
                 LOG_WARNING() << "Make sure the non-ASCII chracter(s) is NOT outside of comments.";
             } else {
-                LOG_WARNING() << "Current GLSL version allows ASCII only, but source is in UTF-8.";
-                LOG_WARNING() << "Replace all non-ASCII to space character....";
+                LOG_WARNING() << "Current GLSL version allows ASCII only (replacing all non-ASCII to space character...)";
                 utf8_to_ascii_replace(buffer + 3, fileSize - 3);
             }
         } else if (fileSize >= 4 &&
