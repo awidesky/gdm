@@ -6,6 +6,8 @@
 #include <string>
 #include <utility>
 
+namespace glutil {
+
 struct ShaderLoadResult {
     bool ok = false;
     std::string error;
@@ -60,7 +62,9 @@ private:
 class ShaderLoader {
 public:
     static bool checkEncoding;
-    static ShaderLoadResult LoadFile(const char* inputPath);
+    static ShaderLoadResult loadFile(const char* inputPath);
 };
+
+} // namespace glutil
 
 #endif // GLUTIL_SHADER_HPP

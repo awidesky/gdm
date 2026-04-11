@@ -1,13 +1,13 @@
-#include "glutil/glutil.hpp"
-
-#include "glutil/shader.hpp"
-#include "glutil/logging.hpp"
+#include <glutil/shader.hpp>
+#include <glutil/logging.hpp>
 
 #include <filesystem>
 #include <fstream>
 #include <cstring>
 #include <cstdint>
 #include <system_error>
+
+namespace glutil {
 
 namespace fs = std::filesystem;
 
@@ -111,7 +111,7 @@ static bool hasNonASCII(const char* data, size_t size) {
 
 bool ShaderLoader::checkEncoding = true;
 
-ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
+ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
     ShaderLoadResult result;
 
     if (inputPath == nullptr) {
@@ -119,29 +119,25 @@ ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
         return result;
     }
 
-    PathResolveResult pathResult = {true, inputPath, inputPath, ""}; //PathResolve(inputPath);
-    if (!pathResult.success) {
-        result.error = "path resolve failed: " + pathResult.message;
-        return result;
-    }
+    std::string resolvedPath(inputPath);
 
     std::error_code ec;
-    const auto fileSize = fs::file_size(pathResult.resolvedPath, ec);
+    const auto fileSize = fs::file_size(resolvedPath, ec);
     if (ec) {
-        result.error = "failed to get file size: " + pathResult.resolvedPath + " (" + ec.message() + ")";
+        result.error = "failed to get file size: " + resolvedPath + " (" + ec.message() + ")";
         return result;
     }
 
-    std::ifstream file(pathResult.resolvedPath, std::ios::binary);
+    std::ifstream file(resolvedPath, std::ios::binary);
     if (!file.is_open()) {
-        result.error = "failed to open file: " + pathResult.resolvedPath;
+        result.error = "failed to open file: " + resolvedPath;
         return result;
     }
 
     GLchar* buffer = new GLchar[static_cast<size_t>(fileSize) + 1];
     if (!file.read(buffer, static_cast<std::streamsize>(fileSize))) {
         delete[] buffer;
-        result.error = "failed to read file: " + pathResult.resolvedPath;
+        result.error = "failed to read file: " + resolvedPath;
         return result;
     }
 
@@ -151,7 +147,7 @@ ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
     size_t convertedSize = static_cast<size_t>(fileSize);
 
     if (checkEncoding) {
-        LOG_INFO() << "Checking text encoding of file: " << pathResult.resolvedPath;
+        LOG_INFO() << "Checking text encoding of file: " << resolvedPath;
         if (fileSize >= 3 &&
                 static_cast<unsigned char>(buffer[0]) == 0xEF &&
                 static_cast<unsigned char>(buffer[1]) == 0xBB &&
@@ -214,3 +210,5 @@ ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
     result.ok = true;
     return result;
 }
+
+} // namespace glutil

@@ -1,6 +1,6 @@
 #define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
 #define STB_IMAGE_IMPLEMENTATION
-#include "glutil/glutil.hpp"
+#include <glutil/glutil.hpp>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>

@@ -4,6 +4,8 @@
 #include <glutil/gl.hpp>
 #include <string>
 
+namespace glutil {
+
 struct InspectResult {
     bool ok = false;
     std::string message;
@@ -11,8 +13,10 @@ struct InspectResult {
 
 class Inspector {
 public:
-    static InspectResult ShaderCompileResult(unsigned int shader);
-    static InspectResult ProgramLinkResult(unsigned int program);
+    static InspectResult shaderCompileResult(GLuint shader);
+    static InspectResult programLinkResult(GLuint program);
 };
+
+} // namespace glutil
 
 #endif // GLUTIL_INSPECTOR

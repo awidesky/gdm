@@ -1,9 +1,11 @@
-#include "glutil/inspector.hpp"
+#include <glutil/inspector.hpp>
 
 #include <vector>
 //TODO : use result.message directly instead of vector, and add null terminator. if logLength > written, shrink result.message and set null terminator correctly.
 
-InspectResult Inspector::ShaderCompileResult(unsigned int shader) {
+namespace glutil {
+
+InspectResult Inspector::shaderCompileResult(GLuint shader) {
     InspectResult result;
 
     GLint status = GL_FALSE;
@@ -24,7 +26,7 @@ InspectResult Inspector::ShaderCompileResult(unsigned int shader) {
     return result;
 }
 
-InspectResult Inspector::ProgramLinkResult(unsigned int program) {
+InspectResult Inspector::programLinkResult(GLuint program) {
     InspectResult result;
 
     GLint status = GL_FALSE;
@@ -44,3 +46,5 @@ InspectResult Inspector::ProgramLinkResult(unsigned int program) {
 
     return result;
 }
+
+} // namespace glutil
