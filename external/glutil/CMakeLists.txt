@@ -48,19 +48,19 @@ target_compile_features(glutil PRIVATE cxx_std_17)
 
 # Tests (only when GDM is standalone project)
 if (GDM_BUILD_TESTS)
-  add_executable(shaderTest)
-  target_sources(shaderTest
+  add_executable(gdm_shaderTest)
+  target_sources(gdm_shaderTest
         PRIVATE test/shaderTest.cpp
     )
-  target_include_directories(shaderTest
+  target_include_directories(gdm_shaderTest
         PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     )
-  target_link_libraries(shaderTest PRIVATE
+  target_link_libraries(gdm_shaderTest PRIVATE
         glutil
         gdm::gdm
     )
-  target_compile_features(shaderTest PRIVATE cxx_std_17)
+  target_compile_features(gdm_shaderTest PRIVATE cxx_std_17)
     
     # Add test to CTest
-    add_test(NAME shaderTest COMMAND shaderTest)
+    add_test(NAME ShaderTest COMMAND gdm_shaderTest)
 endif()
