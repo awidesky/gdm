@@ -64,8 +64,6 @@ static RawFileRead readFileRaw(const fs::path& path) {
 struct TestLog {
     std::string encodingName;
     std::string shaderPath;
-    std::string shaderLoaderResult;
-    std::string rawReadResult;
     std::string loaderCompileResult;
     std::string loaderLinkResult;
     std::string rawCompileResult;
@@ -86,8 +84,6 @@ struct TestLog {
 
         encodingName = trim(encodingName);
         shaderPath = trim(shaderPath);
-        shaderLoaderResult = trim(shaderLoaderResult);
-        rawReadResult = trim(rawReadResult);
         loaderCompileResult = trim(loaderCompileResult);
         loaderLinkResult = trim(loaderLinkResult);
         rawCompileResult = trim(rawCompileResult);
@@ -124,21 +120,14 @@ static bool linkProgramWithInspector(GLuint vs, GLuint fs, std::string& outMessa
     InspectResult linkResult = Inspector::ProgramLinkResult(program);
     outMessage = linkResult.message;
 
-    //TODO ?
-    //glDeleteShader(vs);
-    //glDeleteShader(vs);
     glDeleteProgram(program);
     return linkResult.ok;
 }
 
-static void compileAndLinkWithEmbeddedVertex(const GLchar* fragmentSource,
+static void compileAndLink(const GLchar* fragmentSource,
                                              GLint fragmentLength,
                                              std::string& outCompileMessage,
-                                             std::string& outLinkMessage,
-                                             bool& outCompileOk,
-                                             bool& outLinkOk) {
-    outCompileOk = false;
-    outLinkOk = false;
+                                             std::string& outLinkMessage) {
 
     GLuint vs = 0;
     GLuint fs = 0;
@@ -148,20 +137,16 @@ static void compileAndLinkWithEmbeddedVertex(const GLchar* fragmentSource,
     const auto vertexLen = static_cast<GLint>(std::strlen(vertexShaderSource));
     if (!compileShaderWithInspector(GL_VERTEX_SHADER, vertexShaderSource, vertexLen, vs, vsMessage)) {
         outCompileMessage = "[vertex compile failed]\n" + vsMessage;
-        outLinkMessage = "skipped";
         return;
     }
 
     if (!compileShaderWithInspector(GL_FRAGMENT_SHADER, fragmentSource, fragmentLength, fs, fsMessage)) {
         outCompileMessage = "[fragment compile failed]\n" + fsMessage;
-        outLinkMessage = "skipped";
         glDeleteShader(vs);
         return;
     }
 
-    outCompileOk = true;
-    outCompileMessage = "vertex/fragment compile ok";
-    outLinkOk = linkProgramWithInspector(vs, fs, outLinkMessage);
+    outCompileMessage = linkProgramWithInspector(vs, fs, outLinkMessage) ? "[Compile/Link OK]" : "[Compile OK, Link FAILED]";
 
     glDeleteShader(vs);
     glDeleteShader(fs);
@@ -186,8 +171,6 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor, std::vector<Tes
         // Read raw file first (without ShaderLoader)
         RawFileRead rawRead = readFileRaw(shaderPath);
         if (!rawRead.ok) {
-            log.rawReadResult = "FAILED - " + rawRead.error;
-            log.shaderLoaderResult = "SKIPPED";
             log.loaderCompileResult = "SKIPPED";
             log.loaderLinkResult = "SKIPPED";
             log.rawCompileResult = "SKIPPED";
@@ -197,7 +180,6 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor, std::vector<Tes
             continue;
         }
 
-        log.rawReadResult = "SUCCESS";
         log.fileSize = static_cast<int>(rawRead.data.size());
 
         // Test ShaderLoader::LoadFile
@@ -205,31 +187,21 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor, std::vector<Tes
         ShaderLoadResult loadResult = ShaderLoader::LoadFile(shaderPath.string().c_str());
 
         if (loadResult.ok) {
-            log.shaderLoaderResult = "SUCCESS - Loaded " + std::to_string(loadResult.length()) + " characters";
-
-            bool compileOk = false;
-            bool linkOk = false;
-            compileAndLinkWithEmbeddedVertex(loadResult.string()[0],
+            compileAndLink(loadResult.string()[0],
                                              loadResult.length(),
                                              log.loaderCompileResult,
-                                             log.loaderLinkResult,
-                                             compileOk,
-                                             linkOk);
+                                             log.loaderLinkResult);
         } else {
-            log.shaderLoaderResult = "FAILED - " + loadResult.error;
+            std::cout << "  Loader read error: " << loadResult.error << std::endl;
             log.loaderCompileResult = "SKIPPED";
             log.loaderLinkResult = "SKIPPED";
         }
 
         // Compile/link with raw file content for comparison
-        bool rawCompileOk = false;
-        bool rawLinkOk = false;
-        compileAndLinkWithEmbeddedVertex(rawRead.data.c_str(),
+        compileAndLink(rawRead.data.c_str(),
                          static_cast<GLint>(rawRead.data.size()),
                          log.rawCompileResult,
-                         log.rawLinkResult,
-                         rawCompileOk,
-                         rawLinkOk);
+                         log.rawLinkResult);
 
         loadResult.destroy();
         log.trimAll();
@@ -261,13 +233,11 @@ static void testShaderEncodingCheck(int contextMajor, int contextMinor) {
     
     for (const auto& log : allLogs) {
         std::cout << "\n[" << log.encodingName << "]" << std::endl;
-        std::cout << "  Shader Path: " << log.shaderPath << std::endl;
-        std::cout << "  File Size: " << log.fileSize << " bytes, Read: " << log.rawReadResult << std::endl;
-        std::cout << "  ShaderLoader: " << log.shaderLoaderResult << std::endl;
-        std::cout << "  Loader Compile: " << log.loaderCompileResult << std::endl;
-        std::cout << "  Loader Link: " << log.loaderLinkResult << std::endl;
-        std::cout << "  Raw Compile: " << log.rawCompileResult << std::endl;
-        std::cout << "  Raw Link: " << log.rawLinkResult << std::endl;
+        std::cout << "  Shader Path: " << log.shaderPath << ", File Size: " << log.fileSize << " bytes" << std::endl;
+        std::cout << "  Raw data: " << log.rawCompileResult << std::endl;
+        if(!log.rawLinkResult.empty()) std::cout << "  Raw Link: " << log.rawLinkResult << std::endl;
+        std::cout << "  ShaderLoader: " << log.loaderCompileResult << std::endl;
+        if(!log.loaderLinkResult.empty())std::cout << "  Loader Link: " << log.loaderLinkResult << std::endl;
     }
     
     std::cout << "=== [END] Testing in OpenGL " << contextMajor << "." << contextMinor << " ===" << std::endl;
