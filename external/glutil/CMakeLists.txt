@@ -25,6 +25,7 @@ target_sources(glutil
       include/glutil/shader.hpp
       include/glutil/inspector.hpp
       include/glutil/glutil.hpp
+      include/glutil/logging.hpp
 )
 
 target_sources(glutil
@@ -32,6 +33,7 @@ target_sources(glutil
     src/shader.cpp
     src/inspector.cpp
     src/glutil.cpp
+    src/logging.cpp
 )
 
 target_include_directories(glutil PRIVATE

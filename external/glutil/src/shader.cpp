@@ -1,6 +1,7 @@
 #include "glutil/glutil.hpp"
 
 #include "glutil/shader.hpp"
+#include "glutil/logging.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -85,6 +86,27 @@ static GLchar* utf32_to_ascii(const GLchar* data, size_t size, bool littleEndian
     return out;
 }
 
+static bool hasNonASCII(const char* data, size_t size) {
+    constexpr uint64_t HIGH_BIT_MASK = 0x8080808080808080ULL;
+
+    size_t i = 0;
+
+    for (; i + 8 <= size; i += 8) {
+        uint64_t word;
+        std::memcpy(&word, data + i, sizeof(word));
+
+        if ((word & HIGH_BIT_MASK) != 0)
+            return true;
+    }
+
+    for (; i < size; ++i) {
+        if ((static_cast<unsigned char>(data[i]) & 0x80) != 0)
+            return true;
+    }
+
+    return false;
+}
+
 
 
 bool ShaderLoader::checkEncoding = true;
@@ -129,23 +151,32 @@ ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
     size_t convertedSize = static_cast<size_t>(fileSize);
 
     if (checkEncoding) {
+        LOG_INFO() << "Checking text encoding of file: " << pathResult.resolvedPath;
         if (fileSize >= 3 &&
                 static_cast<unsigned char>(buffer[0]) == 0xEF &&
                 static_cast<unsigned char>(buffer[1]) == 0xBB &&
                 static_cast<unsigned char>(buffer[2]) == 0xBF) {
             buffer[0] = buffer[1] = buffer[2] = ' ';
+            LOG_WARNING() << "Detected charset: UTF-8 BOM (replace BOM to space character...)";
             // In GLSL 4.20+, noo-ASCII character is allowed in comment,
             // as long as the source is UTF-8. So, we don't replace non-ASCII characters.
             // NOTE : When non-ASCII character is used outside a comment,
             //        a compile-time error is clarified in GLSL 4.30 spec.
             //        But 4.20 spec does not clarify it.
-            if (!isGLSLSupportUTF8())
+            if (isGLSLSupportUTF8()) {
+                LOG_WARNING() << "Current GLSL version allows non-ASCII character in UTF-8 in comments.";
+                LOG_WARNING() << "Make sure the non-ASCII chracter(s) is NOT outside of comments.";
+            } else {
+                LOG_WARNING() << "Current GLSL version allows ASCII only, but source is in UTF-8.";
+                LOG_WARNING() << "Replace all non-ASCII to space character....";
                 utf8_to_ascii_replace(buffer + 3, fileSize - 3);
+            }
         } else if (fileSize >= 4 &&
                    static_cast<unsigned char>(buffer[0]) == 0xFF &&
                    static_cast<unsigned char>(buffer[1]) == 0xFE &&
                    static_cast<unsigned char>(buffer[2]) == 0x00 &&
                    static_cast<unsigned char>(buffer[3]) == 0x00) {
+            LOG_WARNING() << "Detected charset: UTF-32 LE (replacing all non-ASCII to space character...)";
             converted = utf32_to_ascii(buffer + 4, static_cast<size_t>(fileSize) - 4, true, convertedSize);
             delete[] buffer;
         } else if (fileSize >= 4 &&
@@ -153,20 +184,28 @@ ShaderLoadResult ShaderLoader::LoadFile(const char* inputPath) {
                    static_cast<unsigned char>(buffer[1]) == 0x00 &&
                    static_cast<unsigned char>(buffer[2]) == 0xFE &&
                    static_cast<unsigned char>(buffer[3]) == 0xFF) {
+            LOG_WARNING() << "Detected charset: UTF-32 BE (replacing all non-ASCII to space character...)";
             converted = utf32_to_ascii(buffer + 4, static_cast<size_t>(fileSize) - 4, false, convertedSize);
             delete[] buffer;
         } else if (fileSize >= 2 &&
                    static_cast<unsigned char>(buffer[0]) == 0xFF &&
                    static_cast<unsigned char>(buffer[1]) == 0xFE) {
+            LOG_WARNING() << "Detected charset: UTF-16 LE (replacing all non-ASCII to space character...)";
             converted = utf16_to_ascii(buffer + 2, static_cast<size_t>(fileSize) - 2, true, convertedSize);
             delete[] buffer;
         } else if (fileSize >= 2 &&
                    static_cast<unsigned char>(buffer[0]) == 0xFE &&
                    static_cast<unsigned char>(buffer[1]) == 0xFF) {
+            LOG_WARNING() << "Detected charset: UTF-16 BE (replacing all non-ASCII to space character...)";
             converted = utf16_to_ascii(buffer + 2, static_cast<size_t>(fileSize) - 2, false, convertedSize);
             delete[] buffer;
         } else {
-            // Unknown encoding. You're on your own.
+            if (hasNonASCII(buffer, static_cast<size_t>(fileSize))) {
+                LOG_WARNING() << "Detected charset: unknown (non-ASCII bytes found!)";
+                LOG_WARNING() << "Remove non-ASCII text, or compile error might occur!";
+            }  else {
+                LOG_INFO() << "Source is ASCII-only content, no conversion required";
+            }
         }
     }
 
