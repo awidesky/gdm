@@ -86,3 +86,4 @@ void main()
     color += test한글;
 
     FragColor = vec4(color, 1.0);
+}
