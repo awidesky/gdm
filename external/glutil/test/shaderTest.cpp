@@ -146,7 +146,7 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor) {
     std::cout << "=== Testing in OpenGL " << glMajor << "." << glMinor << " ===" << std::endl;
 
     // Test shader files in the test/shader directory
-    std::vector<std::string> encodingNames = {"UTF8_BOM", "UTF8", "UTF16_LE", "MS949"};
+    std::vector<std::string> encodingNames = {"UTF8_BOM", "UTF8_BOM_only_ASCII_token", "UTF8", "UTF16_LE", "MS949"};
 
     const fs::path testShaderDir = TEST_ASSET_DIR / "shader";
     std::cout << "  Test shader dir: " << testShaderDir.string() << std::endl;

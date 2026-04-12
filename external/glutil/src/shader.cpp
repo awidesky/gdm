@@ -26,13 +26,6 @@ static bool isGLSLSupportUTF8() {
     return (major > 4) || (major == 4 && minor >= 2);;
 }
 
-static void utf8_to_ascii_replace(GLchar* data, size_t size) {
-    for (size_t i = 0; i < size; ++i) {
-        unsigned char ch = static_cast<unsigned char>(data[i]);
-        if (ch & 0x80) data[i] = ' ';
-    }
-}
-
 // TODO : instead of re-writing, in-place substitution to space?
 // TODO : possible memory leak senario?
 static GLchar* utf16_to_ascii(const GLchar* data, size_t size, bool littleEndian, size_t& outSize) {
@@ -141,8 +134,8 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
                 LOG_WARNING() << "Current GLSL version allows non-ASCII characters in UTF-8 in comments.";
                 LOG_WARNING() << "Make sure there're no non-ASCII chracters outside of comments.";
             } else {
-                LOG_WARNING() << "Current GLSL version allows ASCII only (replacing all non-ASCII to space character...)";
-                utf8_to_ascii_replace(buffer + 3, fileSize - 3);
+                LOG_WARNING() << "Current GLSL version allows ASCII only (replacing all non-ASCII to space character if found...)";
+                replaceNonASCIIWithSpace(buffer + 3, fileSize - 3);
             }
         } else if (fileSize >= 4 &&
                    static_cast<unsigned char>(buffer[0]) == 0xFF &&
