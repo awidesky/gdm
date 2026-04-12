@@ -57,6 +57,29 @@ static void algoByteReplace(char* data, size_t size) {
     }
 }
 
+// 4) 32-bit word-wise test
+static void algoDwordReplace(char* data, size_t size) {
+    constexpr uint32_t HIGH_BIT_MASK_32 = 0x80808080U;
+
+    size_t i = 0;
+    for (; i + 4 <= size; i += 4) {
+        uint32_t word;
+        std::memcpy(&word, data + i, sizeof(word));
+        if ((word & HIGH_BIT_MASK_32) != 0) {
+            unsigned char* bytes = reinterpret_cast<unsigned char*>(data + i);
+            for (size_t j = 0; j < 4; ++j) {
+                if (bytes[j] & 0x80)
+                    bytes[j] = ' ';
+            }
+        }
+    }
+
+    for (; i < size; ++i) {
+        if (static_cast<unsigned char>(data[i]) & 0x80)
+            data[i] = ' ';
+    }
+}
+
 struct BenchResult {
     double totalUs = 0.0;
     double averageNs = 0.0;
@@ -145,7 +168,8 @@ int main() {
 
         glutil::BenchResult noOp = glutil::benchmarkMutating(data, iterations, glutil::algoNoOp);
         glutil::BenchResult check = glutil::benchmarkChecking(data, iterations, glutil::hasNonASCII);
-        glutil::BenchResult word = glutil::benchmarkMutating(data, iterations, glutil::replaceNonASCIIWithSpace);
+        glutil::BenchResult qword = glutil::benchmarkMutating(data, iterations, glutil::replaceNonASCIIWithSpace);
+        glutil::BenchResult dword = glutil::benchmarkMutating(data, iterations, glutil::algoDwordReplace);
         glutil::BenchResult byte = glutil::benchmarkMutating(data, iterations, glutil::algoByteReplace);
 
         // sanity checks (checked once)
@@ -159,9 +183,16 @@ int main() {
         {
             std::string work = data;
             glutil::replaceNonASCIIWithSpace(work.data(), work.size());
-            word.sane = !glutil::hasNonASCII(work.data(), work.size());
-            if (!word.sane)
-                word.mismatchDetail = "word replace still has non-ASCII bytes";
+            qword.sane = !glutil::hasNonASCII(work.data(), work.size());
+            if (!qword.sane)
+                qword.mismatchDetail = "qword replace still has non-ASCII bytes";
+        }
+        {
+            std::string work = data;
+            glutil::algoDwordReplace(work.data(), work.size());
+            dword.sane = !glutil::hasNonASCII(work.data(), work.size());
+            if (!dword.sane)
+                dword.mismatchDetail = "dword replace still has non-ASCII bytes";
         }
         {
             std::string work = data;
@@ -184,17 +215,20 @@ int main() {
 
         printResult("1) no-op       ", noOp);
         printResult("2) check-only  ", check);
-        printResult("3) word replace", word);
-        printResult("4) byte replace", byte);
+        printResult("3) qword replace", qword);
+        printResult("4) dword replace", dword);
+        printResult("5) byte replace", byte);
 
         if (noOp.averageNs > 0.0) {
             std::cout << "  no-op=1x, "
                       << "check=" << (check.averageNs / noOp.averageNs) << "x, "
-                      << "word=" << (word.averageNs / noOp.averageNs) << "x, "
+                      << "qword=" << (qword.averageNs / noOp.averageNs) << "x, "
+                      << "dword=" << (dword.averageNs / noOp.averageNs) << "x, "
                       << "byte=" << (byte.averageNs / noOp.averageNs) << "x "
                       << "(" << glutil::format_us(noOp.totalUs) << ", "
                       << glutil::format_us(check.totalUs) << ", "
-                      << glutil::format_us(word.totalUs) << ", "
+                      << glutil::format_us(qword.totalUs) << ", "
+                      << glutil::format_us(dword.totalUs) << ", "
                       << glutil::format_us(byte.totalUs) << ")\n";
         }
         std::cout << "\n";
