@@ -16,6 +16,17 @@ namespace fs = std::filesystem;
 
 namespace glutil {
 
+static void printGlfwError(const char* where) {
+    const char* desc = nullptr;
+    const int code = glfwGetError(&desc);
+    if (code != GLFW_NO_ERROR) {
+        std::cerr << "[GLFW] " << where << " failed. code=" << code;
+        if (desc)
+            std::cerr << ", message=" << desc;
+        std::cerr << std::endl;
+    }
+}
+
 // Embedded vertex shader code
 static const char* vertexShaderSource = R"(
 #version 330 core
@@ -222,20 +233,31 @@ static void testShaderEncodingCheck(int contextMajor, int contextMinor) {
 }
 
 // Entry point for test
-static bool runTestWithContext(int major, int minor) {
+static int runTestWithContext(int major, int minor) {
+    glfwDefaultWindowHints();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, major);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
     GLFWwindow* window = glfwCreateWindow(1, 1, "shaderTest", nullptr, nullptr);
-    if (!window)
-        return false;
+    if (!window) {
+        std::cerr << "Failed to create GLFW window for OpenGL " << major << "." << minor << std::endl;
+        printGlfwError("glfwCreateWindow");
+        return 1;
+    }
 
     glfwMakeContextCurrent(window);
     if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GL loader for OpenGL " << major << "." << minor << std::endl;
+        printGlfwError("gladLoadGL/glfwGetProcAddress");
+        const GLubyte* glVersion = glGetString(GL_VERSION);
+        const GLubyte* glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);
+        std::cerr << "  GL_VERSION: " << (glVersion ? reinterpret_cast<const char*>(glVersion) : "(null)") << std::endl;
+        std::cerr << "  GL_SHADING_LANGUAGE_VERSION: "
+                  << (glslVersion ? reinterpret_cast<const char*>(glslVersion) : "(null)") << std::endl;
         glfwDestroyWindow(window);
-        return false;
+        return 1;
     }
 
     try {
@@ -243,11 +265,11 @@ static bool runTestWithContext(int major, int minor) {
     } catch (const std::exception& e) {
         std::cerr << "Test exception: " << e.what() << std::endl;
         glfwDestroyWindow(window);
-        return false;
+        return 2;
     }
 
     glfwDestroyWindow(window);
-    return true;
+    return 0;
 }
 
 } // namespace glutil
@@ -258,14 +280,14 @@ int main() {
         return 1;
     }
 
-    bool ok33 = glutil::runTestWithContext(3, 3);
-    std::cout << "\n[Context 3.3] " << (ok33 ? "OK" : "FAILED") << std::endl;
+    bool result33 = glutil::runTestWithContext(3, 3);
+    std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << std::endl << std::endl;
 
-    bool ok46 = glutil::runTestWithContext(4, 6);
-    if (ok46)
+    int result46 = glutil::runTestWithContext(4, 6);
+    if (result46 == 0)
         std::cout << "[Context 4.6] OK" << std::endl;
-    else //TODO : better
-        std::cout << "[Context 4.6] SKIPPED or FAILED (context not available)" << std::endl;
+    else
+        std::cout << "[Context 4.6] " << (result46 == 1 ? "SKIPPED" : "FAILED") << std::endl;
 
     glfwTerminate();
     
@@ -273,5 +295,5 @@ int main() {
     std::cout << "  [END] Shader Encoding Check Test" << std::endl;
     std::cout << "========================================" << std::endl;
 
-    return ok33 ? 0 : 1;
+    return (result33 == 0 && result46 != 2) ? 0 : 1;
 }

@@ -118,14 +118,6 @@ static BenchResult benchmarkChecking(const std::string& source,
     return r;
 }
 
-static size_t iterationsForSize(size_t bytes) {
-    if (bytes < 64 * 1024)
-        return 100000;
-    if (bytes < 512 * 1024)
-        return 30000;
-    return 10000;
-}
-
 } // namespace glutil
 
 int main() {
@@ -146,7 +138,7 @@ int main() {
     const std::vector<size_t> factors = {1, 4, 8};
     for (size_t factor : factors) {
         const std::string data = glutil::duplicateText(ms949, factor);
-        const size_t iterations = glutil::iterationsForSize(data.size());
+        const size_t iterations = 100000;
 
         std::cout << "Case x" << factor << "\n";
         std::cout << "  size: " << data.size() << " bytes, iterations: " << iterations << "\n";
