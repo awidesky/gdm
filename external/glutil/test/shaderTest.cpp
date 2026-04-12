@@ -283,11 +283,11 @@ int main() {
     bool result33 = glutil::runTestWithContext(3, 3);
     std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << std::endl << std::endl;
 
-    int result46 = glutil::runTestWithContext(4, 6); // TODO : 4.3 or 4.2
-    if (result46 == 0)
-        std::cout << "[Context 4.6] OK" << std::endl;
+    int result42 = glutil::runTestWithContext(4, 2);
+    if (result42 == 0)
+        std::cout << "[Context 4.2] OK" << std::endl;
     else
-        std::cout << "[Context 4.6] " << (result46 == 1 ? "SKIPPED" : "FAILED") << std::endl;
+        std::cout << "[Context 4.2] " << (result42 == 1 ? "SKIPPED" : "FAILED") << std::endl;
 
     glfwTerminate();
     
@@ -295,5 +295,5 @@ int main() {
     std::cout << "  [END] Shader Encoding Check Test" << std::endl;
     std::cout << "========================================" << std::endl;
 
-    return (result33 == 0 && result46 != 2) ? 0 : 1;
+    return (result33 == 0 && result42 != 2) ? 0 : 1;
 }
