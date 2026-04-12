@@ -185,7 +185,7 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
             set(GDM_GLAD_PREGEN_VERSION "4.6")
         endif()
 
-        message(STATUS "[GDM} Fetching pre-generated glad ${GDM_GLAD_PREGEN_VERSION}")
+        message(STATUS "[GDM] Fetching pre-generated glad ${GDM_GLAD_PREGEN_VERSION}")
 
         set(GDM_RELEASE_BASE_URL "https://github.com/awidesky/gdm/releases/download/v0.0.1")
 
