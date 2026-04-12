@@ -283,7 +283,7 @@ int main() {
     bool result33 = glutil::runTestWithContext(3, 3);
     std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << std::endl << std::endl;
 
-    int result46 = glutil::runTestWithContext(4, 6);
+    int result46 = glutil::runTestWithContext(4, 6); // TODO : 4.3 or 4.2
     if (result46 == 0)
         std::cout << "[Context 4.6] OK" << std::endl;
     else

@@ -138,8 +138,8 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
             //        a compile-time error is clarified in GLSL 4.30 spec.
             //        But 4.20 spec does not clarify it.
             if (isGLSLSupportUTF8()) {
-                LOG_WARNING() << "Current GLSL version allows non-ASCII character in UTF-8 in comments.";
-                LOG_WARNING() << "Make sure the non-ASCII chracter(s) is NOT outside of comments.";
+                LOG_WARNING() << "Current GLSL version allows non-ASCII characters in UTF-8 in comments.";
+                LOG_WARNING() << "Make sure there're no non-ASCII chracters outside of comments.";
             } else {
                 LOG_WARNING() << "Current GLSL version allows ASCII only (replacing all non-ASCII to space character...)";
                 utf8_to_ascii_replace(buffer + 3, fileSize - 3);
