@@ -3,6 +3,9 @@
 
 #include <glutil/gl.hpp>
 
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <string>
 #include <utility>
 
@@ -62,9 +65,54 @@ private:
 class ShaderLoader {
 public:
     static bool checkEncoding;
+    static bool replaceUnknownCharsetNonASCII;
     static ShaderLoadResult loadFile(const char* inputPath);
 };
 
+inline static bool hasNonASCII(const char* data, size_t size) {
+    constexpr uint64_t HIGH_BIT_MASK = 0x8080808080808080ULL;
+
+    size_t i = 0;
+
+    for (; i + 8 <= size; i += 8) {
+        uint64_t word;
+        std::memcpy(&word, data + i, sizeof(word));
+
+        if ((word & HIGH_BIT_MASK) != 0)
+            return true;
+    }
+
+    for (; i < size; ++i) {
+        if ((static_cast<unsigned char>(data[i]) & 0x80) != 0)
+            return true;
+    }
+
+    return false;
+}
+
+inline static void replaceNonASCIIWithSpace(char* data, size_t size) {
+    constexpr uint64_t HIGH_BIT_MASK = 0x8080808080808080ULL;
+
+    size_t i = 0;
+
+    for (; i + 8 <= size; i += 8) {
+        uint64_t word;
+        std::memcpy(&word, data + i, sizeof(word));
+
+        if ((word & HIGH_BIT_MASK) != 0) {
+            unsigned char* bytes = reinterpret_cast<unsigned char*>(data + i);
+            for (size_t j = 0; j < 8; ++j) {
+                if (bytes[j] & 0x80)
+                    bytes[j] = ' ';
+            }
+        }
+    }
+
+    for (; i < size; ++i) {
+        if (static_cast<unsigned char>(data[i]) & 0x80)
+            data[i] = ' ';
+    }
+}
 } // namespace glutil
 
 #endif // GLUTIL_SHADER_HPP

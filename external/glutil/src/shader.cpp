@@ -86,30 +86,8 @@ static GLchar* utf32_to_ascii(const GLchar* data, size_t size, bool littleEndian
     return out;
 }
 
-static bool hasNonASCII(const char* data, size_t size) {
-    constexpr uint64_t HIGH_BIT_MASK = 0x8080808080808080ULL;
-
-    size_t i = 0;
-
-    for (; i + 8 <= size; i += 8) {
-        uint64_t word;
-        std::memcpy(&word, data + i, sizeof(word));
-
-        if ((word & HIGH_BIT_MASK) != 0)
-            return true;
-    }
-
-    for (; i < size; ++i) {
-        if ((static_cast<unsigned char>(data[i]) & 0x80) != 0)
-            return true;
-    }
-
-    return false;
-}
-
-
-
 bool ShaderLoader::checkEncoding = true;
+bool ShaderLoader::replaceUnknownCharsetNonASCII = true;
 
 ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
     ShaderLoadResult result;
@@ -197,7 +175,15 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
         } else {
             if (hasNonASCII(buffer, static_cast<size_t>(fileSize))) {
                 LOG_WARNING() << "Detected charset: unknown (non-ASCII bytes found!)";
-                LOG_WARNING() << "Remove non-ASCII text, or compile error might occur!";
+                if (ShaderLoader::replaceUnknownCharsetNonASCII) {
+                    LOG_WARNING() << "Replacing non-ASCII(MSB == 1) into space can doesn't work in Shift-JIS/CP932, GBK, Big5, and UTF-16/32 without BOM.";
+                    LOG_WARNING() << "If you want to keep the source bytes unchanged, set ShaderLoader::replaceUnknownCharsetNonASCII = false.";
+                    LOG_WARNING() << "Replacing non-ASCII bytes with spaces...";
+                    replaceNonASCIIWithSpace(buffer, static_cast<size_t>(fileSize));
+                } else {
+                    LOG_WARNING() << "Replacement disabled: leaving unknown-charset bytes unchanged.";
+                    LOG_WARNING() << "Remove non-ASCII text manually if compile errors still occur.";
+                }
             }  else {
                 LOG_INFO() << "Source is ASCII-only content, no conversion required";
             }

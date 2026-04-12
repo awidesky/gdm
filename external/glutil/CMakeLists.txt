@@ -50,19 +50,31 @@ target_compile_features(glutil PRIVATE cxx_std_17)
 
 # Tests (only when GDM is standalone project)
 if (GDM_BUILD_TESTS)
-  add_executable(gdm_shaderTest)
-  target_sources(gdm_shaderTest
+  add_executable(glutil_shaderTest)
+  target_sources(glutil_shaderTest
         PRIVATE test/shaderTest.cpp
-    )
-  target_include_directories(gdm_shaderTest
+  )
+  target_include_directories(glutil_shaderTest
         PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-    )
-  target_link_libraries(gdm_shaderTest PRIVATE
+  )
+  target_link_libraries(glutil_shaderTest PRIVATE
         glutil
         gdm::gdm
-    )
-  target_compile_features(gdm_shaderTest PRIVATE cxx_std_17)
-    
-    # Add test to CTest
-    add_test(NAME ShaderTest COMMAND gdm_shaderTest)
+  )
+  target_compile_features(glutil_shaderTest PRIVATE cxx_std_17)
+  add_test(NAME ShaderTest COMMAND glutil_shaderTest)
+
+  add_executable(glutil_encodingCheckBenchMark)
+  target_sources(glutil_encodingCheckBenchMark
+        PRIVATE test/encodingCheck.cpp
+  )
+  target_include_directories(glutil_encodingCheckBenchMark
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_compile_definitions(glutil_encodingCheckBenchMark PRIVATE GLUTIL_ENABLE_BENCHMARKS)
+  target_link_libraries(glutil_encodingCheckBenchMark PRIVATE
+        glutil gdm::gdm
+  )
+  target_compile_features(glutil_encodingCheckBenchMark PRIVATE cxx_std_17)
+  add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
 endif()
