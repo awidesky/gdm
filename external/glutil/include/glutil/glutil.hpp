@@ -3,11 +3,14 @@
 
 #include <glutil/gl.hpp>
 #include <glutil/inspector.hpp>
+#include <glutil/shader.hpp>
+#include <glutil/logging.hpp>
 
 #include <vector>
 #include <string>
 
-// namespace glutil {
+namespace glutil {
+
 struct LogEntry {
     std::string type;    // Shader / Texture
     std::string status;  // Success / Failed / Warning
@@ -22,39 +25,17 @@ struct PathResolveResult {
     std::string message;
 };
 
-PathResolveResult PathResolve(const std::string& inputPath);
+PathResolveResult pathResolve(const std::string& inputPath);
 
 class ResourceLogger {
 public:
-    static void AddLog(const LogEntry& entry);
-    static void PrintLogs();
-    static void ClearLogs();
-    static const std::vector<LogEntry>& GetLogs();
+    static void addLog(const LogEntry& entry);
+    static void printLogs();
+    static void clearLogs();
+    static const std::vector<LogEntry>& getLogs();
 
 private:
-    static std::vector<LogEntry> Logs;
-};
-
-class Shader {
-public:
-    unsigned int ID = 0;
-
-public:
-    Shader() = default;
-    Shader(const char* vertexPath, const char* fragmentPath);
-
-    bool Load(const char* vertexPath, const char* fragmentPath);
-    void Use() const;
-    void Release();
-
-    void SetBool(const std::string& name, bool value) const;
-    void SetInt(const std::string& name, int value) const;
-    void SetFloat(const std::string& name, float value) const;
-
-private:
-    static bool ReadFileToString(const std::string& path, std::string& outText);
-    static GLuint CompileShader(GLenum shaderType, const std::string& source, const std::string& path,
-                                const std::string& shaderLabel);
+    static std::vector<LogEntry> logs;
 };
 
 class Texture {
@@ -70,19 +51,18 @@ public:
     Texture() = default;
     explicit Texture(const char* texturePath, bool bFlipVertically = true);
 
-    bool Load(const char* texturePath, bool bFlipVertically = true);
-    void Bind(int unit = 0) const;
-    void Unbind() const;
-    void Release();
+    bool load(const char* texturePath, bool bFlipVertically = true);
+    void bind(int unit = 0) const;
+    void unbind() const;
+    void release();
 
 private:
-    bool LoadStandardImage(const std::string& path, bool bFlipVertically);
-    bool LoadDDS(const std::string& path);
-    bool CreateTexture2DFromRaw(unsigned char* data, int width, int height, int channels, const std::string& path);
-    std::string ToLower(std::string str) const;
-    std::string GetExtension(const std::string& path) const;
+    bool loadStandardImage(const std::string& path, bool bFlipVertically);
+    bool loadDDS(const std::string& path);
+    bool createTexture2DFromRaw(unsigned char* data, int width, int height, int channels, const std::string& path);
+    std::string toLower(std::string str) const;
+    std::string getExtension(const std::string& path) const;
 };
-//}
 
 class Model {
 public:
@@ -98,12 +78,15 @@ public:
     Model() = default;
     explicit Model(const char* modelPath, bool bFlipV = true);
 
-    bool Load(const char* modelPath, bool bFlipV = true);
-    void Clear();
+    bool load(const char* modelPath, bool bFlipV = true);
+    void clear();
 
-    size_t GetVertexCount() const;
+    size_t getVertexCount() const;
 
 private:
-    bool LoadOBJ(const std::string& path, bool bFlipV);
+    bool loadOBJ(const std::string& path, bool bFlipV);
 };
+
+} // namespace glutil
+
 #endif // GLUTIL_GLUTIL

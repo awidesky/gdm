@@ -1,6 +1,6 @@
 #define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
 #define STB_IMAGE_IMPLEMENTATION
-#include "glutil/glutil.hpp"
+#include <glutil/glutil.hpp>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -13,7 +13,7 @@
 #include <string.h>
 #include <string>
 #include <vector>
-
+/*
 namespace fs = std::filesystem;
 
 // ----------------------------------
@@ -100,161 +100,6 @@ PathResolveResult PathResolve(const std::string& inputPath) {
 
     result.message = "파일을 찾지 못함";
     return result;
-}
-
-// ----------------------------------
-// Shader
-// ----------------------------------
-Shader::Shader(const char* vertexPath, const char* fragmentPath) { Load(vertexPath, fragmentPath); }
-
-bool Shader::Load(const char* vertexPath, const char* fragmentPath) {
-    Release();
-
-    if (vertexPath == nullptr || fragmentPath == nullptr) {
-        ResourceLogger::AddLog({"Shader", "Failed", "(null)", "vertexPath 또는 fragmentPath가 nullptr임"});
-        return false;
-    }
-
-    PathResolveResult vsPathResult = PathResolve(vertexPath);
-    if (!vsPathResult.success) {
-        ResourceLogger::AddLog(
-          {"Shader", "Failed", vertexPath, "Vertex shader 경로 확인 실패: " + vsPathResult.message});
-        return false;
-    }
-    ResourceLogger::AddLog({"Shader", "Success", vsPathResult.resolvedPath, "Vertex shader 경로 확인 성공"});
-
-    PathResolveResult fsPathResult = PathResolve(fragmentPath);
-    if (!fsPathResult.success) {
-        ResourceLogger::AddLog(
-          {"Shader", "Failed", fragmentPath, "Fragment shader 경로 확인 실패: " + fsPathResult.message});
-        return false;
-    }
-    ResourceLogger::AddLog({"Shader", "Success", fsPathResult.resolvedPath, "Fragment shader 경로 확인 성공"});
-
-    std::string vertexCode;
-    std::string fragmentCode;
-
-    if (!ReadFileToString(vsPathResult.resolvedPath, vertexCode)) {
-        ResourceLogger::AddLog({"Shader", "Failed", vsPathResult.resolvedPath, "Vertex shader 파일 읽기 실패"});
-        return false;
-    }
-    ResourceLogger::AddLog({"Shader", "Success", vsPathResult.resolvedPath, "Vertex shader 파일 읽기 성공"});
-
-    if (!ReadFileToString(fsPathResult.resolvedPath, fragmentCode)) {
-        ResourceLogger::AddLog({"Shader", "Failed", fsPathResult.resolvedPath, "Fragment shader 파일 읽기 실패"});
-        return false;
-    }
-    ResourceLogger::AddLog({"Shader", "Success", fsPathResult.resolvedPath, "Fragment shader 파일 읽기 성공"});
-
-    if (vertexCode.empty()) {
-        ResourceLogger::AddLog({"Shader", "Failed", vsPathResult.resolvedPath, "Vertex shader 소스가 비어 있음"});
-        return false;
-    }
-
-    if (fragmentCode.empty()) {
-        ResourceLogger::AddLog({"Shader", "Failed", fsPathResult.resolvedPath, "Fragment shader 소스가 비어 있음"});
-        return false;
-    }
-
-    GLuint vertex = CompileShader(GL_VERTEX_SHADER, vertexCode, vsPathResult.resolvedPath, "Vertex shader");
-    if (vertex == 0)
-        return false;
-
-    GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, fragmentCode, fsPathResult.resolvedPath, "Fragment shader");
-    if (fragment == 0) {
-        glDeleteShader(vertex);
-        return false;
-    }
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertex);
-    glAttachShader(program, fragment);
-    glLinkProgram(program);
-
-    GLint success = GL_FALSE;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-
-    if (success != GL_TRUE) {
-        char infoLog[1024];
-        glGetProgramInfoLog(program, 1024, NULL, infoLog);
-
-        ResourceLogger::AddLog({"Shader", "Failed", vsPathResult.resolvedPath + " + " + fsPathResult.resolvedPath,
-                                "프로그램 링크 실패: " + std::string(infoLog)});
-
-        glDeleteShader(vertex);
-        glDeleteShader(fragment);
-        glDeleteProgram(program);
-        return false;
-    }
-
-    ResourceLogger::AddLog(
-      {"Shader", "Success", vsPathResult.resolvedPath + " + " + fsPathResult.resolvedPath, "프로그램 링크 성공"});
-
-    glDeleteShader(vertex);
-    glDeleteShader(fragment);
-
-    ID = program;
-    return true;
-}
-
-void Shader::Use() const {
-    if (ID != 0)
-        glUseProgram(ID);
-}
-
-void Shader::Release() {
-    if (ID != 0) {
-        glDeleteProgram(ID);
-        ID = 0;
-    }
-}
-
-void Shader::SetBool(const std::string& name, bool value) const {
-    glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
-}
-
-void Shader::SetInt(const std::string& name, int value) const {
-    glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
-}
-
-void Shader::SetFloat(const std::string& name, float value) const {
-    glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
-}
-
-bool Shader::ReadFileToString(const std::string& path, std::string& outText) {
-    std::ifstream file(path);
-    if (!file.is_open())
-        return false;
-
-    std::stringstream ss;
-    ss << file.rdbuf();
-    outText = ss.str();
-    return true;
-}
-
-GLuint Shader::CompileShader(GLenum shaderType, const std::string& source, const std::string& path,
-                             const std::string& shaderLabel) {
-    GLuint shader = glCreateShader(shaderType);
-    const char* src = source.c_str();
-
-    glShaderSource(shader, 1, &src, NULL);
-    glCompileShader(shader);
-
-    GLint success = GL_FALSE;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-
-    if (success == GL_TRUE) {
-        ResourceLogger::AddLog({"Shader", "Success", path, shaderLabel + " 컴파일 성공"});
-        return shader;
-    }
-
-    char infoLog[1024];
-    glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-
-    ResourceLogger::AddLog({"Shader", "Failed", path, shaderLabel + " 컴파일 실패: " + std::string(infoLog)});
-
-    glDeleteShader(shader);
-    return 0;
 }
 
 // ----------------------------------
@@ -1028,3 +873,4 @@ bool Model::LoadOBJ(const std::string& path, bool bFlipV) {
 //         glBindTexture(GL_TEXTURE_2D, ID);
 //     }
 // };
+*/

@@ -5,6 +5,8 @@ project(GDM
 	HOMEPAGE_URL "https://github.com/awidesky/gdm"
 )
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # Is gdm the main project, not a library?
 string(COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" GDM_STANDALONE)
 
@@ -19,6 +21,11 @@ endif()
 
 option(GDM_USE_GLUTIL "Enable GLUtil module" ON)
 option(GDM_BUILD_EXAMPLES "Build GDM examples" ${GDM_STANDALONE})
+option(GDM_BUILD_TESTS "Build the GDM/GLUtil test programs" ${GDM_STANDALONE})
+
+if (GDM_BUILD_TESTS)
+    enable_testing()
+endif()
 
 # Dependency providers
 set(GDM_WINDOW_BACKEND "glfw" CACHE STRING
@@ -180,7 +187,7 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
             set(GDM_GLAD_PREGEN_VERSION "4.6")
         endif()
 
-        message(STATUS "[GDM} Fetching pre-generated glad ${GDM_GLAD_PREGEN_VERSION}")
+        message(STATUS "[GDM] Fetching pre-generated glad ${GDM_GLAD_PREGEN_VERSION}")
 
         set(GDM_RELEASE_BASE_URL "https://github.com/awidesky/gdm/releases/download/v0.0.1")
 
@@ -273,6 +280,16 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
     target_link_libraries(gdm_loader INTERFACE GLEW::GLEW)
 else()
     message(FATAL_ERROR "[GDM} Unsupported GDM_GL_LOADER: ${GDM_GL_LOADER}")
+endif()
+
+if (TARGET gdm_glad_debug)
+    set_target_properties(gdm_glad_debug PROPERTIES FOLDER "GLAD")
+endif()
+if (TARGET gdm_glad_release)
+    set_target_properties(gdm_glad_release PROPERTIES FOLDER "GLAD")
+endif()
+if (TARGET gdm_glad_single)
+    set_target_properties(gdm_glad_single PROPERTIES FOLDER "GLAD")
 endif()
 
 
