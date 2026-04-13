@@ -132,7 +132,7 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
             //        But 4.20 spec does not clarify it.
             if (isGLSLSupportUTF8()) {
                 LOG_WARNING() << "Current GLSL version allows non-ASCII characters in UTF-8 in comments.";
-                LOG_WARNING() << "Make sure there're no non-ASCII chracters outside of comments.";
+                LOG_WARNING() << "Make sure there're no non-ASCII characters outside of comments.";
             } else {
                 LOG_WARNING() << "Current GLSL version allows ASCII only (replacing all non-ASCII to space character if found...)";
                 replaceNonASCIIWithSpace(buffer + 3, fileSize - 3);
