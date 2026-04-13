@@ -190,7 +190,7 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor) {
         ShaderLoadResult loadResult = ShaderLoader::loadFile(shaderPath.string().c_str());
 
         if (loadResult.ok) {
-            compileAndLink(loadResult.string()[0],
+            compileAndLink(*loadResult.string(),
                            loadResult.length(),
                            loaderCompileResult,
                            loaderLinkResult);
