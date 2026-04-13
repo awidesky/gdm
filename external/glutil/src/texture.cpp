@@ -1,13 +1,14 @@
 // glutil/texture.cpp
 //
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "stb_image.h"
 #define DDSKTX_IMPLEMENT
-#include <dds-ktx.h>
+#include "dds-ktx.h"
 
 #include <glutil/texture.hpp>
 #include <glutil/logging.hpp>
 #include <glutil/glutil.hpp>  
+
 #include <algorithm>          
 #include <cstring>            
 #include <fstream>
