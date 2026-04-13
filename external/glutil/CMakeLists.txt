@@ -62,6 +62,9 @@ if (GDM_BUILD_TESTS)
         gdm::gdm
   )
   target_compile_features(glutil_shaderTest PRIVATE cxx_std_17)
+  set_target_properties(glutil_shaderTest PROPERTIES
+        FOLDER "GLUTIL_TESTS"
+  )
   add_test(NAME ShaderTest COMMAND glutil_shaderTest)
 
   add_executable(glutil_encodingCheckBenchMark)
@@ -76,5 +79,8 @@ if (GDM_BUILD_TESTS)
         glutil gdm::gdm
   )
   target_compile_features(glutil_encodingCheckBenchMark PRIVATE cxx_std_17)
+  set_target_properties(glutil_encodingCheckBenchMark PROPERTIES
+        FOLDER "GLUTIL_TESTS"
+  )
   add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
 endif()

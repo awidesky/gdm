@@ -280,7 +280,7 @@ int main() {
         return 1;
     }
 
-    bool result33 = glutil::runTestWithContext(3, 3);
+    int result33 = glutil::runTestWithContext(3, 3);
     std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << std::endl << std::endl;
 
     int result42 = glutil::runTestWithContext(4, 2);
