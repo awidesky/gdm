@@ -27,7 +27,7 @@ TextureImage ImageLoader::LoadImage(const char* path, bool flipV) {
     }
 
     // [PathResolve]
-    PathResolveResult pr = PathResolve(path);
+    PathResolveResult pr = pathResolve(path);
     if (!pr.success) {
         result.error = "경로 확인 실패: " + pr.message;
         LOG_WARNING() << "[TextureImage] " << result.error;
@@ -108,7 +108,7 @@ TextureDDS ImageLoader::LoadDDS(const char* path) {
         return result;
     }
 
-    PathResolveResult pr = PathResolve(path);
+    PathResolveResult pr = pathResolve(path);
     if (!pr.success) {
         result.error = "경로 확인 실패: " + pr.message;
         LOG_WARNING() << "[TextureDDS] " << result.error;

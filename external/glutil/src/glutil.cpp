@@ -1,5 +1,3 @@
-#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
-#define STB_IMAGE_IMPLEMENTATION
 #include <glutil/glutil.hpp>
 #include <algorithm>
 #include <cstdio>
@@ -13,6 +11,14 @@
 #include <string.h>
 #include <string>
 #include <vector>
+
+namespace glutil {
+
+PathResolveResult pathResolve(const std::string& inputPath) { return {true, inputPath, inputPath, "skipped"}; }
+
+} // namespace glutil
+
+
 /*
 namespace fs = std::filesystem;
 
