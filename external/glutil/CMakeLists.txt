@@ -26,6 +26,7 @@ target_sources(glutil
       include/glutil/inspector.hpp
       include/glutil/glutil.hpp
       include/glutil/logging.hpp
+      include/glutil/texture.hpp
 )
 
 target_sources(glutil
@@ -34,11 +35,14 @@ target_sources(glutil
     src/inspector.cpp
     src/glutil.cpp
     src/logging.cpp
+    src/texture.cpp
 )
 
 target_include_directories(glutil PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/external/stb      
+  ${CMAKE_CURRENT_SOURCE_DIR}/external/dds-ktx
 )
 
 target_link_libraries(glutil PRIVATE
