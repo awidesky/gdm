@@ -93,9 +93,19 @@ TextureImage ImageLoader::LoadImage(const char* path, bool flipV) {
 // 현대 데스크톱 GPU는 거의 지원하나, 사용 전 확장 지원 여부 확인 권장 (사용자 책임).
 static GLenum toGLFormat(ddsktx_format fmt) {
     switch (fmt) {
-        case DDSKTX_FORMAT_BC1: return GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-        case DDSKTX_FORMAT_BC2: return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-        case DDSKTX_FORMAT_BC3: return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+        // TODO : 이건 확장 표준이라 opengl 표준에서 지원하지 않음
+        // glew의 경우 glewInit()하면 모든 확장을 가져오기 때문에 실행되는 것
+        // glad 생성 시 GL_EXT_texture_compression_s3tc표준 추가해야 하고,
+        // #ifdef GLAD_GL_EXT_texture_compression_s3tc 체크하고,
+        //  if(!GLAD_GL_EXT_texture_compression_s3tc) { /* fallback */ } 추가해야 함
+        // glew로 하는 경우 
+        // #ifdef GL_EXT_texture_compression_s3tc 체크하고
+        //  if (!GLEW_EXT_texture_compression_s3tc) { /* fallback */ } 추가해야 함
+        // 
+        // 사용자가 뭐를 선택했을지 알 수 없기 때문에, cmakelists.txt에서 add_compile_definition해서 GDM_USE_GLEW같은 매크로 상수 만들어줘야함
+        //case DDSKTX_FORMAT_BC1: return GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+        //case DDSKTX_FORMAT_BC2: return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+        //case DDSKTX_FORMAT_BC3: return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
         default:                return 0;
     }
 }
