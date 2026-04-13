@@ -45,7 +45,7 @@ static std::string format_us(double microseconds) {
     return os.str();
 }
 
-// 1) replaceUnknownCharsetNonASCII == false (No-op)
+// 1) replaceUnknownNonASCII == false (No-op)
 static void algoNoOp(char* /*data*/, size_t /*size*/) {
 }
 

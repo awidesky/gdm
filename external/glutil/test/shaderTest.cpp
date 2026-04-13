@@ -186,7 +186,7 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor) {
         // Test ShaderLoader::loadFile
         std::cout << "  Loading with ShaderLoader..." << std::endl;
         ShaderLoader::checkEncoding = true;
-        ShaderLoader::replaceUnknownCharsetNonASCII = true;
+        ShaderLoader::replaceUnknownNonASCII = true;
         ShaderLoadResult loadResult = ShaderLoader::loadFile(shaderPath.string().c_str());
 
         if (loadResult.ok) {

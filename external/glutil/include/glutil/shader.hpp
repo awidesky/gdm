@@ -65,7 +65,7 @@ private:
 class ShaderLoader {
 public:
     static bool checkEncoding;
-    static bool replaceUnknownCharsetNonASCII;
+    static bool replaceUnknownNonASCII;
     static ShaderLoadResult loadFile(const char* inputPath);
 };
 

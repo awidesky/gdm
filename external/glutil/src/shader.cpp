@@ -80,7 +80,7 @@ static GLchar* utf32_to_ascii(const GLchar* data, size_t size, bool littleEndian
 }
 
 bool ShaderLoader::checkEncoding = true;
-bool ShaderLoader::replaceUnknownCharsetNonASCII = true;
+bool ShaderLoader::replaceUnknownNonASCII = true;
 
 ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
     ShaderLoadResult result;
@@ -168,9 +168,9 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
         } else {
             if (hasNonASCII(buffer, static_cast<size_t>(fileSize))) {
                 LOG_WARNING() << "Detected charset: unknown (non-ASCII bytes found!)";
-                if (ShaderLoader::replaceUnknownCharsetNonASCII) {
+                if (ShaderLoader::replaceUnknownNonASCII) {
                     LOG_WARNING() << "Replacing non-ASCII(MSB == 1) into space might not work in Shift-JIS/CP932, GBK, Big5, and UTF-16/32 without BOM.";
-                    LOG_WARNING() << "If you want to keep the source bytes unchanged, set ShaderLoader::replaceUnknownCharsetNonASCII = false.";
+                    LOG_WARNING() << "If you want to keep the source bytes unchanged, set ShaderLoader::replaceUnknownNonASCII = false.";
                     LOG_WARNING() << "Replacing non-ASCII bytes with spaces...";
                     replaceNonASCIIWithSpace(buffer, static_cast<size_t>(fileSize));
                 } else {
