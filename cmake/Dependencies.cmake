@@ -1,3 +1,8 @@
+get_filename_component(GDM_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+set(GDM_EXTERNAL_DIR "${GDM_ROOT_DIR}/external" CACHE PATH
+    "Directory where GDM external dependencies are stored"
+)
+
 function(use_or_fetch_package)
     set(options)
     set(oneValueArgs
@@ -26,7 +31,7 @@ function(use_or_fetch_package)
 
     # external directory name with version number
     set(PKG_EXTERNAL_DIR
-        ${CMAKE_SOURCE_DIR}/external/${PKG_NAME}-${PKG_VERSION}
+        ${GDM_EXTERNAL_DIR}/${PKG_NAME}-${PKG_VERSION}
     )
 
     set(USE_EXTERNAL_PACKAGE FALSE)
