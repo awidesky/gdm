@@ -91,7 +91,7 @@ TextureImage ImageLoader::LoadImage(const char* path, bool flipV) {
 // BC1/BC2/BC3만 지원. 그 외는 0 반환 → LoadDDS에서 에러 처리.
 // GL_COMPRESSED_RGBA_S3TC_DXT*_EXT는 GL_EXT_texture_compression_s3tc 확장.
 // 현대 데스크톱 GPU는 거의 지원하나, 사용 전 확장 지원 여부 확인 권장 (사용자 책임).
-static GLenum toGLFormat(ddsktx_format fmt) {
+static GLenum toGLFormat(ddsktx_format fmt, unsigned int flags) {
     switch (fmt) {
         // TODO : 이건 확장 표준이라 opengl 표준에서 지원하지 않음
         // glew의 경우 glewInit()하면 모든 확장을 가져오기 때문에 실행되는 것
@@ -106,7 +106,16 @@ static GLenum toGLFormat(ddsktx_format fmt) {
         //case DDSKTX_FORMAT_BC1: return GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
         //case DDSKTX_FORMAT_BC2: return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
         //case DDSKTX_FORMAT_BC3: return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-        default:                return 0;
+        
+        // BC1(DXT1)은 alpha 비트 사용 여부에 따라 RGB/RGBA가 갈림.
+        // alpha 비트가 실제로 사용되지 않는 XRGB(alpha_x) 경우는 RGB로 올려야 함.
+        case DDSKTX_FORMAT_BC1:
+            return ((flags & DDSKTX_TEXTURE_FLAG_ALPHA) && !(flags & DDSKTX_TEXTURE_FLAG_ALPHA_X))
+                     ? 0x83F1  // GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
+                     : 0x83F0; // GL_COMPRESSED_RGB_S3TC_DXT1_EXT
+        case DDSKTX_FORMAT_BC2: return 0x83F2; // GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
+        case DDSKTX_FORMAT_BC3: return 0x83F3; // GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+        default: return 0;
     }
 }
 
@@ -168,7 +177,7 @@ TextureDDS ImageLoader::LoadDDS(const char* path) {
         return result;
     }
 
-    const GLenum glFmt = toGLFormat(tc.format);
+    const GLenum glFmt = toGLFormat(tc.format, tc.flags);
     if (glFmt == 0) {
         result.error = "지원하지 않는 DDS 포맷 (BC1/BC2/BC3만 지원)";
         LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
@@ -197,15 +206,11 @@ TextureDDS ImageLoader::LoadDDS(const char* path) {
             return result;
         }
 
-        const auto mw = static_cast<GLsizei>(
-            std::max(1u, static_cast<unsigned int>(tc.width)  >> i));
-        const auto mh = static_cast<GLsizei>(
-            std::max(1u, static_cast<unsigned int>(tc.height) >> i));
-
         result.mipLevels.push_back({
             static_cast<size_t>(ptr - result.fileData),
             static_cast<GLsizei>(sub.size_bytes),
-            mw, mh
+            static_cast<GLsizei>(sub.width),
+            static_cast<GLsizei>(sub.height)
         });
     }
 
