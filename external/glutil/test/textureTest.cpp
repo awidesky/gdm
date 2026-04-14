@@ -205,10 +205,11 @@ layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aUV;
 
 uniform mat4 uMVP;
+uniform bool uFlipV;
 out vec2 vUV;
 
 void main() {
-    vUV = aUV;
+    vUV = vec2(aUV.x, uFlipV ? (1.0 - aUV.y) : aUV.y);
     gl_Position = uMVP * vec4(aPos, 1.0);
 }
 )";
@@ -235,6 +236,7 @@ void main() {
 
     const GLint mvpLoc = glGetUniformLocation(program, "uMVP");
     const GLint texLoc = glGetUniformLocation(program, "uTexture");
+    const GLint flipVLoc = glGetUniformLocation(program, "uFlipV");
 
     static const GLfloat kVertexData[] = {
         -1.0f,-1.0f,-1.0f, -1.0f,-1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
@@ -334,11 +336,13 @@ void main() {
 
         const glm::mat4 mvpLeft = projection * view * modelLeft;
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvpLeft[0][0]);
+        glUniform1i(flipVLoc, 1); // DDS only: flip V
         glBindTexture(GL_TEXTURE_2D, ddsTex);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         const glm::mat4 mvpRight = projection * view * modelRight;
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvpRight[0][0]);
+        glUniform1i(flipVLoc, 0); // BMP: keep as-is (already flipped at load)
         glBindTexture(GL_TEXTURE_2D, bmpTex);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
