@@ -170,7 +170,7 @@ int main() {
 
     const std::filesystem::path textureDir = glutil::TEST_ASSET_DIR / "texture";
     const std::filesystem::path ddsPath = textureDir / "uvtemplate.DDS";
-    const std::filesystem::path bmpPath = textureDir / "dice.bmp";
+    const std::filesystem::path bmpPath = textureDir / "33.bmp";
 
     glutil::TextureDDS dds = glutil::ImageLoader::LoadDDS(ddsPath.string().c_str());
     if (!dds.ok) {
