@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GLUTIL_TEXTURE_HPP
+#define GLUTIL_TEXTURE_HPP
+
 // glutil/texture.hpp
 //
 // [설계 원칙]
@@ -154,3 +156,5 @@ public:
 };
 
 } // namespace glutil
+
+#endif // GLUTIL_TEXTURE_HPP
