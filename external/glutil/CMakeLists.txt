@@ -68,7 +68,7 @@ if (GDM_BUILD_TESTS)
   )
   target_compile_features(glutil_shaderTest PRIVATE cxx_std_17)
   set_target_properties(glutil_shaderTest PROPERTIES
-        FOLDER "GLUTIL_TESTS"
+        FOLDER "GLUTIL_Tests"
   )
   add_test(NAME ShaderTest COMMAND glutil_shaderTest)
 
@@ -85,7 +85,24 @@ if (GDM_BUILD_TESTS)
   )
   target_compile_features(glutil_encodingCheckBenchMark PRIVATE cxx_std_17)
   set_target_properties(glutil_encodingCheckBenchMark PROPERTIES
-        FOLDER "GLUTIL_TESTS"
+        FOLDER "GLUTIL_Tests"
   )
   add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
+
+  add_executable(glutil_textureTest)
+  target_sources(glutil_textureTest
+        PRIVATE test/textureTest.cpp
+  )
+  target_include_directories(glutil_textureTest
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_textureTest PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_textureTest PRIVATE cxx_std_17)
+  set_target_properties(glutil_textureTest PROPERTIES
+        FOLDER "GLUTIL_Tests"
+  )
+  add_test(NAME TextureTest COMMAND glutil_textureTest)
 endif()
