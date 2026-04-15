@@ -16,9 +16,9 @@
 namespace glutil {
 
 // ══════════════════════════════════════════════════════════
-// ImageLoader::LoadImage
+// ImageLoader::loadImage
 // ══════════════════════════════════════════════════════════
-TextureImage ImageLoader::LoadImage(const char* path, bool flipV) {
+TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
     TextureImage result;
 
     // [PathResolve]
@@ -79,7 +79,7 @@ TextureImage ImageLoader::LoadImage(const char* path, bool flipV) {
 }
 
 // ══════════════════════════════════════════════════════════
-// ImageLoader::LoadDDS
+// ImageLoader::loadDDS
 // ══════════════════════════════════════════════════════════
 
 // [toGLFormat 설계 이유]
@@ -115,7 +115,7 @@ static GLenum toGLFormat(ddsktx_format fmt, unsigned int flags) {
     }
 }
 
-TextureDDS ImageLoader::LoadDDS(const char* path) {
+TextureDDS ImageLoader::loadDDS(const char* path) {
     TextureDDS result;
 
     if (!path) {

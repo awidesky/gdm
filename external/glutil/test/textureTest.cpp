@@ -84,7 +84,7 @@ int main() {
     const std::filesystem::path ddsPath = textureDir / "uvtemplate.DDS";
     const std::filesystem::path bmpPath = textureDir / "33.bmp";
 
-    glutil::TextureDDS dds = glutil::ImageLoader::LoadDDS(ddsPath.string().c_str());
+    glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(ddsPath.string().c_str());
     if (!dds.ok) {
         std::cerr << "DDS load failed: " << ddsPath << "\n  reason: " << dds.error << std::endl;
         glfwDestroyWindow(ctx);
@@ -92,12 +92,28 @@ int main() {
         return 1;
     }
 
-    glutil::TextureImage bmp = glutil::ImageLoader::LoadImage(bmpPath.string().c_str(), true);
+    glutil::TextureImage bmp = glutil::ImageLoader::loadImage(bmpPath.string().c_str(), true);
     if (!bmp.ok) {
         std::cerr << "BMP load failed: " << bmpPath << "\n  reason: " << bmp.error << std::endl;
         glfwDestroyWindow(ctx);
         glfwTerminate();
         return 1;
+    }
+
+        GLint count = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+
+    for (GLint i = 0; i < count; ++i)
+    {
+        const char* ext =
+            reinterpret_cast<const char*>(
+                glGetStringi(GL_EXTENSIONS, i));
+
+                std::cerr << ext << std::endl;
+        if (ext &&
+            std::strcmp(ext, "GL_EXT_texture_compression_s3tc") == 0)
+        {
+        }
     }
 
     const GLuint ddsTex = uploadDDS2D(dds);

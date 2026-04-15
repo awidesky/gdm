@@ -2,7 +2,6 @@
 cmake_minimum_required(VERSION 3.24)
 project(glutil)
 
-file(TO_NATIVE_PATH "${CMAKE_SOURCE_DIR}" GLUTIL_ROOT_DIR)
 # TODO : only when test is enabled
 file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/test" GLUTIL_TEST_DIR)
 configure_file(

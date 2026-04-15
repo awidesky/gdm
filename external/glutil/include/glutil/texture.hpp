@@ -100,7 +100,7 @@ private:
 //
 // [compressed() 미제공 이유]
 // toGLFormat()이 BC1/BC2/BC3(모두 압축)만 허용하고 나머지는 에러 반환.
-// LoadDDS() 성공 시 항상 압축 포맷이므로 분기용 플래그가 의미 없음.
+// loadDDS() 성공 시 항상 압축 포맷이므로 분기용 플래그가 의미 없음.
 // 비압축 DDS 지원 시 그때 추가.
 struct TextureDDS {
     bool        ok = false;
@@ -151,8 +151,8 @@ private:
 // 외부에서 직접 생성/수정 불가.
 class ImageLoader {
 public:
-    static TextureImage LoadImage(const char* path, bool flipV = true);
-    static TextureDDS   LoadDDS(const char* path);
+    static TextureImage loadImage(const char* path, bool flipV = true);
+    static TextureDDS   loadDDS(const char* path);
 };
 
 } // namespace glutil
