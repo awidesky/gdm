@@ -88,8 +88,8 @@ include(cmake/Dependencies.cmake)
 # -----------------------
 find_package(OpenGL REQUIRED)
 
- # -----------------------
-# Window backend
+# -----------------------
+# Window backend (GLFW, FreeGLUT)
 # -----------------------
 if (GDM_WINDOW_BACKEND STREQUAL "none")
     add_library(gdm_window INTERFACE)
@@ -130,7 +130,7 @@ else()
 endif()
 
 # -----------------------
-# OpenGL loader
+# OpenGL loader (GLAD, GLEW)
 # -----------------------
 
 if (GDM_GL_LOADER STREQUAL "none")
@@ -268,6 +268,7 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
 
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
+    add_dependencies(gdm_loader gdm_glad_debug gdm_glad_release)
     target_link_libraries(gdm_loader INTERFACE
         $<$<CONFIG:Debug>:gdm_glad_debug>
         $<$<NOT:$<CONFIG:Debug>>:gdm_glad_release>
