@@ -25,11 +25,10 @@ layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aUV;
 
 uniform mat4 uMVP;
-uniform bool uFlipV;
 out vec2 vUV;
 
 void main() {
-    vUV = vec2(aUV.x, uFlipV ? (1.0 - aUV.y) : aUV.y);
+    vUV = aUV;
     gl_Position = uMVP * vec4(aPos, 1.0);
 }
 )";
@@ -92,28 +91,12 @@ int main() {
         return 1;
     }
 
-    glutil::TextureImage bmp = glutil::ImageLoader::loadImage(bmpPath.string().c_str(), true);
+    glutil::TextureImage bmp = glutil::ImageLoader::loadImage(bmpPath.string().c_str());
     if (!bmp.ok) {
         std::cerr << "BMP load failed: " << bmpPath << "\n  reason: " << bmp.error << std::endl;
         glfwDestroyWindow(ctx);
         glfwTerminate();
         return 1;
-    }
-
-        GLint count = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &count);
-
-    for (GLint i = 0; i < count; ++i)
-    {
-        const char* ext =
-            reinterpret_cast<const char*>(
-                glGetStringi(GL_EXTENSIONS, i));
-
-                std::cerr << ext << std::endl;
-        if (ext &&
-            std::strcmp(ext, "GL_EXT_texture_compression_s3tc") == 0)
-        {
-        }
     }
 
     const GLuint ddsTex = uploadDDS2D(dds);
@@ -138,7 +121,6 @@ int main() {
 
     const GLint mvpLoc = glGetUniformLocation(program, "uMVP");
     const GLint texLoc = glGetUniformLocation(program, "uTexture");
-    const GLint flipVLoc = glGetUniformLocation(program, "uFlipV");
 
     GLuint vao = 0;
     GLuint vboPos = 0;
@@ -186,13 +168,11 @@ int main() {
 
         const glm::mat4 mvpLeft = makeMvp(t, aspect, true);
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvpLeft[0][0]);
-        glUniform1i(flipVLoc, 1); // DDS only: flip V
         glBindTexture(GL_TEXTURE_2D, ddsTex);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         const glm::mat4 mvpRight = makeMvp(t, aspect, false);
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvpRight[0][0]);
-        glUniform1i(flipVLoc, 0); // BMP: keep as-is (already flipped at load)
         glBindTexture(GL_TEXTURE_2D, bmpTex);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 

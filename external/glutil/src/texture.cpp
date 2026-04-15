@@ -10,6 +10,7 @@
 #include <glutil/glutil.hpp>  
 
 #include <algorithm>          
+#include <cstdint>
 #include <cstring>            
 #include <fstream>
 
@@ -115,7 +116,104 @@ static GLenum toGLFormat(ddsktx_format fmt, unsigned int flags) {
     }
 }
 
-TextureDDS ImageLoader::loadDDS(const char* path) {
+static GLsizei compressedBlockSize(ddsktx_format fmt) {
+    switch (fmt) {
+        case DDSKTX_FORMAT_BC1: return 8;
+        case DDSKTX_FORMAT_BC2:
+        case DDSKTX_FORMAT_BC3: return 16;
+        default: return 0;
+    }
+}
+
+static void flipBC1BlockVertical(unsigned char* block) {
+    std::uint32_t indices = 0;
+    std::memcpy(&indices, block + 4, sizeof(indices));
+
+    const std::uint32_t row0 = (indices & 0x000000FFu) << 24;
+    const std::uint32_t row1 = (indices & 0x0000FF00u) << 8;
+    const std::uint32_t row2 = (indices & 0x00FF0000u) >> 8;
+    const std::uint32_t row3 = (indices & 0xFF000000u) >> 24;
+
+    indices = row0 | row1 | row2 | row3;
+    std::memcpy(block + 4, &indices, sizeof(indices));
+}
+
+static void flipBC2BlockVertical(unsigned char* block) {
+    unsigned char row[2];
+
+    std::memcpy(row, block + 0, sizeof(row));
+    std::memcpy(block + 0, block + 6, sizeof(row));
+    std::memcpy(block + 6, row, sizeof(row));
+
+    std::memcpy(row, block + 2, sizeof(row));
+    std::memcpy(block + 2, block + 4, sizeof(row));
+    std::memcpy(block + 4, row, sizeof(row));
+
+    flipBC1BlockVertical(block + 8);
+}
+
+static void flipBC3AlphaVertical(unsigned char* block) {
+    std::uint64_t alphaBits = 0;
+    std::memcpy(&alphaBits, block + 2, 6);
+
+    std::uint8_t alphaValues[16] = {};
+    for (int i = 0; i < 16; ++i) {
+        alphaValues[i] = static_cast<std::uint8_t>((alphaBits >> (3 * i)) & 0x7u);
+    }
+
+    std::uint8_t flipped[16] = {};
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            flipped[(3 - row) * 4 + col] = alphaValues[row * 4 + col];
+        }
+    }
+
+    alphaBits = 0;
+    for (int i = 0; i < 16; ++i) {
+        alphaBits |= static_cast<std::uint64_t>(flipped[i] & 0x7u) << (3 * i);
+    }
+
+    std::memcpy(block + 2, &alphaBits, 6);
+}
+
+static void flipBC3BlockVertical(unsigned char* block) {
+    flipBC3AlphaVertical(block);
+    flipBC1BlockVertical(block + 8);
+}
+
+static void flipCompressedMipVertical(unsigned char* mipData, GLsizei width, GLsizei height,
+                                      ddsktx_format fmt) {
+    const GLsizei blockSize = compressedBlockSize(fmt);
+    if (blockSize == 0) {
+        return;
+    }
+
+    const GLsizei blocksWide = std::max<GLsizei>(1, (width + 3) / 4);
+    const GLsizei blocksHigh = std::max<GLsizei>(1, (height + 3) / 4);
+    const size_t rowBytes = static_cast<size_t>(blocksWide) * static_cast<size_t>(blockSize);
+
+    std::vector<unsigned char> flipped(rowBytes * static_cast<size_t>(blocksHigh));
+
+    for (GLsizei row = 0; row < blocksHigh; ++row) {
+        unsigned char* dstRow = flipped.data() + static_cast<size_t>(blocksHigh - 1 - row) * rowBytes;
+        const unsigned char* srcRow = mipData + static_cast<size_t>(row) * rowBytes;
+        std::memcpy(dstRow, srcRow, rowBytes);
+
+        for (GLsizei col = 0; col < blocksWide; ++col) {
+            unsigned char* block = dstRow + static_cast<size_t>(col) * static_cast<size_t>(blockSize);
+            switch (fmt) {
+                case DDSKTX_FORMAT_BC1: flipBC1BlockVertical(block); break;
+                case DDSKTX_FORMAT_BC2: flipBC2BlockVertical(block); break;
+                case DDSKTX_FORMAT_BC3: flipBC3BlockVertical(block); break;
+                default: break;
+            }
+        }
+    }
+
+    std::memcpy(mipData, flipped.data(), flipped.size());
+}
+
+TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
     TextureDDS result;
 
     if (!path) {
@@ -208,6 +306,15 @@ TextureDDS ImageLoader::loadDDS(const char* path) {
             static_cast<GLsizei>(sub.width),
             static_cast<GLsizei>(sub.height)
         });
+    }
+
+    if (flipV) {
+        for (const MipLevel& mip : result.mipLevels) {
+            flipCompressedMipVertical(result.fileData + mip.offset,
+                                      mip.width,
+                                      mip.height,
+                                      tc.format);
+        }
     }
 
     result.w   = static_cast<GLsizei>(tc.width);

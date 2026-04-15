@@ -152,7 +152,7 @@ private:
 class ImageLoader {
 public:
     static TextureImage loadImage(const char* path, bool flipV = true);
-    static TextureDDS   loadDDS(const char* path);
+    static TextureDDS loadDDS(const char* path, bool flipV = true);
 };
 
 } // namespace glutil
