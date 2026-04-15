@@ -21,11 +21,6 @@ namespace glutil {
 TextureImage ImageLoader::LoadImage(const char* path, bool flipV) {
     TextureImage result;
 
-    if (!path) {
-        result.error = "path is nullptr";
-        return result;
-    }
-
     // [PathResolve]
     PathResolveResult pr = pathResolve(path);
     if (!pr.success) {
@@ -50,7 +45,8 @@ TextureImage ImageLoader::LoadImage(const char* path, bool flipV) {
     // [GLenum/GLint 변환을 파싱 시점에 수행하는 이유]
     // 사용자가 glTexImage2D에 바로 꽂을 수 있도록.
     // channels 숫자를 노출하지 않고 GL 타입으로 캡슐화.
-    GLenum fmt       = 0;
+    // TODO : there are many other types like RG, BRG, etc. let user choose? or remove fmt parameter.
+    GLenum fmt = 0;
     GLint  internalFmt = 0;
     switch (c) {
         case 1: fmt = GL_RED;  internalFmt = GL_R8;    break;
@@ -67,15 +63,15 @@ TextureImage ImageLoader::LoadImage(const char* path, bool flipV) {
     // stbi_load는 내부적으로 malloc 사용. 
     // new[]로 복사 후 stbi_image_free로 즉시 원본 해제. 소멸자에서 delete[]로 해제.
     const size_t sz = static_cast<size_t>(w * h * c);
-    result.pixels      = new unsigned char[sz];
+    result.pixels= new unsigned char[sz];
     std::memcpy(result.pixels, raw, sz);
     stbi_image_free(raw);
 
-    result.w           = static_cast<GLsizei>(w);
-    result.h           = static_cast<GLsizei>(h);
-    result.fmt         = fmt;
+    result.w = static_cast<GLsizei>(w);
+    result.h = static_cast<GLsizei>(h);
+    result.fmt = fmt;
     result.internalFmt = internalFmt;
-    result.ok          = true;
+    result.ok = true;
 
     LOG_INFO() << "[TextureImage] 로딩 성공: " << pr.resolvedPath
                << " (" << w << "x" << h << ", flipV=" << flipV << ")";

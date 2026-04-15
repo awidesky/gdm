@@ -34,22 +34,22 @@ struct MipLevel {
 
 // ── TextureImage ──────────────────────────────────────────
 // stb_image로 파일 → 픽셀 데이터까지만 파싱. 
-// glFormat()         → GLenum : glTexImage2D(format)         파라미터가 GLenum
-// glInternalFormat() → GLint  : glTexImage2D(internalFormat) 파라미터가 GLint
+// format()         → GLenum : glTexImage2D(format)         파라미터가 GLenum
+// internalFormat() → GLint  : glTexImage2D(internalFormat) 파라미터가 GLint
 // width(), height()  → GLsizei: glTexImage2D(width/height)   파라미터가 GLsizei
 //
 // [channels() 미제공 이유]
-// glFormat()이 이미 채널 정보를 인코딩함
+// format()이 이미 채널 정보를 인코딩함
 // GL_RED=1ch, GL_RGB=3ch, GL_RGBA=4ch → 중복 노출 불필요
 struct TextureImage {
     bool        ok = false;
     std::string error;
 
-    const unsigned char* data()             const { return pixels; }
-    GLsizei              width()            const { return w; }
-    GLsizei              height()           const { return h; }
-    GLenum               glFormat()         const { return fmt; }
-    GLint                glInternalFormat() const { return internalFmt; }
+    const void* data() const { return pixels; }
+    GLsizei     width() const { return w; }
+    GLsizei     height() const { return h; }
+    GLenum      format() const { return fmt; }
+    GLint       internalFormat() const { return internalFmt; }
 
     ~TextureImage() { destroy(); }
     TextureImage() = default;
@@ -92,7 +92,7 @@ private:
 // MipLevel.offset = sub_data.buff - fileData 로 계산해 저장.
 // fileData를 소멸자까지 유지해야 dds.data() + mip.offset 이 유효함.
 //
-// [glFormat() 반환 타입]
+// [format() 반환 타입]
 // GLenum : glCompressedTexImage2D(internalformat) 파라미터가 GLenum 
 //
 // [width/height 반환 타입]
@@ -109,7 +109,7 @@ struct TextureDDS {
     const unsigned char*         data()     const { return fileData; }
     GLsizei                      width()    const { return w; }
     GLsizei                      height()   const { return h; }
-    GLenum                       glFormat() const { return fmt; }
+    GLenum                       format() const { return fmt; }
     const std::vector<MipLevel>& mips()     const { return mipLevels; }
 
     ~TextureDDS() { destroy(); }

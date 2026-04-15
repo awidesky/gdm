@@ -282,11 +282,11 @@ GLuint uploadStandard2D(const glutil::TextureImage& image) {
 
     glTexImage2D(GL_TEXTURE_2D,
                  0,
-                 image.glInternalFormat(),
+                 image.internalFormat(),
                  image.width(),
                  image.height(),
                  0,
-                 image.glFormat(),
+                 image.format(),
                  GL_UNSIGNED_BYTE,
                  image.data());
     glGenerateMipmap(GL_TEXTURE_2D);
@@ -321,7 +321,7 @@ GLuint uploadDDS2D(const glutil::TextureDDS& dds) {
         const glutil::MipLevel& m = dds.mips()[level];
         glCompressedTexImage2D(GL_TEXTURE_2D,
                                (GLint)level,
-                               dds.glFormat(),
+                               dds.format(),
                                m.width,
                                m.height,
                                0,
