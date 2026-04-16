@@ -12,8 +12,6 @@
 
 #include "config.hpp"
 
-namespace glutil {
-
 static std::string readFileRaw(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open())
@@ -141,12 +139,10 @@ static BenchResult benchmarkChecking(const std::string& source,
     return r;
 }
 
-} // namespace glutil
-
 int main() {
 #ifdef GLUTIL_ENABLE_BENCHMARKS
     const std::filesystem::path ms949Path = glutil::TEST_ASSET_DIR / "shader" / "MS949.fs";
-    const std::string ms949 = glutil::readFileRaw(ms949Path);
+    const std::string ms949 = readFileRaw(ms949Path);
 
     if (ms949.empty()) {
         std::cerr << "Failed to read benchmark source: " << ms949Path << "\n";
@@ -160,22 +156,22 @@ int main() {
 
     const std::vector<size_t> factors = {1, 4, 8};
     for (size_t factor : factors) {
-        const std::string data = glutil::duplicateText(ms949, factor);
+        const std::string data = duplicateText(ms949, factor);
         const size_t iterations = 100000;
 
         std::cout << "Case x" << factor << "\n";
         std::cout << "  size: " << data.size() << " bytes, iterations: " << iterations << "\n";
 
-        glutil::BenchResult noOp = glutil::benchmarkMutating(data, iterations, glutil::algoNoOp);
-        glutil::BenchResult check = glutil::benchmarkChecking(data, iterations, glutil::hasNonASCII);
-        glutil::BenchResult qword = glutil::benchmarkMutating(data, iterations, glutil::replaceNonASCIIWithSpace);
-        glutil::BenchResult dword = glutil::benchmarkMutating(data, iterations, glutil::algoDwordReplace);
-        glutil::BenchResult byte = glutil::benchmarkMutating(data, iterations, glutil::algoByteReplace);
+        BenchResult noOp = benchmarkMutating(data, iterations, algoNoOp);
+        BenchResult check = benchmarkChecking(data, iterations, glutil::hasNonASCII);
+        BenchResult qword = benchmarkMutating(data, iterations, glutil::replaceNonASCIIWithSpace);
+        BenchResult dword = benchmarkMutating(data, iterations, algoDwordReplace);
+        BenchResult byte = benchmarkMutating(data, iterations, algoByteReplace);
 
         // sanity checks (checked once)
         {
             std::string work = data;
-            glutil::algoNoOp(work.data(), work.size());
+            algoNoOp(work.data(), work.size());
             noOp.sane = (work == data);
             if (!noOp.sane)
                 noOp.mismatchDetail = "no-op modified buffer unexpectedly";
@@ -189,14 +185,14 @@ int main() {
         }
         {
             std::string work = data;
-            glutil::algoDwordReplace(work.data(), work.size());
+            algoDwordReplace(work.data(), work.size());
             dword.sane = !glutil::hasNonASCII(work.data(), work.size());
             if (!dword.sane)
                 dword.mismatchDetail = "dword replace still has non-ASCII bytes";
         }
         {
             std::string work = data;
-            glutil::algoByteReplace(work.data(), work.size());
+            algoByteReplace(work.data(), work.size());
             byte.sane = !glutil::hasNonASCII(work.data(), work.size());
             if (!byte.sane)
                 byte.mismatchDetail = "byte replace still has non-ASCII bytes";
@@ -208,7 +204,7 @@ int main() {
                 check.mismatchDetail = "check-only returned false on MS949-derived data";
         }
 
-        auto printResult = [](const std::string& label, const glutil::BenchResult& r) {
+        auto printResult = [](const std::string& label, const BenchResult& r) {
             std::cout << "  " << label << " : total: " << r.totalUs << " us, average: " << r.averageNs << " ns/call\n";
             if (!r.sane) std::cout << "    sanity: [MISMATCH] " << r.mismatchDetail << "\n";
         };
@@ -225,11 +221,11 @@ int main() {
                       << "qword=" << (qword.averageNs / noOp.averageNs) << "x, "
                       << "dword=" << (dword.averageNs / noOp.averageNs) << "x, "
                       << "byte=" << (byte.averageNs / noOp.averageNs) << "x "
-                      << "(" << glutil::format_us(noOp.totalUs) << ", "
-                      << glutil::format_us(check.totalUs) << ", "
-                      << glutil::format_us(qword.totalUs) << ", "
-                      << glutil::format_us(dword.totalUs) << ", "
-                      << glutil::format_us(byte.totalUs) << ")\n";
+                      << "(" << format_us(noOp.totalUs) << ", "
+                      << format_us(check.totalUs) << ", "
+                      << format_us(qword.totalUs) << ", "
+                      << format_us(dword.totalUs) << ", "
+                      << format_us(byte.totalUs) << ")\n";
         }
         std::cout << "\n";
     }
