@@ -294,15 +294,6 @@ GLuint uploadDDS2D(const glutil::TextureDDS& dds) {
     if (!dds.ok || dds.data() == nullptr || dds.mips().empty())
         return 0;
 
-    const int hasS3tcExt = glfwExtensionSupported("GL_EXT_texture_compression_s3tc");
-    const int hasS3tcArb = glfwExtensionSupported("GL_ARB_texture_compression_s3tc");
-    if (!hasS3tcExt && !hasS3tcArb) {
-        std::cerr << "DDS upload skipped: S3TC extension is not available in current context.\n"
-                  << "(need GL_EXT_texture_compression_s3tc or GL_ARB_texture_compression_s3tc)"
-                  << std::endl;
-        return 0;
-    }
-
     GLuint tex = 0;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
