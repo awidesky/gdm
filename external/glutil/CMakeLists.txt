@@ -15,6 +15,8 @@ configure_file(
 # Library target
 add_library(glutil)
 
+# Use UTF-8 encoding
+target_compile_options(glutil PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
 # Target configuration for sofre
 target_sources(glutil
