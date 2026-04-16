@@ -13,9 +13,13 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
+#include <system_error>
 #include <vector>
 
 namespace glutil {
+
+namespace fs = std::filesystem;
 
 TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
     TextureImage result;
@@ -24,7 +28,7 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
     PathResolveResult pr = pathResolve(path);
     if (!pr.success) {
         result.error = "path resolve failed: " + pr.message;
-        LOG_WARNING() << "[TextureImage] " << result.error;
+        LOG_ERROR() << "[TextureImage] " << result.error;
         return result;
     }
 
@@ -34,7 +38,7 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
     unsigned char* raw = stbi_load(pr.resolvedPath.c_str(), &w, &h, &c, 0);
     if (!raw) {
         result.error = stbi_failure_reason() ? stbi_failure_reason() : "unknown stb_image error";
-        LOG_WARNING() << "[TextureImage] Load failed: " << pr.resolvedPath << " (" << result.error << ")";
+        LOG_ERROR() << "[TextureImage] Load failed: " << pr.resolvedPath << " (" << result.error << ")";
         return result;
     }
 
@@ -56,7 +60,7 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
             break;
         default:
             result.error = "Unsupported number of channels: " + std::to_string(c);
-            LOG_WARNING() << "[TextureImage] " << result.error;
+            LOG_ERROR() << "[TextureImage] " << result.error;
             stbi_image_free(raw);
             return result;
     }
@@ -222,32 +226,29 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
     PathResolveResult pr = pathResolve(path);
     if (!pr.success) {
         result.error = "Path resolution failed: " + pr.message;
-        LOG_WARNING() << "[TextureDDS] " << result.error;
+        LOG_ERROR() << "[TextureDDS] " << result.error;
         return result;
     }
 
-    // dds-ktx is no-allocation library. external buffer pointer must exist
-    std::ifstream file(pr.resolvedPath, std::ios::binary | std::ios::ate);
+    std::error_code ec;
+    const auto fileSize = fs::file_size(pr.resolvedPath, ec);
+    if (ec) {
+        result.error = "Failed to get file size(" + ec.message() + "): " + pr.resolvedPath;
+        LOG_ERROR() << "[TextureDDS] " << result.error;
+        return result;
+    }
+
+    std::ifstream file(pr.resolvedPath, std::ios::binary);
     if (!file.is_open()) {
-        result.error = "Failed to open file";
-        LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
+        result.error = "Failed to open file: " + pr.resolvedPath;
+        LOG_ERROR() << "[TextureDDS] " << result.error;
         return result;
     }
 
-    const auto pos = file.tellg();
-    if (pos == std::streampos(-1)) {
-        result.error = "Failed to get file size";
-        LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
-        return result;
-    }
-
-    const size_t fileSize = static_cast<size_t>(pos);
-    file.seekg(0);
     result.fileData = new unsigned char[fileSize];
-
-    if (!file.read(reinterpret_cast<char*>(result.fileData), fileSize)) {
-        result.error = "Failed to read file";
-        LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
+    if (!file.read(reinterpret_cast<char*>(result.fileData), static_cast<std::streamsize>(fileSize))) {
+        result.error = "Failed to read file: " + pr.resolvedPath;
+        LOG_ERROR() << "[TextureDDS] " << result.error;
         delete[] result.fileData;
         result.fileData = nullptr;
         return result;
@@ -257,7 +258,7 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
     ddsktx_error err = {};
     if (!ddsktx_parse(&tc, result.fileData, static_cast<int>(fileSize), &err)) {
         result.error = std::string("ddsktx_parse failed: ") + err.msg;
-        LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
+        LOG_ERROR() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
         delete[] result.fileData;
         result.fileData = nullptr;
         return result;
@@ -266,7 +267,7 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
     const GLenum glFmt = toGLFormat(tc.format, tc.flags);
     if (glFmt == 0) {
         result.error = "Unsupported DDS format (only BC1/BC2/BC3 supported)";
-        LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
+        LOG_ERROR() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
         delete[] result.fileData;
         result.fileData = nullptr;
         return result;
@@ -282,7 +283,7 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
         const auto* ptr = reinterpret_cast<const unsigned char*>(sub.buff);
         if (ptr < result.fileData) {
             result.error = "DDS mip offset out of range: level=" + std::to_string(i);
-            LOG_WARNING() << "[TextureDDS] " << result.error;
+            LOG_ERROR() << "[TextureDDS] " << result.error;
             delete[] result.fileData;
             result.fileData = nullptr;
             return result;
