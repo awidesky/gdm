@@ -14,8 +14,6 @@
 
 namespace fs = std::filesystem;
 
-namespace glutil {
-
 static void printGlfwError(const char* where) {
     const char* desc = nullptr;
     const int code = glfwGetError(&desc);
@@ -89,7 +87,7 @@ static bool compileShaderWithInspector(GLenum shaderType,
     glShaderSource(outShader, 1, &src, &len);
     glCompileShader(outShader);
 
-    InspectResult r = Inspector::shaderCompileResult(outShader);
+    glutil::InspectResult r = glutil::Inspector::shaderCompileResult(outShader);
     r.message = r.message.erase(0, r.message.find_first_not_of(" \n\r\t"));
     outMessage = r.message;
     if (!r.ok) {
@@ -106,7 +104,7 @@ static bool linkProgramWithInspector(GLuint vs, GLuint fs, std::string& outMessa
     glAttachShader(program, fs);
     glLinkProgram(program);
 
-    InspectResult linkResult = Inspector::programLinkResult(program);
+    glutil::InspectResult linkResult = glutil::Inspector::programLinkResult(program);
     outMessage = linkResult.message;
 
     glDeleteProgram(program);
@@ -148,7 +146,7 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor) {
     // Test shader files in the test/shader directory
     std::vector<std::string> encodingNames = {"UTF8_BOM", "UTF8_BOM_only_ASCII_token", "UTF8", "UTF16_LE", "MS949"};
 
-    const fs::path testShaderDir = TEST_ASSET_DIR / "shader";
+    const fs::path testShaderDir = glutil::TEST_ASSET_DIR / "shader";
     std::cout << "  Test shader dir: " << testShaderDir.string() << std::endl;
 
     for (const auto& name : encodingNames) {
@@ -185,9 +183,9 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor) {
 
         // Test ShaderLoader::loadFile
         std::cout << "  Loading with ShaderLoader..." << std::endl;
-        ShaderLoader::checkEncoding = true;
-        ShaderLoader::replaceUnknownNonASCII = true;
-        ShaderLoadResult loadResult = ShaderLoader::loadFile(shaderPath.string().c_str());
+        glutil::ShaderLoader::checkEncoding = true;
+        glutil::ShaderLoader::replaceUnknownNonASCII = true;
+        glutil::ShaderLoadResult loadResult = glutil::ShaderLoader::loadFile(shaderPath.string().c_str());
 
         if (loadResult.ok) {
             compileAndLink(*loadResult.string(),
@@ -275,18 +273,16 @@ static int runTestWithContext(int major, int minor) {
     return 0;
 }
 
-} // namespace glutil
-
 int main() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return 1;
     }
 
-    int result33 = glutil::runTestWithContext(3, 3);
+    int result33 = runTestWithContext(3, 3);
     std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << std::endl << std::endl;
 
-    int result42 = glutil::runTestWithContext(4, 2);
+    int result42 = runTestWithContext(4, 2);
     if (result42 == 0)
         std::cout << "[Context 4.2] OK" << std::endl;
     else
