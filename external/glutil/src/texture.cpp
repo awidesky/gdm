@@ -16,9 +16,6 @@
 
 namespace glutil {
 
-// ══════════════════════════════════════════════════════════
-// ImageLoader::loadImage
-// ══════════════════════════════════════════════════════════
 TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
     TextureImage result;
 
@@ -30,20 +27,16 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
         return result;
     }
 
-    // 천지뒤집기
     stbi_set_flip_vertically_on_load(flipV ? 1 : 0);
 
     int w = 0, h = 0, c = 0;
     unsigned char* raw = stbi_load(pr.resolvedPath.c_str(), &w, &h, &c, 0);
     if (!raw) {
         result.error = stbi_failure_reason() ? stbi_failure_reason() : "unknown stb_image error";
-        LOG_WARNING() << "[TextureImage] load failed: " << pr.resolvedPath << " (" << result.error << ")";
+        LOG_WARNING() << "[TextureImage] Load failed: " << pr.resolvedPath << " (" << result.error << ")";
         return result;
     }
 
-    // [GLenum/GLint 변환을 파싱 시점에 수행하는 이유]
-    // 사용자가 glTexImage2D에 바로 꽂을 수 있도록.
-    // channels 숫자를 노출하지 않고 GL 타입으로 캡슐화.
     // TODO : there are many other types like RG, BRG, etc. let user choose? or remove fmt parameter.
     GLenum fmt = 0;
     GLint internalFmt = 0;
@@ -61,15 +54,14 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
             internalFmt = GL_RGBA8;
             break;
         default:
-            result.error = "unsupported channel count: " + std::to_string(c);
+            result.error = "Unsupported number of channels: " + std::to_string(c);
             LOG_WARNING() << "[TextureImage] " << result.error;
             stbi_image_free(raw);
             return result;
     }
 
-    // [stbi → new[] 복사 이유]
-    // stbi_load는 내부적으로 malloc 사용.
-    // new[]로 복사 후 stbi_image_free로 즉시 원본 해제. 소멸자에서 delete[]로 해제.
+    // stbi_load internally uses malloc.
+    // Copy to new memory and then immediately free with stbi_image_free. Destructor deletes new memory with delete[].
     const size_t sz = static_cast<size_t>(w * h * c);
     result.pixels = new unsigned char[sz];
     std::memcpy(result.pixels, raw, sz);
@@ -86,34 +78,25 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
     return result;
 }
 
-// ══════════════════════════════════════════════════════════
-// ImageLoader::loadDDS
-// ══════════════════════════════════════════════════════════
-
-// [toGLFormat 설계 이유]
-// ddsktx_format → GLenum 변환을 파싱 시점에 완료.
-// BC1/BC2/BC3만 지원. 그 외는 0 반환 → LoadDDS에서 에러 처리.
-// GL_COMPRESSED_RGBA_S3TC_DXT*_EXT는 GL_EXT_texture_compression_s3tc 확장.
-// 현대 데스크톱 GPU는 거의 지원하나, 사용 전 확장 지원 여부 확인 권장 (사용자 책임).
+// [toGLFormat design reason]
 static GLenum toGLFormat(ddsktx_format fmt, unsigned int flags) {
     switch (fmt) {
-        // TODO : 이건 확장 표준이라 opengl 표준에서 지원하지 않음
-        // glew의 경우 glewInit()하면 모든 확장을 가져오기 때문에 실행되는 것
-        // glad 생성 시 GL_EXT_texture_compression_s3tc표준 추가해야 하고,
-        // #ifdef GLAD_GL_EXT_texture_compression_s3tc 체크하고,
-        //  if(!GLAD_GL_EXT_texture_compression_s3tc) { /* fallback */ } 추가해야 함
-        // glew로 하는 경우
-        // #ifdef GL_EXT_texture_compression_s3tc 체크하고
-        //  if (!GLEW_EXT_texture_compression_s3tc) { /* fallback */ } 추가해야 함
+        // TODO : This is an extension standard not supported by OpenGL standard
+        // With GLEW: glewInit() loads all extensions, so it runs
+        // With GLAD: need to add GL_EXT_texture_compression_s3tc when generating,
+        // #ifdef GLAD_GL_EXT_texture_compression_s3tc check, and
+        //  if(!GLAD_GL_EXT_texture_compression_s3tc) { /* fallback */ } add
+        // With GLEW:
+        // #ifdef GL_EXT_texture_compression_s3tc check and
+        //  if (!GLEW_EXT_texture_compression_s3tc) { /* fallback */ } add
         //
-        // 사용자가 뭐를 선택했을지 알 수 없기 때문에, cmakelists.txt에서 add_compile_definition해서 GDM_USE_GLEW같은
-        // 매크로 상수 만들어줘야함
-        // case DDSKTX_FORMAT_BC1: return GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-        // case DDSKTX_FORMAT_BC2: return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-        // case DDSKTX_FORMAT_BC3: return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-
-        // BC1(DXT1)은 alpha 비트 사용 여부에 따라 RGB/RGBA가 갈림.
-        // alpha 비트가 실제로 사용되지 않는 XRGB(alpha_x) 경우는 RGB로 올려야 함.
+        // Since we cannot know user choice, CMakeLists.txt should add_compile_definition like GDM_USE_GLEW
+        //case DDSKTX_FORMAT_BC1: return GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+        //case DDSKTX_FORMAT_BC2: return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+        //case DDSKTX_FORMAT_BC3: return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+        
+        // BC1(DXT1) alpha bit usage determines RGB vs RGBA.
+        // If alpha bit is not actually used (XRGB/alpha_x), should be RGB.
         case DDSKTX_FORMAT_BC1:
             return ((flags & DDSKTX_TEXTURE_FLAG_ALPHA) && !(flags & DDSKTX_TEXTURE_FLAG_ALPHA_X))
                      ? 0x83F1                  // GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
@@ -231,26 +214,22 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
 
     PathResolveResult pr = pathResolve(path);
     if (!pr.success) {
-        result.error = "path resolve failed: " + pr.message;
+        result.error = "Path resolution failed: " + pr.message;
         LOG_WARNING() << "[TextureDDS] " << result.error;
         return result;
     }
 
-    // [파일 전체를 new[]로 읽는 이유]
-    // dds-ktx는 no-allocation 라이브러리.
-    // ddsktx_parse/ddsktx_get_sub 모두 외부 버퍼의 포인터를 그대로 사용.
-    // fileData를 소멸자까지 유지해야 mip.offset 기반 접근이 유효함.
-    // fopen/malloc 대신 ifstream + new[] 사용
+    // dds-ktx is no-allocation library. external buffer pointer must exist
     std::ifstream file(pr.resolvedPath, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
-        result.error = "failed to open file";
+        result.error = "Failed to open file";
         LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
         return result;
     }
 
     const auto pos = file.tellg();
     if (pos == std::streampos(-1)) {
-        result.error = "failed to get file size";
+        result.error = "Failed to get file size";
         LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
         return result;
     }
@@ -260,7 +239,7 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
     result.fileData = new unsigned char[fileSize];
 
     if (!file.read(reinterpret_cast<char*>(result.fileData), fileSize)) {
-        result.error = "failed to read file";
+        result.error = "Failed to read file";
         LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
         delete[] result.fileData;
         result.fileData = nullptr;
@@ -270,8 +249,6 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
     ddsktx_texture_info tc = {0};
     ddsktx_error err = {};
     if (!ddsktx_parse(&tc, result.fileData, static_cast<int>(fileSize), &err)) {
-        // [ddsktx_error.msg 근거]
-        // dds-ktx.h: typedef struct ddsktx_error { char msg[256]; } ddsktx_error;
         result.error = std::string("ddsktx_parse failed: ") + err.msg;
         LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
         delete[] result.fileData;
@@ -281,23 +258,20 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
 
     const GLenum glFmt = toGLFormat(tc.format, tc.flags);
     if (glFmt == 0) {
-        result.error = "unsupported DDS format (only BC1/BC2/BC3 supported)";
+        result.error = "Unsupported DDS format (only BC1/BC2/BC3 supported)";
         LOG_WARNING() << "[TextureDDS] " << result.error << ": " << pr.resolvedPath;
         delete[] result.fileData;
         result.fileData = nullptr;
         return result;
     }
 
-    // [MipLevel 파싱 시점 계산 이유]
-    // ShaderLoadResult의 lengthPtr()처럼 GL 함수에 바로 꽂히는 형태로 준비.
-    // 사용자가 mip 크기/오프셋 계산 공식을 알 필요 없음.
     result.mipLevels.reserve(tc.num_mips);
     for (int i = 0; i < tc.num_mips; ++i) {
         ddsktx_sub_data sub;
         ddsktx_get_sub(&tc, &sub, result.fileData, static_cast<int>(fileSize), 0, 0, i);
 
-        // sub.buff < fileData 이면 ptrdiff_t 음수 → size_t 캐스팅 시 UB.
-        // 손상된 DDS 파일에서 발생 가능.
+        // If sub.buff < fileData then negative ptrdiff_t - casting to size_t is UB.
+        // Can occur with corrupted DDS files.
         const auto* ptr = reinterpret_cast<const unsigned char*>(sub.buff);
         if (ptr < result.fileData) {
             result.error = "DDS mip offset out of range: level=" + std::to_string(i);
@@ -322,7 +296,7 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
     result.fmt = glFmt;
     result.ok = true;
 
-    LOG_INFO() << "[TextureDDS] load succeeded: " << pr.resolvedPath << " (" << tc.width << "x" << tc.height
+    LOG_INFO() << "[TextureDDS] Load succeeded: " << pr.resolvedPath << " (" << tc.width << "x" << tc.height
                << ", mips=" << tc.num_mips << ")";
     return result;
 }
