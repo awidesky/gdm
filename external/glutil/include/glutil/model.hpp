@@ -34,8 +34,8 @@ struct MeshData {
 struct ModelData {
     bool        ok    = false;
     std::string error;
-    std::string warn;  // forwarded tinyobjloader warnings
-                       // may be non-empty even when ok == true
+    std::string warn;  
+                       
 
     std::vector<MeshData> meshes;
 };

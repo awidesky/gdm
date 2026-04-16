@@ -1,4 +1,4 @@
-#include <glutil/gl.hpp>
+﻿#include <glutil/gl.hpp>
 #include <glutil/inspector.hpp>
 #include <glutil/texture.hpp>
 #include <glutil/model.hpp>
@@ -17,6 +17,7 @@ GLuint      compileShader(GLenum type, const char* source);
 GLuint      createProgram(const char* vertexSource, const char* fragmentSource);
 GLuint      uploadStandard2D(const glutil::TextureImage& image);
 glm::mat4   makeMvp(float t, float aspect);
+GLuint uploadDDS2D(const glutil::TextureDDS& dds);
 
 constexpr const char* kVS = R"(
 #version 330 core
@@ -100,6 +101,8 @@ int main()
     gpuMeshes.reserve(model.meshes.size());
 
     for (const glutil::MeshData& mesh : model.meshes) {
+
+
         GpuMesh gm;
         gm.indexCount = static_cast<GLsizei>(mesh.indexCount());
 
@@ -138,20 +141,31 @@ int main()
         glBindVertexArray(0);
 
         if (!mesh.diffuseTexturePath.empty()) {
-            glutil::TextureImage img =
-                glutil::ImageLoader::loadImage(mesh.diffuseTexturePath.c_str());
-            if (img.ok) {
-                gm.tex = uploadStandard2D(img);
-                std::cout << "  mesh \"" << mesh.name << "\": texture loaded" << std::endl;
+            const std::string& tp = mesh.diffuseTexturePath;
+            const bool isDDS =
+              tp.size() >= 4 && (tp.substr(tp.size() - 4) == ".DDS" || tp.substr(tp.size() - 4) == ".dds");
+
+            if (isDDS) {
+                glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(tp.c_str());
+                if (dds.ok) {
+                    gm.tex = uploadDDS2D(dds);
+                    std::cout << "  mesh \"" << mesh.name << "\": DDS texture loaded" << std::endl;
+                } else {
+                    std::cerr << "  mesh \"" << mesh.name << "\": DDS load failed: " << dds.error << std::endl;
+                }
             } else {
-                std::cerr << "  mesh \"" << mesh.name
-                          << "\": texture load failed: " << img.error << std::endl;
+                glutil::TextureImage img = glutil::ImageLoader::loadImage(tp.c_str());
+                if (img.ok) {
+                    gm.tex = uploadStandard2D(img);
+                    std::cout << "  mesh \"" << mesh.name << "\": texture loaded" << std::endl;
+                } else {
+                    std::cerr << "  mesh \"" << mesh.name << "\": texture load failed: " << img.error << std::endl;
+                }
             }
-        } else {
-            std::cout << "  mesh \"" << mesh.name << "\": no texture" << std::endl;
         }
 
         gpuMeshes.push_back(gm);
+
     }
 
     glEnable(GL_DEPTH_TEST);
@@ -186,7 +200,7 @@ int main()
                 glBindTexture(GL_TEXTURE_2D, gm.tex);
             }
             glBindVertexArray(gm.vao);
-            glDrawElements(GL_TRIANGLES, gm.indexCount, GL_UNSIGNED_INT, nullptr);
+            glDrawArrays(GL_TRIANGLES, 0, gm.indexCount);
         }
 
         glfwSwapBuffers(ctx);
@@ -302,7 +316,38 @@ GLuint uploadStandard2D(const glutil::TextureImage& image)
     glBindTexture(GL_TEXTURE_2D, 0);
     return tex;
 }
+GLuint uploadDDS2D(const glutil::TextureDDS& dds) {
+    if (!dds.ok || dds.data() == nullptr || dds.mips().empty())
+        return 0;
 
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)(dds.mips().size() - 1));
+
+    for (size_t level = 0; level < dds.mips().size(); ++level) {
+        const glutil::MipLevel& m = dds.mips()[level];
+        glCompressedTexImage2D(GL_TEXTURE_2D, (GLint)level, dds.format(), m.width, m.height, 0, m.size,
+                               dds.data() + m.offset);
+
+        const GLenum err = glGetError();
+        if (err != GL_NO_ERROR) {
+            std::cerr << "DDS glCompressedTexImage2D failed at mip " << level << " (glError=0x" << std::hex << err
+                      << std::dec << ")" << std::endl;
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glDeleteTextures(1, &tex);
+            return 0;
+        }
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return tex;
+}
 glm::mat4 makeMvp(float t, float aspect)
 {
     const glm::mat4 proj  = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);

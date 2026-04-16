@@ -3,7 +3,7 @@
 #include <tiny_obj_loader.h>
 
 #include <glutil/model.hpp>
-
+#include <iostream>
 #include <filesystem>
 
 namespace glutil {
@@ -36,6 +36,9 @@ ModelData ModelLoader::loadOBJ(const char* path)
     const std::filesystem::path objPath(path);
     const std::string mtlDir = objPath.parent_path().string();
 
+    //std::cout << "mtlDir: [" << mtlDir << "]" << std::endl;
+
+
     tinyobj::attrib_t                attrib;
     std::vector<tinyobj::shape_t>    shapes;
     std::vector<tinyobj::material_t> materials;
@@ -46,6 +49,10 @@ ModelData ModelLoader::loadOBJ(const char* path)
         &warn, &err,
         path,
         mtlDir.empty() ? nullptr : mtlDir.c_str(),true);   
+
+    //std::cout << "warn: [" << warn << "]" << std::endl;
+    //std::cout << "err: [" << err << "]" << std::endl;
+    //std::cout << "materials size: " << materials.size() << std::endl;
 
     if (!warn.empty())
         result.warn = warn;
@@ -64,6 +71,11 @@ ModelData ModelLoader::loadOBJ(const char* path)
 
         
         for (int matId : shape.mesh.material_ids) {
+            std::cout << "matId: " << matId << std::endl;
+            if (matId < 0 || static_cast<size_t>(matId) >= materials.size())
+                continue;
+            std::cout << "diffuse_texname: [" << materials[static_cast<size_t>(matId)].diffuse_texname << "]"
+                      << std::endl;
             if (matId < 0 ||
                 static_cast<size_t>(matId) >= materials.size())
                 continue;
@@ -98,7 +110,7 @@ ModelData ModelLoader::loadOBJ(const char* path)
             v.nz = safeGet3(attrib.normals,  idx.normal_index,   2);
 
             v.u  =        safeGet2(attrib.texcoords, idx.texcoord_index, 0);
-            v.v  = 1.0f - safeGet2(attrib.texcoords, idx.texcoord_index, 1);
+            v.v  = /*1.0f - */safeGet2(attrib.texcoords, idx.texcoord_index, 1);
 
             mesh.vertices.push_back(v);
             mesh.indices.push_back(static_cast<unsigned int>(i));
