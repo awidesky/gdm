@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <vector>
 
 namespace glutil {
 
@@ -81,28 +82,34 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
 // [toGLFormat design reason]
 static GLenum toGLFormat(ddsktx_format fmt, unsigned int flags) {
     switch (fmt) {
-        // TODO : This is an extension standard not supported by OpenGL standard
-        // With GLEW: glewInit() loads all extensions, so it runs
-        // With GLAD: need to add GL_EXT_texture_compression_s3tc when generating,
-        // #ifdef GLAD_GL_EXT_texture_compression_s3tc check, and
-        //  if(!GLAD_GL_EXT_texture_compression_s3tc) { /* fallback */ } add
-        // With GLEW:
-        // #ifdef GL_EXT_texture_compression_s3tc check and
-        //  if (!GLEW_EXT_texture_compression_s3tc) { /* fallback */ } add
-        //
-        // Since we cannot know user choice, CMakeLists.txt should add_compile_definition like GDM_USE_GLEW
-        //case DDSKTX_FORMAT_BC1: return GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-        //case DDSKTX_FORMAT_BC2: return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-        //case DDSKTX_FORMAT_BC3: return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-        
         // BC1(DXT1) alpha bit usage determines RGB vs RGBA.
         // If alpha bit is not actually used (XRGB/alpha_x), should be RGB.
         case DDSKTX_FORMAT_BC1:
+#if defined(GL_COMPRESSED_RGBA_S3TC_DXT1_EXT) && defined(GL_COMPRESSED_RGB_S3TC_DXT1_EXT)
             return ((flags & DDSKTX_TEXTURE_FLAG_ALPHA) && !(flags & DDSKTX_TEXTURE_FLAG_ALPHA_X))
-                     ? 0x83F1                  // GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
-                     : 0x83F0;                 // GL_COMPRESSED_RGB_S3TC_DXT1_EXT
-        case DDSKTX_FORMAT_BC2: return 0x83F2; // GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
-        case DDSKTX_FORMAT_BC3: return 0x83F3; // GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+                 ? GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
+                 : GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+#else
+            LOG_WARNING() << "[TextureDDS] S3TC symbola are missing!"
+                            << "Verify GL_EXT_texture_compression_s3tc is loaded correctly.\n"
+                            << "GL_EXT_texture_compression_s3tc is generally ubiquitous, "
+                            << "so using hardcoded enum values for now.";
+            return ((flags & DDSKTX_TEXTURE_FLAG_ALPHA) && !(flags & DDSKTX_TEXTURE_FLAG_ALPHA_X))
+                 ? 0x83F1
+                 : 0x83F0;
+#endif
+        case DDSKTX_FORMAT_BC2:
+#if defined(GL_COMPRESSED_RGBA_S3TC_DXT3_EXT)
+            return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+#else
+            return 0x83F2;
+#endif
+        case DDSKTX_FORMAT_BC3:
+#if defined(GL_COMPRESSED_RGBA_S3TC_DXT5_EXT)
+            return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+#else
+            return 0x83F3;
+#endif
         default: return 0;
     }
 }
