@@ -112,4 +112,21 @@ if (GDM_BUILD_TESTS)
         FOLDER "GLUTIL_Tests"
   )
   add_test(NAME TextureTest COMMAND glutil_textureTest)
+  add_executable(glutil_modelTest)
+  target_sources(glutil_modelTest
+        PRIVATE test/modelTest.cpp
+  )
+  target_include_directories(glutil_modelTest
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_modelTest PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_modelTest PRIVATE cxx_std_17)
+  target_compile_options(glutil_modelTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_modelTest PROPERTIES
+        FOLDER "GLUTIL_Tests"
+  )
+  add_test(NAME ModelTest COMMAND glutil_modelTest)
 endif()
