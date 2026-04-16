@@ -45,3 +45,4 @@ else()
 endif()
 
 target_compile_features(gdm_example_1_HelloWindow PRIVATE cxx_std_17)
+target_compile_options(gdm_example_1_HelloWindow PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")

@@ -68,6 +68,7 @@ if (GDM_BUILD_TESTS)
         gdm::gdm
   )
   target_compile_features(glutil_shaderTest PRIVATE cxx_std_17)
+  target_compile_options(glutil_shaderTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
   set_target_properties(glutil_shaderTest PROPERTIES
         FOLDER "GLUTIL_Tests"
   )
@@ -85,6 +86,7 @@ if (GDM_BUILD_TESTS)
         glutil gdm::gdm
   )
   target_compile_features(glutil_encodingCheckBenchMark PRIVATE cxx_std_17)
+  target_compile_options(glutil_encodingCheckBenchMark PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
   set_target_properties(glutil_encodingCheckBenchMark PROPERTIES
         FOLDER "GLUTIL_Tests"
   )
@@ -102,6 +104,7 @@ if (GDM_BUILD_TESTS)
         gdm::gdm
   )
   target_compile_features(glutil_textureTest PRIVATE cxx_std_17)
+  target_compile_options(glutil_textureTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
   set_target_properties(glutil_textureTest PROPERTIES
         FOLDER "GLUTIL_Tests"
   )
