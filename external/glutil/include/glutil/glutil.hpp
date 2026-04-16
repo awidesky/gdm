@@ -18,7 +18,7 @@ struct LogEntry {
     std::string message; // 상세 내용
 };
 
-struct PathResolveResult {
+struct PathResolveResult { // TODO : fix. move to own header. LogEntry too
     bool success = false;
     std::string originalPath;
     std::string resolvedPath;

@@ -1,5 +1,6 @@
 #include <glutil/shader.hpp>
 #include <glutil/logging.hpp>
+#include <glutil/glutil.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -87,21 +88,24 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
 
     if (inputPath == nullptr) {
         result.error = "inputPath is nullptr";
+        LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
 
-    std::string resolvedPath(inputPath);
+    std::string resolvedPath = pathResolve(inputPath).resolvedPath;
 
     std::error_code ec;
     const auto fileSize = fs::file_size(resolvedPath, ec);
     if (ec) {
-        result.error = "failed to get file size: " + resolvedPath + " (" + ec.message() + ")";
+        result.error = "failed to get file size(" + ec.message() + "): " + resolvedPath;
+        LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
 
     std::ifstream file(resolvedPath, std::ios::binary);
     if (!file.is_open()) {
         result.error = "failed to open file: " + resolvedPath;
+        LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
 
@@ -109,6 +113,7 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
     if (!file.read(buffer, static_cast<std::streamsize>(fileSize))) {
         delete[] buffer;
         result.error = "failed to read file: " + resolvedPath;
+        LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
 

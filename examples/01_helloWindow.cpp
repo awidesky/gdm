@@ -16,6 +16,14 @@ GLuint compileShader(GLenum type, const char* source) {
     glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
 
+#if GDM_HAS_GLUTIL
+    const glutil::InspectResult result = glutil::Inspector::shaderCompileResult(shader);
+    if (result.ok == true) {
+        return shader;
+    }
+
+    std::cerr << "Shader compile failed:\n" << result.message << std::endl;
+#else
     GLint success = GL_FALSE;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (success == GL_TRUE) {
@@ -27,6 +35,7 @@ GLuint compileShader(GLenum type, const char* source) {
     std::string log(static_cast<size_t>(length), '\0');
     glGetShaderInfoLog(shader, length, nullptr, log.data());
     std::cerr << "Shader compile failed:\n" << log << std::endl;
+#endif
     glDeleteShader(shader);
     return 0;
 }
@@ -70,6 +79,14 @@ void main() {
     glDeleteShader(vs);
     glDeleteShader(fs);
 
+#if GDM_HAS_GLUTIL
+    const glutil::InspectResult result = glutil::Inspector::programLinkResult(program);
+    if (result.ok == true) {
+        return program;
+    }
+
+    std::cerr << "Program link failed:\n" << result.message << std::endl;
+#else
     GLint success = GL_FALSE;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (success == GL_TRUE) {
@@ -81,6 +98,7 @@ void main() {
     std::string log(static_cast<size_t>(length), '\0');
     glGetProgramInfoLog(program, length, nullptr, log.data());
     std::cerr << "Program link failed:\n" << log << std::endl;
+#endif
     glDeleteProgram(program);
     return 0;
 }
@@ -108,6 +126,9 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "GDM Example 1 - Hello Window", nullptr, nullptr);
     if (window == nullptr) {
@@ -165,7 +186,7 @@ int main() {
 
     const glm::vec3 clearColor(0.0f, 0.0f, 0.4f);
 
-    while (!glfwWindowShouldClose(window)) {
+    while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);

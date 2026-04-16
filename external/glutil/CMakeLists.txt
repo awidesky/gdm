@@ -2,7 +2,6 @@
 cmake_minimum_required(VERSION 3.24)
 project(glutil)
 
-file(TO_NATIVE_PATH "${CMAKE_SOURCE_DIR}" GLUTIL_ROOT_DIR)
 # TODO : only when test is enabled
 file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/test" GLUTIL_TEST_DIR)
 configure_file(
@@ -26,6 +25,7 @@ target_sources(glutil
       include/glutil/inspector.hpp
       include/glutil/glutil.hpp
       include/glutil/logging.hpp
+      include/glutil/texture.hpp
 )
 
 target_sources(glutil
@@ -34,6 +34,10 @@ target_sources(glutil
     src/inspector.cpp
     src/glutil.cpp
     src/logging.cpp
+    src/texture.cpp
+
+    src/stb_image.h
+    src/dds-ktx.h
 )
 
 target_include_directories(glutil PRIVATE
@@ -63,7 +67,7 @@ if (GDM_BUILD_TESTS)
   )
   target_compile_features(glutil_shaderTest PRIVATE cxx_std_17)
   set_target_properties(glutil_shaderTest PROPERTIES
-        FOLDER "GLUTIL_TESTS"
+        FOLDER "GLUTIL_Tests"
   )
   add_test(NAME ShaderTest COMMAND glutil_shaderTest)
 
@@ -80,7 +84,24 @@ if (GDM_BUILD_TESTS)
   )
   target_compile_features(glutil_encodingCheckBenchMark PRIVATE cxx_std_17)
   set_target_properties(glutil_encodingCheckBenchMark PROPERTIES
-        FOLDER "GLUTIL_TESTS"
+        FOLDER "GLUTIL_Tests"
   )
   add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
+
+  add_executable(glutil_textureTest)
+  target_sources(glutil_textureTest
+        PRIVATE test/textureTest.cpp
+  )
+  target_include_directories(glutil_textureTest
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_textureTest PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_textureTest PRIVATE cxx_std_17)
+  set_target_properties(glutil_textureTest PROPERTIES
+        FOLDER "GLUTIL_Tests"
+  )
+  add_test(NAME TextureTest COMMAND glutil_textureTest)
 endif()
