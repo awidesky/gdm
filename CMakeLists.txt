@@ -113,11 +113,13 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "glfw")
         CANDIDATE_TARGETS glfw glfw3
     )
 
-    foreach(t glfw glfw3)
-        if(TARGET ${t})
-            target_compile_options(${t} PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-        endif()
-    endforeach()
+    if (MSVC)
+        foreach(t glfw glfw3)
+            if(TARGET ${t})
+                target_compile_options(${t} PRIVATE "/utf-8")
+            endif()
+        endforeach()
+    endif()
 elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
     set(GDM_FREEGLUT_GIT_TAG "v${GDM_FREEGLUT_VERSION}")
 
@@ -132,7 +134,7 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
         CANDIDATE_TARGETS freeglut freeglut_static freeglut::freeglut freeglut::freeglut_static
     )
 else()
-    message(FATAL_ERROR "[GDM} Unsupported GDM_WINDOW_BACKEND: ${GDM_WINDOW_BACKEND}")
+    message(FATAL_ERROR "[GDM] Unsupported GDM_WINDOW_BACKEND: ${GDM_WINDOW_BACKEND}")
 endif()
 
 # -----------------------
@@ -152,7 +154,7 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
     string(FIND "${GDM_GLAD_API}" "gl:core=" GDM_GLAD_IS_GLCORE)
 
     if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
-        message(STATUS "[GDM} Found installed glad_debug and glad_release")
+        message(STATUS "[GDM] Found installed glad_debug and glad_release")
 
         add_library(gdm_glad_debug STATIC
             ${GDM_GLAD_DEBUG_DIR}/src/gl.c
@@ -169,7 +171,7 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         )
 
     elseif (EXISTS ${GDM_GLAD_SINGLE_DIR}/src/gl.c)
-        message(STATUS "[GDM} Found installed single glad")
+        message(STATUS "[GDM] Found installed single glad")
 
         add_library(gdm_glad_single STATIC
             ${GDM_GLAD_SINGLE_DIR}/src/gl.c
@@ -234,7 +236,7 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
 
     else()
         if (GDM_FORCE_GEN_GLAD)
-            message(STATUS "[GDM} Force-generating GLAD")
+            message(STATUS "[GDM] Force-generating GLAD")
 
             find_package(Python3 REQUIRED)
 
@@ -263,11 +265,11 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
             )
         else()
             message(FATAL_ERROR
-                "[GDM} If you want custom glad loader other than OpenGL core, you might want to generate it yourself.\n"
-                "[GDM} Generating glad with cmake is tricky and requires Python3 and jinja2\n"
-                "[GDM} Generate glad with your configuration in https://gen.glad.sh and place \"glad\" folder in \"external\" directory.\n"
-                "[GDM} If you place both \"glad_debug\" and \"glad_release\", GDM will link \"glad_debug\" if build configuration is Debug and \"glad_release\" if otherwise\n"
-                "[GDM} If you want GDM to generate glad via CMake and Python, set GDM_FORCE_GEN_GLAD ON"
+                "[GDM] If you want custom glad loader other than OpenGL core, you might want to generate it yourself.\n"
+                "[GDM] Generating glad with cmake is tricky and requires Python3 and jinja2\n"
+                "[GDM] Generate glad with your configuration in https://gen.glad.sh and place \"glad\" folder in \"external\" directory.\n"
+                "[GDM] If you place both \"glad_debug\" and \"glad_release\", GDM will link \"glad_debug\" if build configuration is Debug and \"glad_release\" if otherwise\n"
+                "[GDM] If you want GDM to generate glad via CMake and Python, set GDM_FORCE_GEN_GLAD ON"
             )
         endif()
     endif()
@@ -281,12 +283,13 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
     )
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
+    # TODO : fetch https://github.com/Perlmint/glew-cmake
     find_package(GLEW REQUIRED)
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
     target_link_libraries(gdm_loader INTERFACE GLEW::GLEW)
 else()
-    message(FATAL_ERROR "[GDM} Unsupported GDM_GL_LOADER: ${GDM_GL_LOADER}")
+    message(FATAL_ERROR "[GDM] Unsupported GDM_GL_LOADER: ${GDM_GL_LOADER}")
 endif()
 
 if (TARGET gdm_glad_debug)
