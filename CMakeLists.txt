@@ -57,7 +57,38 @@ endif()
 
 if (GDM_GL_LOADER STREQUAL "glad")
     set(GDM_GLAD_VERSION "2.0.6" CACHE STRING "GLAD version")
-    set(GDM_GLAD_API "gl:core=4.6" CACHE STRING "GLAD API parameter")
+    set(GDM_GLAD_API "4.6" CACHE STRING "GLAD GL API version (e.g. 4.6)")
+    set(GDM_GLAD_PROFILE "core" CACHE STRING "GLAD GL profile")
+    set_property(CACHE GDM_GLAD_PROFILE PROPERTY STRINGS core compatibility)
+
+    set(_GDM_GLAD_EXT_DEFAULT_LT43
+        "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
+    )
+    set(_GDM_GLAD_EXT_DEFAULT_GE43
+        "GL_EXT_texture_compression_s3tc"
+    )
+
+    if (GDM_GLAD_API VERSION_LESS "4.3")
+        set(_GDM_GLAD_EXTENSION_DEFAULT "${_GDM_GLAD_EXT_DEFAULT_LT43}")
+    else()
+        set(_GDM_GLAD_EXTENSION_DEFAULT "${_GDM_GLAD_EXT_DEFAULT_GE43}")
+    endif()
+
+    # Auto-update default when API version changes,
+    # but keep user-custom extension list untouched.
+    if (NOT DEFINED GDM_GLAD_EXTENSION
+        OR GDM_GLAD_EXTENSION STREQUAL ""
+        OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXT_DEFAULT_LT43}"
+        OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXT_DEFAULT_GE43}")
+        set(GDM_GLAD_EXTENSION "${_GDM_GLAD_EXTENSION_DEFAULT}" CACHE STRING
+            "Additional GL extensions for glad (semicolon-separated list)" FORCE
+        )
+    endif()
+
+    unset(_GDM_GLAD_EXT_DEFAULT_LT43)
+    unset(_GDM_GLAD_EXT_DEFAULT_GE43)
+    unset(_GDM_GLAD_EXTENSION_DEFAULT)
+
     option(GDM_FORCE_GEN_GLAD "Force generate GLAD using CMake/Python" OFF)
 endif()
 
@@ -77,11 +108,14 @@ endif()
 if (NOT GDM_GL_LOADER STREQUAL "glad")
     unset(GDM_GLAD_VERSION CACHE)
     unset(GDM_GLAD_API CACHE)
+    unset(GDM_GLAD_PROFILE CACHE)
+    unset(GDM_GLAD_EXTENSION CACHE)
     unset(GDM_FORCE_GEN_GLAD CACHE)
 endif()
 
 # For dependencies
 include(cmake/Dependencies.cmake)
+include(cmake/FetchGlad.cmake)
 
 # -----------------------
 # OpenGL (system)
@@ -141,6 +175,15 @@ endif()
 # OpenGL loader (GLAD, GLEW)
 # -----------------------
 
+# [TEST] fetch all-extension glad package
+#    fetch_glad_allEXT(
+#        OUT_VAR GDM_GLAD_ALLEXT_DIR
+#        NAME glad_debug_remote
+#        DEST_DIR "${GDM_ROOT_DIR}/external/glad_ALLEXT"
+#        GLAD_OPTIONS DEBUG
+#    )
+#    message(STATUS "[GDM][TEST] GLAD all-extension dir: ${GDM_GLAD_ALLEXT_DIR}")
+
 if (GDM_GL_LOADER STREQUAL "none")
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
@@ -151,11 +194,35 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
     set(GDM_GLAD_DEBUG_DIR ${GDM_EXTERNAL_DIR}/glad_debug)
     set(GDM_GLAD_RELEASE_DIR ${GDM_EXTERNAL_DIR}/glad_release)
     set(GDM_GLAD_SINGLE_DIR ${GDM_EXTERNAL_DIR}/glad)
-    string(FIND "${GDM_GLAD_API}" "gl:core=" GDM_GLAD_IS_GLCORE)
 
     if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
         message(STATUS "[GDM] Found installed glad_debug and glad_release")
 
+    elseif (EXISTS ${GDM_GLAD_SINGLE_DIR}/src/gl.c)
+        message(STATUS "[GDM] Found installed single glad")
+
+    else()
+        fetch_glad(
+            OUT_VAR _glad_debug_src
+            NAME glad_debug_remote
+            DEST_DIR ${GDM_GLAD_DEBUG_DIR}
+            APIS "gl=${GDM_GLAD_API}"
+            PROFILES "gl=${GDM_GLAD_PROFILE}"
+            OPTIONS DEBUG
+            EXTENSIONS ${GDM_GLAD_EXTENSION}
+        )
+
+        fetch_glad(
+            OUT_VAR _glad_release_src
+            NAME glad_release_remote
+            DEST_DIR ${GDM_GLAD_RELEASE_DIR}
+            APIS "gl=${GDM_GLAD_API}"
+            PROFILES "gl=${GDM_GLAD_PROFILE}"
+            EXTENSIONS ${GDM_GLAD_EXTENSION}
+        )
+    endif()
+
+    if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
         add_library(gdm_glad_debug STATIC
             ${GDM_GLAD_DEBUG_DIR}/src/gl.c
         )
@@ -184,94 +251,8 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         add_library(gdm_glad_release INTERFACE)
         target_link_libraries(gdm_glad_debug INTERFACE gdm_glad_single)
         target_link_libraries(gdm_glad_release INTERFACE gdm_glad_single)
-
-    elseif (GDM_GLAD_IS_GLCORE EQUAL 0)
-        string(REGEX MATCH "([0-9]+\\.[0-9]+)$" GDM_GLAD_VERSION_MATCH ${GDM_GLAD_API})
-        set(GDM_GLAD_API_VERSION ${CMAKE_MATCH_1})
-
-        if (GDM_GLAD_API MATCHES "^gl:core=3\\.[0-3]$" OR GDM_GLAD_API MATCHES "^gl:core=[0-2]\\.[0-9]+$")
-            set(GDM_GLAD_PREGEN_VERSION "3.3")
-        else()
-            set(GDM_GLAD_PREGEN_VERSION "4.6")
-        endif()
-
-        message(STATUS "[GDM] Fetching pre-generated glad ${GDM_GLAD_PREGEN_VERSION}")
-
-        set(GDM_RELEASE_BASE_URL "https://github.com/awidesky/gdm/releases/download/v0.0.1")
-
-        FetchContent_Declare(
-            glad_debug_pregen
-            URL ${GDM_RELEASE_BASE_URL}/glad.${GDM_GLAD_PREGEN_VERSION}_debug.zip
-            SOURCE_DIR ${GDM_GLAD_DEBUG_DIR}
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        )
-        FetchContent_Declare(
-            glad_release_pregen
-            URL ${GDM_RELEASE_BASE_URL}/glad.${GDM_GLAD_PREGEN_VERSION}_release.zip
-            SOURCE_DIR ${GDM_GLAD_RELEASE_DIR}
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        )
-
-        if (NOT EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c)
-            FetchContent_MakeAvailable(glad_debug_pregen)
-        endif()
-
-        if (NOT EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
-            FetchContent_MakeAvailable(glad_release_pregen)
-        endif()
-
-        add_library(gdm_glad_debug STATIC
-            ${glad_debug_pregen_SOURCE_DIR}/src/gl.c
-        )
-        target_include_directories(gdm_glad_debug PUBLIC
-            ${glad_debug_pregen_SOURCE_DIR}/include
-        )
-
-        add_library(gdm_glad_release STATIC
-            ${glad_release_pregen_SOURCE_DIR}/src/gl.c
-        )
-        target_include_directories(gdm_glad_release PUBLIC
-            ${glad_release_pregen_SOURCE_DIR}/include
-        )
-
     else()
-        if (GDM_FORCE_GEN_GLAD)
-            message(STATUS "[GDM] Force-generating GLAD")
-
-            find_package(Python3 REQUIRED)
-
-            FetchContent_Declare(
-                glad
-                URL https://github.com/Dav1dde/glad/archive/v${GDM_GLAD_VERSION}.zip
-                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            )
-            FetchContent_GetProperties(glad)
-            if (NOT glad_POPULATED)
-                FetchContent_Populate(glad)
-                add_subdirectory(${glad_SOURCE_DIR}/cmake ${glad_BINARY_DIR})
-            endif()
-
-            glad_add_library(gdm_glad_debug
-                STATIC
-                API ${GDM_GLAD_API}
-                LANGUAGE c
-                OPTIONS DEBUG
-            )
-
-            glad_add_library(gdm_glad_release
-                STATIC
-                API ${GDM_GLAD_API}
-                LANGUAGE c
-            )
-        else()
-            message(FATAL_ERROR
-                "[GDM] If you want custom glad loader other than OpenGL core, you might want to generate it yourself.\n"
-                "[GDM] Generating glad with cmake is tricky and requires Python3 and jinja2\n"
-                "[GDM] Generate glad with your configuration in https://gen.glad.sh and place \"glad\" folder in \"external\" directory.\n"
-                "[GDM] If you place both \"glad_debug\" and \"glad_release\", GDM will link \"glad_debug\" if build configuration is Debug and \"glad_release\" if otherwise\n"
-                "[GDM] If you want GDM to generate glad via CMake and Python, set GDM_FORCE_GEN_GLAD ON"
-            )
-        endif()
+        message(FATAL_ERROR "[GDM] glad source was not generated correctly.")
     endif()
 
     add_library(gdm_loader INTERFACE)
