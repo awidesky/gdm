@@ -363,6 +363,24 @@ target_link_libraries(gdm_deps
         gdm::math
 )
 
+target_compile_definitions(gdm_deps
+    INTERFACE
+        GDM_HAS_OPENGL=1
+
+        GDM_HAS_WINDOW_NONE=$<IF:$<STREQUAL:${GDM_WINDOW_BACKEND},none>,1,0>
+        GDM_HAS_GLFW=$<IF:$<STREQUAL:${GDM_WINDOW_BACKEND},glfw>,1,0>
+        GDM_HAS_FREEGLUT=$<IF:$<STREQUAL:${GDM_WINDOW_BACKEND},freeglut>,1,0>
+
+        GDM_HAS_LOADER_NONE=$<IF:$<STREQUAL:${GDM_GL_LOADER},none>,1,0>
+        GDM_HAS_GLAD=$<IF:$<STREQUAL:${GDM_GL_LOADER},glad>,1,0>
+        GDM_HAS_GLEW=$<IF:$<STREQUAL:${GDM_GL_LOADER},glew>,1,0>
+
+        GDM_HAS_GLM=$<IF:$<BOOL:${GDM_USE_GLM}>,1,0>
+
+        GDM_HAS_GLUTIL=$<IF:$<BOOL:${GDM_USE_GLUTIL}>,1,0>
+endif()
+)
+
 # -----------------------
 # GLUtil (internal, optional)
 # -----------------------
