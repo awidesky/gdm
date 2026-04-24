@@ -90,6 +90,11 @@ if (GDM_GL_LOADER STREQUAL "glad")
     unset(_GDM_GLAD_EXTENSION_DEFAULT)
 
     option(GDM_FORCE_GEN_GLAD "Force generate GLAD using CMake/Python" OFF)
+
+elseif (GDM_GL_LOADER STREQUAL "glew")
+    set(GDM_GLEW_VERSION "2.3.1" CACHE STRING "GLEW version")
+    set(GDM_GLEW_LINK_TYPE "static" CACHE STRING "GLEW link type(only relevant when fetching glew-cmake): static or shared")
+    set_property(CACHE GDM_GLEW_LINK_TYPE PROPERTY STRINGS static shared)
 endif()
 
 # Clean up stale cache variables when provider selection changes
@@ -111,6 +116,10 @@ if (NOT GDM_GL_LOADER STREQUAL "glad")
     unset(GDM_GLAD_PROFILE CACHE)
     unset(GDM_GLAD_EXTENSION CACHE)
     unset(GDM_FORCE_GEN_GLAD CACHE)
+endif()
+
+if (NOT GDM_GL_LOADER STREQUAL "glew")
+    unset(GDM_GLEW_VERSION CACHE)
 endif()
 
 # For dependencies
@@ -264,8 +273,44 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
     )
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
-    # TODO : fetch https://github.com/Perlmint/glew-cmake
-    find_package(GLEW REQUIRED)
+    # Prefer system-installed GLEW package first.
+    find_package(GLEW QUIET)
+
+    if (TARGET GLEW::GLEW)
+        message(STATUS "[GDM] Found installed GLEW target: GLEW::GLEW")
+    else()
+        # Fallback to fetching glew-cmake.
+        set(GDM_GLEW_GIT_TAG "glew-cmake-${GDM_GLEW_VERSION}")
+
+        # Configure glew-cmake to build only libs (no glewinfo/visualinfo)
+        set(ONLY_LIBS ON CACHE BOOL "" FORCE)
+
+        if (GDM_GLEW_LINK_TYPE STREQUAL "shared")
+            set(glew-cmake_BUILD_SHARED ON CACHE BOOL "" FORCE)
+            set(glew-cmake_BUILD_STATIC OFF CACHE BOOL "" FORCE)
+            set(_GDM_GLEW_CANDIDATES libglew_shared libglew_static GLEW::GLEW)
+        else()
+            set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+            set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
+            set(_GDM_GLEW_CANDIDATES libglew_static libglew_shared GLEW::GLEW)
+        endif()
+
+        use_or_fetch_package(
+            NAME glew-cmake
+            VERSION ${GDM_GLEW_VERSION}
+            GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
+            GIT_TAG ${GDM_GLEW_GIT_TAG}
+            ALIAS_TARGET GLEW::GLEW
+            CANDIDATE_TARGETS ${_GDM_GLEW_CANDIDATES}
+        )
+
+        unset(_GDM_GLEW_CANDIDATES)
+    endif()
+
+    if (NOT TARGET GLEW::GLEW)
+        message(FATAL_ERROR "[GDM] Failed to resolve GLEW target (expected GLEW::GLEW).")
+    endif()
+
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
     target_link_libraries(gdm_loader INTERFACE GLEW::GLEW)
