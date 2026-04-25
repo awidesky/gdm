@@ -29,8 +29,23 @@ function(fetch_glad)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: APIS is required (ex: gl=4.6)")
   endif()
 
-  # Fixed generator
-  set(FG_GENERATOR "c")
+  if(FG_PROFILES)
+    set(_fg_profiles "${FG_PROFILES}")
+  else()
+    set(_fg_profiles "(default)")
+  endif()
+  if(FG_OPTIONS)
+    set(_fg_options "${FG_OPTIONS}")
+  else()
+    set(_fg_options "(no option)")
+  endif()
+
+  message(STATUS
+    "[${PROJECT_NAME}] ${FG_NAME} : ${FG_APIS}, ${_fg_profiles}, ${_fg_options}, Extensions=${FG_EXTENSIONS}"
+  )
+
+  unset(_fg_profiles)
+  unset(_fg_options)
 
   find_program(CURL_EXECUTABLE NAMES curl curl.exe REQUIRED)
 
@@ -43,7 +58,7 @@ function(fetch_glad)
   file(APPEND "${CURL_CFG_PATH}" "dump-header = -\n")
   file(APPEND "${CURL_CFG_PATH}" "request = POST\n")
   file(APPEND "${CURL_CFG_PATH}" "url = \"https://gen.glad.sh/generate\"\n")
-  file(APPEND "${CURL_CFG_PATH}" "data-urlencode = \"generator=${FG_GENERATOR}\"\n")
+  file(APPEND "${CURL_CFG_PATH}" "data-urlencode = \"generator=c\"\n")
 
   foreach(api IN LISTS FG_APIS)
     if(NOT api STREQUAL "")
@@ -92,7 +107,8 @@ function(fetch_glad)
     message(FATAL_ERROR
       "[${PROJECT_NAME}] fetch_glad: Could not extract Location header from gen.glad.sh response.\n"
       "curl/stdout(response):\n${HTTP_OUT}\n"
-      "curl stderr:\n${HTTP_ERR}"
+      "curl stderr:\n${HTTP_ERR}\n"
+      "curl config path:\n${CURL_CFG_PATH}"
     )
   endif()
 
@@ -105,6 +121,7 @@ function(fetch_glad)
   endif()
 
   message(STATUS "[${PROJECT_NAME}] Downloading ${zip_url}")
+  message(STATUS "[${PROJECT_NAME}] into ${FG_DEST_DIR}")
 
   FetchContent_Declare(${FG_NAME}
     URL "${zip_url}"
@@ -140,6 +157,16 @@ function(fetch_glad_allEXT)
   if(NOT FGAE_DEST_DIR)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: DEST_DIR is required")
   endif()
+
+  if(FGAE_GLAD_OPTIONS)
+    set(_fgae_options "${FGAE_GLAD_OPTIONS}")
+  else()
+    set(_fgae_options "(none)")
+  endif()
+  message(STATUS
+    "[${PROJECT_NAME}] ${FGAE_NAME} : gl=4.6:core, ${_fgae_options}, Extensions=ALL"
+  )
+  unset(_fgae_options)
 
   set(GL_XML_URL "https://cvs.khronos.org/svn/repos/ogl/trunk/doc/registry/public/api/gl.xml")
   set(GL_XML_PATH "${CMAKE_BINARY_DIR}/khronos_gl.xml")
