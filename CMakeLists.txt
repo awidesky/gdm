@@ -93,8 +93,7 @@ if (GDM_GL_LOADER STREQUAL "glad")
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
     set(GDM_GLEW_VERSION "2.3.1" CACHE STRING "GLEW version")
-    set(GDM_GLEW_LINK_TYPE "static" CACHE STRING "GLEW link type(only relevant when fetching glew-cmake): static or shared")
-    set_property(CACHE GDM_GLEW_LINK_TYPE PROPERTY STRINGS static shared)
+    option(GDM_GLEW_STATIC "Use static GLEW when available" ON)
 endif()
 
 # Clean up stale cache variables when provider selection changes
@@ -120,7 +119,9 @@ endif()
 
 if (NOT GDM_GL_LOADER STREQUAL "glew")
     unset(GDM_GLEW_VERSION CACHE)
+    unset(GDM_GLEW_STATIC CACHE)
 endif()
+unset(GDM_GLEW_LINK_TYPE CACHE)
 
 # For dependencies
 include(cmake/Dependencies.cmake)
@@ -130,6 +131,7 @@ include(cmake/FetchGlad.cmake)
 # OpenGL (system)
 # -----------------------
 find_package(OpenGL REQUIRED)
+set(_gdm_defs GDM_HAS_OPENGL)
 
 # -----------------------
 # Window backend (GLFW, FreeGLUT)
@@ -137,6 +139,7 @@ find_package(OpenGL REQUIRED)
 if (GDM_WINDOW_BACKEND STREQUAL "none")
     add_library(gdm_window INTERFACE)
     add_library(gdm::window ALIAS gdm_window)
+    list(APPEND _gdm_defs GDM_HAS_WINDOW_NONE)
 elseif (GDM_WINDOW_BACKEND STREQUAL "glfw")
     # Derive git tag from version (strip trailing .0)
     set(GDM_GLFW_GIT_TAG ${GDM_GLFW_VERSION})
@@ -163,6 +166,7 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "glfw")
             endif()
         endforeach()
     endif()
+    list(APPEND _gdm_defs GDM_HAS_GLFW)
 elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
     set(GDM_FREEGLUT_GIT_TAG "v${GDM_FREEGLUT_VERSION}")
 
@@ -176,6 +180,7 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
         ALIAS_TARGET gdm::window
         CANDIDATE_TARGETS freeglut freeglut_static freeglut::freeglut freeglut::freeglut_static
     )
+    list(APPEND _gdm_defs GDM_HAS_FREEGLUT)
 else()
     message(FATAL_ERROR "[GDM] Unsupported GDM_WINDOW_BACKEND: ${GDM_WINDOW_BACKEND}")
 endif()
@@ -184,18 +189,10 @@ endif()
 # OpenGL loader (GLAD, GLEW)
 # -----------------------
 
-# [TEST] fetch all-extension glad package
-#    fetch_glad_allEXT(
-#        OUT_VAR GDM_GLAD_ALLEXT_DIR
-#        NAME glad_debug_remote
-#        DEST_DIR "${GDM_ROOT_DIR}/external/glad_ALLEXT"
-#        GLAD_OPTIONS DEBUG
-#    )
-#    message(STATUS "[GDM][TEST] GLAD all-extension dir: ${GDM_GLAD_ALLEXT_DIR}")
-
 if (GDM_GL_LOADER STREQUAL "none")
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
+    list(APPEND _gdm_defs GDM_HAS_LOADER_NONE)
 elseif (GDM_GL_LOADER STREQUAL "glad")
     include(FetchContent)
 
@@ -271,8 +268,11 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         $<$<CONFIG:Debug>:gdm_glad_debug>
         $<$<NOT:$<CONFIG:Debug>>:gdm_glad_release>
     )
+    list(APPEND _gdm_defs GDM_HAS_GLAD)
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
+    set(GLEW_USE_STATIC_LIBS ${GDM_GLEW_STATIC})
+
     # Prefer system-installed GLEW package first.
     find_package(GLEW QUIET)
 
@@ -285,14 +285,14 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
         # Configure glew-cmake to build only libs (no glewinfo/visualinfo)
         set(ONLY_LIBS ON CACHE BOOL "" FORCE)
 
-        if (GDM_GLEW_LINK_TYPE STREQUAL "shared")
-            set(glew-cmake_BUILD_SHARED ON CACHE BOOL "" FORCE)
-            set(glew-cmake_BUILD_STATIC OFF CACHE BOOL "" FORCE)
-            set(_GDM_GLEW_CANDIDATES libglew_shared libglew_static GLEW::GLEW)
-        else()
+        if (GDM_GLEW_STATIC)
             set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
             set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
             set(_GDM_GLEW_CANDIDATES libglew_static libglew_shared GLEW::GLEW)
+        else()
+            set(glew-cmake_BUILD_SHARED ON CACHE BOOL "" FORCE)
+            set(glew-cmake_BUILD_STATIC OFF CACHE BOOL "" FORCE)
+            set(_GDM_GLEW_CANDIDATES libglew_shared libglew_static GLEW::GLEW)
         endif()
 
         use_or_fetch_package(
@@ -314,6 +314,7 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
     target_link_libraries(gdm_loader INTERFACE GLEW::GLEW)
+    list(APPEND _gdm_defs GDM_HAS_GLEW)
 else()
     message(FATAL_ERROR "[GDM] Unsupported GDM_GL_LOADER: ${GDM_GL_LOADER}")
 endif()
@@ -344,6 +345,7 @@ if (GDM_USE_GLM)
     add_library(gdm_math INTERFACE)
     add_library(gdm::math ALIAS gdm_math)
     target_link_libraries(gdm_math INTERFACE glm::glm)
+    list(APPEND _gdm_defs GDM_HAS_GLM)
 else()
     add_library(gdm_math INTERFACE)
     add_library(gdm::math ALIAS gdm_math)
@@ -363,30 +365,18 @@ target_link_libraries(gdm_deps
         gdm::math
 )
 
-target_compile_definitions(gdm_deps
-    INTERFACE
-        GDM_HAS_OPENGL=1
-
-        GDM_HAS_WINDOW_NONE=$<IF:$<STREQUAL:${GDM_WINDOW_BACKEND},none>,1,0>
-        GDM_HAS_GLFW=$<IF:$<STREQUAL:${GDM_WINDOW_BACKEND},glfw>,1,0>
-        GDM_HAS_FREEGLUT=$<IF:$<STREQUAL:${GDM_WINDOW_BACKEND},freeglut>,1,0>
-
-        GDM_HAS_LOADER_NONE=$<IF:$<STREQUAL:${GDM_GL_LOADER},none>,1,0>
-        GDM_HAS_GLAD=$<IF:$<STREQUAL:${GDM_GL_LOADER},glad>,1,0>
-        GDM_HAS_GLEW=$<IF:$<STREQUAL:${GDM_GL_LOADER},glew>,1,0>
-
-        GDM_HAS_GLM=$<IF:$<BOOL:${GDM_USE_GLM}>,1,0>
-
-        GDM_HAS_GLUTIL=$<IF:$<BOOL:${GDM_USE_GLUTIL}>,1,0>
-endif()
-)
+set_property(TARGET gdm_deps PROPERTY INTERFACE_COMPILE_DEFINITIONS "")
 
 # -----------------------
 # GLUtil (internal, optional)
 # -----------------------
 if (GDM_USE_GLUTIL)
     add_subdirectory(external/glutil)
+    list(APPEND _gdm_defs GDM_HAS_GLUTIL)
 endif()
+
+target_compile_definitions(gdm_deps INTERFACE ${_gdm_defs})
+unset(_gdm_defs)
 
 # -----------------------
 # meta target (for user)
