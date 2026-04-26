@@ -26,6 +26,8 @@ target_sources(glutil
       include/glutil/shader.hpp
       include/glutil/inspector.hpp
       include/glutil/glutil.hpp
+      include/glutil/core.hpp
+      include/glutil/math.hpp
       include/glutil/logging.hpp
       include/glutil/texture.hpp
       include/glutil/model.hpp

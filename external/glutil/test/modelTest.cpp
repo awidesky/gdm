@@ -112,7 +112,7 @@ int main()
         glGenBuffers(1, &gm.vbo);
         glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
         glBufferData(GL_ARRAY_BUFFER,
-                     static_cast<GLsizeiptr>(mesh.vertexCount() * sizeof(glutil::Vertex)),
+                     static_cast<GLsizeiptr>(mesh.vertexCount() * sizeof(glutil::VertexPNT)),
                      mesh.vertexData(),
                      GL_STATIC_DRAW);
 
@@ -125,18 +125,18 @@ int main()
 
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(glutil::Vertex),
-                              (void*)offsetof(glutil::Vertex, px));
+                              sizeof(glutil::VertexPNT),
+                              (void*)offsetof(glutil::VertexPNT, x));
 
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(glutil::Vertex),
-                              (void*)offsetof(glutil::Vertex, nx));
+                              sizeof(glutil::VertexPNT),
+                              (void*)offsetof(glutil::VertexPNT, nx));
 
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
-                              sizeof(glutil::Vertex),
-                              (void*)offsetof(glutil::Vertex, u));
+                              sizeof(glutil::VertexPNT),
+                              (void*)offsetof(glutil::VertexPNT, u));
 
         glBindVertexArray(0);
 

@@ -1,29 +1,23 @@
-﻿
-#define TINYOBJLOADER_IMPLEMENTATION
+﻿#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+#include <glutil/core.hpp>
 #include <glutil/model.hpp>
-#include <iostream>
+
 #include <filesystem>
+#include <iostream>
 
 namespace glutil {
 
 // ── helpers ───────────────────────────────────────────────
-static float safeGet3(const std::vector<float>& arr, int idx, int component)
+template <size_t Stride>
+static float safeGet(const std::vector<float>& arr, int idx, int component)
 {
     if (idx < 0) return 0.0f;
-    const auto base = static_cast<size_t>(3 * idx + component);
+    const auto base = static_cast<size_t>(Stride * static_cast<size_t>(idx) + static_cast<size_t>(component));
     return (base < arr.size()) ? arr[base] : 0.0f;
 }
 
-static float safeGet2(const std::vector<float>& arr, int idx, int component)
-{
-    if (idx < 0) return 0.0f;
-    const auto base = static_cast<size_t>(2 * idx + component);
-    return (base < arr.size()) ? arr[base] : 0.0f;
-}
-
-// ── ModelLoader::loadOBJ ──────────────────────────────────
 ModelData ModelLoader::loadOBJ(const char* path)
 {
     ModelData result;
@@ -33,26 +27,25 @@ ModelData ModelLoader::loadOBJ(const char* path)
         return result;
     }
 
-    const std::filesystem::path objPath(path);
+    const PathResolveResult pathResult = pathResolve(path);
+    if (!pathResult.success) {
+        result.error = "loadOBJ: path resolve failed: " + pathResult.message;
+        return result;
+    }
+
+    const std::filesystem::path objPath(pathResult.resolvedPath);
     const std::string mtlDir = objPath.parent_path().string();
 
-    //std::cout << "mtlDir: [" << mtlDir << "]" << std::endl;
-
-
     tinyobj::attrib_t                attrib;
-    std::vector<tinyobj::shape_t>    shapes;
+    std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
 
     const bool loaded = tinyobj::LoadObj(
         &attrib, &shapes, &materials,
         &warn, &err,
-        path,
-        mtlDir.empty() ? nullptr : mtlDir.c_str(),true);   
-
-    //std::cout << "warn: [" << warn << "]" << std::endl;
-    //std::cout << "err: [" << err << "]" << std::endl;
-    //std::cout << "materials size: " << materials.size() << std::endl;
+        pathResult.resolvedPath.c_str(),
+        mtlDir.empty() ? nullptr : mtlDir.c_str(), true);
 
     if (!warn.empty())
         result.warn = warn;
@@ -66,11 +59,11 @@ ModelData ModelLoader::loadOBJ(const char* path)
 
     for (const tinyobj::shape_t& shape : shapes) {
         MeshData mesh;
-        mesh.ok   = true;
+        mesh.ok = true;
         mesh.name = shape.name;
 
-        
         for (int matId : shape.mesh.material_ids) {
+            //TODO : use logger or remove
             std::cout << "matId: " << matId << std::endl;
             if (matId < 0 || static_cast<size_t>(matId) >= materials.size())
                 continue;
@@ -80,17 +73,13 @@ ModelData ModelLoader::loadOBJ(const char* path)
                 static_cast<size_t>(matId) >= materials.size())
                 continue;
 
-            const std::string& kd =
-                materials[static_cast<size_t>(matId)].diffuse_texname;
+            const std::string& kd = materials[static_cast<size_t>(matId)].diffuse_texname;
             if (kd.empty()) continue;
 
-           
-            mesh.diffuseTexturePath =
-                (objPath.parent_path() / kd).string();
+            mesh.diffuseTexturePath = (objPath.parent_path() / kd).string();
             break;
         }
 
-       
 
         const size_t numIdx = shape.mesh.indices.size();
         mesh.vertices.reserve(numIdx);
@@ -99,18 +88,18 @@ ModelData ModelLoader::loadOBJ(const char* path)
         for (size_t i = 0; i < numIdx; ++i) {
             const tinyobj::index_t& idx = shape.mesh.indices[i];
 
-            Vertex v{};
+            VertexPNT v{};
 
-            v.px = safeGet3(attrib.vertices, idx.vertex_index,   0);
-            v.py = safeGet3(attrib.vertices, idx.vertex_index,   1);
-            v.pz = safeGet3(attrib.vertices, idx.vertex_index,   2);
+            v.x = safeGet<3>(attrib.vertices, idx.vertex_index, 0);
+            v.y = safeGet<3>(attrib.vertices, idx.vertex_index, 1);
+            v.z = safeGet<3>(attrib.vertices, idx.vertex_index, 2);
 
-            v.nx = safeGet3(attrib.normals,  idx.normal_index,   0);
-            v.ny = safeGet3(attrib.normals,  idx.normal_index,   1);
-            v.nz = safeGet3(attrib.normals,  idx.normal_index,   2);
+            v.nx = safeGet<3>(attrib.normals, idx.normal_index, 0);
+            v.ny = safeGet<3>(attrib.normals, idx.normal_index, 1);
+            v.nz = safeGet<3>(attrib.normals, idx.normal_index, 2);
 
-            v.u  =        safeGet2(attrib.texcoords, idx.texcoord_index, 0);
-            v.v  = /*1.0f - */safeGet2(attrib.texcoords, idx.texcoord_index, 1);
+            v.u = safeGet<2>(attrib.texcoords, idx.texcoord_index, 0);
+            v.v = /*1.0f - */safeGet<2>(attrib.texcoords, idx.texcoord_index, 1);
 
             mesh.vertices.push_back(v);
             mesh.indices.push_back(static_cast<unsigned int>(i));

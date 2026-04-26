@@ -1,49 +1,42 @@
-﻿#pragma once
+﻿#ifndef GLUTIL_MODEL_HPP
+#define GLUTIL_MODEL_HPP
+
+#include <glutil/math.hpp>
+
 #include <string>
 #include <vector>
 
 namespace glutil {
 
-// ── Vertex ────────────────────────────────────────────────
-
-struct Vertex {
-    float px, py, pz;  // position  
-    float nx, ny, nz;  // normal    
-    float u,  v;       // texcoord  
-};
-
-
 struct MeshData {
-    bool        ok    = false;
+    bool ok = false;
     std::string error;
 
-    std::string name;                
-    std::string diffuseTexturePath;  
-                                     
+    std::string name;
+    std::string diffuseTexturePath;
 
-    std::vector<Vertex>       vertices;
+    std::vector<VertexPNT> vertices;
     std::vector<unsigned int> indices;
 
-    const Vertex*       vertexData()  const { return vertices.data(); }
-    const unsigned int* indexData()   const { return indices.data(); }
-    size_t              vertexCount() const { return vertices.size(); }
-    size_t              indexCount()  const { return indices.size(); }
+    const VertexPNT* vertexData() const { return vertices.data(); }
+    const unsigned int* indexData() const { return indices.data(); }
+    size_t vertexCount() const { return vertices.size(); }
+    size_t indexCount() const { return indices.size(); }
 };
 
-// ── ModelData ─────────────────────────────────────────────
 struct ModelData {
-    bool        ok    = false;
+    bool ok = false;
     std::string error;
-    std::string warn;  
-                       
+    std::string warn;
 
     std::vector<MeshData> meshes;
 };
 
-// ── ModelLoader ───────────────────────────────────────────
 class ModelLoader {
 public:
     static ModelData loadOBJ(const char* path);
 };
 
-} 
+} // namespace glutil
+
+#endif // GLUTIL_MODEL_HPP
