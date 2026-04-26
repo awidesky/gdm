@@ -1,7 +1,7 @@
 #ifndef GLUTIL_GLUTIL
 #define GLUTIL_GLUTIL
 
-#include <glutil/core.hpp>
+#include <glutil/path.hpp>
 #include <glutil/gl.hpp>
 #include <glutil/inspector.hpp>
 #include <glutil/logging.hpp>

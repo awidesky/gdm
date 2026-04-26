@@ -1,7 +1,7 @@
 ﻿#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#include <glutil/core.hpp>
+#include <glutil/path.hpp>
 #include <glutil/model.hpp>
 
 #include <filesystem>
