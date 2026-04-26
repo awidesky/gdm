@@ -200,7 +200,7 @@ int main()
                 glBindTexture(GL_TEXTURE_2D, gm.tex);
             }
             glBindVertexArray(gm.vao);
-            glDrawArrays(GL_TRIANGLES, 0, gm.indexCount);
+            glDrawElements(GL_TRIANGLES, gm.indexCount, GL_UNSIGNED_INT, nullptr);
         }
 
         glfwSwapBuffers(ctx);
