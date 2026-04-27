@@ -121,7 +121,7 @@ function(fetch_glad)
   endif()
 
   message(STATUS "[${PROJECT_NAME}] Downloading ${zip_url}")
-  message(STATUS "[${PROJECT_NAME}] into ${FG_DEST_DIR}")
+  message(STATUS "[${PROJECT_NAME}]   into ${FG_DEST_DIR}")
 
   FetchContent_Declare(${FG_NAME}
     URL "${zip_url}"

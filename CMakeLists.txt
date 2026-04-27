@@ -208,6 +208,7 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         message(STATUS "[GDM] Found installed single glad")
 
     else()
+        message(STATUS "[GDM] Fetching glad debug/release mode")
         fetch_glad(
             OUT_VAR _glad_debug_src
             NAME glad_debug_remote
@@ -244,7 +245,6 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         )
 
     elseif (EXISTS ${GDM_GLAD_SINGLE_DIR}/src/gl.c)
-        message(STATUS "[GDM] Found installed single glad")
 
         add_library(gdm_glad_single STATIC
             ${GDM_GLAD_SINGLE_DIR}/src/gl.c
