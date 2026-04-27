@@ -13,10 +13,10 @@
 #include "config.hpp"
 
 GLFWwindow* initGLFWAndContext();
-GLuint      compileShader(GLenum type, const char* source);
-GLuint      createProgram(const char* vertexSource, const char* fragmentSource);
-GLuint      uploadStandard2D(const glutil::TextureImage& image);
-glm::mat4   makeMvp(float t, float aspect);
+GLuint compileShader(GLenum type, const char* source);
+GLuint createProgram(const char* vertexSource, const char* fragmentSource);
+GLuint uploadStandard2D(const glutil::TextureImage& image);
+glm::mat4 makeMvp(float t, float aspect);
 GLuint uploadDDS2D(const glutil::TextureDDS& dds);
 
 constexpr const char* kVS = R"(
@@ -141,12 +141,8 @@ int main()
         glBindVertexArray(0);
 
         if (!mesh.diffuseTexturePath.empty()) {
-            const std::string& tp = mesh.diffuseTexturePath;
-            const bool isDDS =
-              tp.size() >= 4 && (tp.substr(tp.size() - 4) == ".DDS" || tp.substr(tp.size() - 4) == ".dds");
-
-            if (isDDS) {
-                glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(tp.c_str());
+            if (glutil::ImageLoader::isDDS(mesh.diffuseTexturePath.c_str())) {
+                glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(mesh.diffuseTexturePath.c_str());
                 if (dds.ok) {
                     gm.tex = uploadDDS2D(dds);
                     std::cout << "  mesh \"" << mesh.name << "\": DDS texture loaded" << std::endl;
@@ -154,7 +150,7 @@ int main()
                     std::cerr << "  mesh \"" << mesh.name << "\": DDS load failed: " << dds.error << std::endl;
                 }
             } else {
-                glutil::TextureImage img = glutil::ImageLoader::loadImage(tp.c_str());
+                glutil::TextureImage img = glutil::ImageLoader::loadImage(mesh.diffuseTexturePath.c_str());
                 if (img.ok) {
                     gm.tex = uploadStandard2D(img);
                     std::cout << "  mesh \"" << mesh.name << "\": texture loaded" << std::endl;
