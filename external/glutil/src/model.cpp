@@ -3,9 +3,9 @@
 
 #include <glutil/path.hpp>
 #include <glutil/model.hpp>
+#include <glutil/logging.hpp>
 
 #include <filesystem>
-#include <iostream>
 
 namespace glutil {
 
@@ -24,12 +24,14 @@ ModelData ModelLoader::loadOBJ(const char* path)
 
     if (!path || path[0] == '\0') {
         result.error = "loadOBJ: path is empty";
+        LOG_ERROR() << "[Model] " << result.error;
         return result;
     }
 
     const PathResolveResult pathResult = pathResolve(path);
     if (!pathResult.success) {
         result.error = "loadOBJ: path resolve failed: " + pathResult.message;
+        LOG_ERROR() << "[Model] " << result.error;
         return result;
     }
 
@@ -47,9 +49,11 @@ ModelData ModelLoader::loadOBJ(const char* path)
         pathResult.resolvedPath.c_str(),
         mtlDir.empty() ? nullptr : mtlDir.c_str(), true);
 
-    auto appendWarn = [&result](const std::string& msg) {
+    size_t warnCount = 0;
+    auto appendWarn = [&result, &warnCount](const std::string& msg) {
         if (!result.warn.empty()) result.warn += '\n';
         result.warn += msg;
+        ++warnCount;
     };
 
     if (!warn.empty())
@@ -59,23 +63,23 @@ ModelData ModelLoader::loadOBJ(const char* path)
         result.error = err.empty()
             ? "tinyobj::LoadObj failed (unknown reason)"
             : err;
+        LOG_ERROR() << "[Model] load failed: " << pathResult.resolvedPath << " (" << result.error << ")";
         return result;
     }
+
+    size_t totalVertices = 0;
+    size_t totalIndices = 0;
+    size_t texturedMeshCount = 0;
+    size_t unnamedMeshCount = 0;
 
     for (const tinyobj::shape_t& shape : shapes) {
         MeshData mesh;
         mesh.ok = true;
-        mesh.name = shape.name.empty() ? "<unnamed>" : shape.name;
+        mesh.name = shape.name;
 
-        // find the first valid material ID and the first valid diffuse texture path among faces in this shape.
         int firstValidMatId = -1;
-        // among valid material IDs, the first one with non-empty diffuse texture path. (if any)
         int firstDiffuseMatId = -1;
-        // is there any invalid material ID in this shape? (negative or out of range)
-        // add warning only for the first occurrence to avoid spamming.
         bool warnedInvalidMatId = false;
-        // does this shape have multiple materials? (different material IDs among faces)
-        // add warning only for the first occurrence to avoid spamming.
         bool warnedMixedMaterial = false;
 
         for (int matId : shape.mesh.material_ids) {
@@ -133,10 +137,34 @@ ModelData ModelLoader::loadOBJ(const char* path)
             mesh.indices.push_back(static_cast<unsigned int>(i));
         }
 
+        const std::string meshNameForLog = mesh.name.empty() ? "<unnamed>" : mesh.name;
+        LOG_INFO() << "[Model] Mesh loaded: name=" << meshNameForLog
+                   << ", vertices=" << mesh.vertexCount()
+                   << ", indices=" << mesh.indexCount()
+                   << ", hasDiffuse=" << (!mesh.diffuseTexturePath.empty());
+
+        totalVertices += mesh.vertexCount();
+        totalIndices += mesh.indexCount();
+        if (!mesh.diffuseTexturePath.empty()) ++texturedMeshCount;
+        if (mesh.name.empty()) ++unnamedMeshCount;
+
         result.meshes.push_back(std::move(mesh));
     }
 
     result.ok = true;
+
+    if (!result.warn.empty()) {
+        LOG_WARNING() << "[Model] Load warnings (" << warnCount << "):\n" << result.warn;
+    }
+
+    LOG_INFO() << "[Model] Load succeeded: " << pathResult.resolvedPath;
+    LOG_INFO() << "[Model]                 (meshes=" << result.meshes.size()
+               << ", vertices=" << totalVertices
+               << ", indices=" << totalIndices
+               << ", texturedMeshes=" << texturedMeshCount
+               << ", unnamedMeshes=" << unnamedMeshCount
+               << ", warnings=" << warnCount << ")";
+
     return result;
 }
 

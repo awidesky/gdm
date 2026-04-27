@@ -323,7 +323,8 @@ TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
     result.fmt = glFmt;
     result.ok = true;
 
-    LOG_INFO() << "[TextureDDS] Load succeeded: " << pr.resolvedPath << " (" << tc.width << "x" << tc.height
+    LOG_INFO() << "[TextureDDS] Load succeeded: " << pr.resolvedPath;
+    LOG_INFO() << "[TextureDDS]                 (" << tc.width << "x" << tc.height
                << ", mips=" << tc.num_mips << ", flipV=" << flipV << ")";
     return result;
 }
