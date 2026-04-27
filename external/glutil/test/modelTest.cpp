@@ -75,7 +75,7 @@ int main()
         return 1;
     }
 
-    std::cout << "Loaded " << model.meshes.size() << " mesh(es) from "
+    std::cout << "[ModelTest] Loaded " << model.meshes.size() << " mesh(es) from "
               << objPath.filename() << std::endl;
 
     const GLuint program = createProgram(kVS, kFS);
@@ -145,17 +145,17 @@ int main()
                 glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(mesh.diffuseTexturePath.c_str());
                 if (dds.ok) {
                     gm.tex = uploadDDS2D(dds);
-                    std::cout << "  mesh \"" << mesh.name << "\": DDS texture loaded" << std::endl;
+                    std::cout << "[ModelTest] mesh \"" << mesh.name << "\": DDS texture loaded" << std::endl;
                 } else {
-                    std::cerr << "  mesh \"" << mesh.name << "\": DDS load failed: " << dds.error << std::endl;
+                    std::cerr << "[ModelTest] mesh \"" << mesh.name << "\": DDS load failed: " << dds.error << std::endl;
                 }
             } else {
                 glutil::TextureImage img = glutil::ImageLoader::loadImage(mesh.diffuseTexturePath.c_str());
                 if (img.ok) {
                     gm.tex = uploadStandard2D(img);
-                    std::cout << "  mesh \"" << mesh.name << "\": texture loaded" << std::endl;
+                    std::cout << "[ModelTest] mesh \"" << mesh.name << "\": texture loaded" << std::endl;
                 } else {
-                    std::cerr << "  mesh \"" << mesh.name << "\": texture load failed: " << img.error << std::endl;
+                    std::cerr << "[ModelTest] mesh \"" << mesh.name << "\": texture load failed: " << img.error << std::endl;
                 }
             }
         }
