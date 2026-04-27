@@ -36,7 +36,7 @@ ModelData ModelLoader::loadOBJ(const char* path)
     const std::filesystem::path objPath(pathResult.resolvedPath);
     const std::string mtlDir = objPath.parent_path().string();
 
-    tinyobj::attrib_t                attrib;
+    tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
@@ -47,8 +47,13 @@ ModelData ModelLoader::loadOBJ(const char* path)
         pathResult.resolvedPath.c_str(),
         mtlDir.empty() ? nullptr : mtlDir.c_str(), true);
 
+    auto appendWarn = [&result](const std::string& msg) {
+        if (!result.warn.empty()) result.warn += '\n';
+        result.warn += msg;
+    };
+
     if (!warn.empty())
-        result.warn = warn;
+        appendWarn(warn);
 
     if (!loaded) {
         result.error = err.empty()
@@ -60,26 +65,49 @@ ModelData ModelLoader::loadOBJ(const char* path)
     for (const tinyobj::shape_t& shape : shapes) {
         MeshData mesh;
         mesh.ok = true;
-        mesh.name = shape.name;
+        mesh.name = shape.name.empty() ? "<unnamed>" : shape.name;
+
+        // find the first valid material ID and the first valid diffuse texture path among faces in this shape.
+        int firstValidMatId = -1;
+        // among valid material IDs, the first one with non-empty diffuse texture path. (if any)
+        int firstDiffuseMatId = -1;
+        // is there any invalid material ID in this shape? (negative or out of range)
+        // add warning only for the first occurrence to avoid spamming.
+        bool warnedInvalidMatId = false;
+        // does this shape have multiple materials? (different material IDs among faces)
+        // add warning only for the first occurrence to avoid spamming.
+        bool warnedMixedMaterial = false;
 
         for (int matId : shape.mesh.material_ids) {
-            //TODO : use logger or remove
-            std::cout << "matId: " << matId << std::endl;
-            if (matId < 0 || static_cast<size_t>(matId) >= materials.size())
+            if (matId < 0 || static_cast<size_t>(matId) >= materials.size()) {
+                if (!warnedInvalidMatId) {
+                    appendWarn("loadOBJ: invalid material ID in shape '" +
+                               (shape.name.empty() ? std::string("<unnamed>") : shape.name) +
+                               "': " + std::to_string(matId));
+                    warnedInvalidMatId = true;
+                }
                 continue;
-            std::cout << "diffuse_texname: [" << materials[static_cast<size_t>(matId)].diffuse_texname << "]"
-                      << std::endl;
-            if (matId < 0 ||
-                static_cast<size_t>(matId) >= materials.size())
-                continue;
+            }
+
+            if (firstValidMatId < 0) {
+                firstValidMatId = matId;
+            } else if (matId != firstValidMatId && !warnedMixedMaterial) {
+                appendWarn("loadOBJ: shape '" +
+                           (shape.name.empty() ? std::string("<unnamed>") : shape.name) +
+                           "' has multiple materials. Only one diffuse texture path is stored.");
+                warnedMixedMaterial = true;
+            }
 
             const std::string& kd = materials[static_cast<size_t>(matId)].diffuse_texname;
-            if (kd.empty()) continue;
-
-            mesh.diffuseTexturePath = (objPath.parent_path() / kd).string();
-            break;
+            if (firstDiffuseMatId < 0 && !kd.empty()) {
+                firstDiffuseMatId = matId;
+            }
         }
 
+        if (firstDiffuseMatId >= 0) {
+            const std::string& kd = materials[static_cast<size_t>(firstDiffuseMatId)].diffuse_texname;
+            mesh.diffuseTexturePath = (objPath.parent_path() / kd).string();
+        }
 
         const size_t numIdx = shape.mesh.indices.size();
         mesh.vertices.reserve(numIdx);
@@ -99,7 +127,7 @@ ModelData ModelLoader::loadOBJ(const char* path)
             v.nz = safeGet<3>(attrib.normals, idx.normal_index, 2);
 
             v.u = safeGet<2>(attrib.texcoords, idx.texcoord_index, 0);
-            v.v = /*1.0f - */safeGet<2>(attrib.texcoords, idx.texcoord_index, 1);
+            v.v = safeGet<2>(attrib.texcoords, idx.texcoord_index, 1);
 
             mesh.vertices.push_back(v);
             mesh.indices.push_back(static_cast<unsigned int>(i));
@@ -112,4 +140,4 @@ ModelData ModelLoader::loadOBJ(const char* path)
     return result;
 }
 
-} 
+}
