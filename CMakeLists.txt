@@ -133,6 +133,10 @@ include(cmake/FetchGlad.cmake)
 find_package(OpenGL REQUIRED)
 set(_gdm_defs GDM_HAS_OPENGL)
 
+
+# measure start time for dependency fetching and generation
+string(TIMESTAMP START_TIME "%s")
+
 # -----------------------
 # Window backend (GLFW, FreeGLUT)
 # -----------------------
@@ -350,6 +354,11 @@ else()
     add_library(gdm_math INTERFACE)
     add_library(gdm::math ALIAS gdm_math)
 endif()
+
+# measure end time for dependency fetching and generation
+string(TIMESTAMP END_TIME "%s")
+math(EXPR ELAPSED_TIME "${END_TIME} - ${START_TIME}")
+message(STATUS "[GDM] Resolving dependencies took ${ELAPSED_TIME} seconds")
 
 # -----------------------
 # deps
