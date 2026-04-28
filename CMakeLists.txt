@@ -57,8 +57,43 @@ endif()
 
 if (GDM_GL_LOADER STREQUAL "glad")
     set(GDM_GLAD_VERSION "2.0.6" CACHE STRING "GLAD version")
-    set(GDM_GLAD_API "gl:core=4.6" CACHE STRING "GLAD API parameter")
+    set(GDM_GLAD_API "4.6" CACHE STRING "GLAD GL API version (e.g. 4.6)")
+    set(GDM_GLAD_PROFILE "core" CACHE STRING "GLAD GL profile")
+    set_property(CACHE GDM_GLAD_PROFILE PROPERTY STRINGS core compatibility)
+
+    set(_GDM_GLAD_EXT_DEFAULT_LT43
+        "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
+    )
+    set(_GDM_GLAD_EXT_DEFAULT_GE43
+        "GL_EXT_texture_compression_s3tc"
+    )
+
+    if (GDM_GLAD_API VERSION_LESS "4.3")
+        set(_GDM_GLAD_EXTENSION_DEFAULT "${_GDM_GLAD_EXT_DEFAULT_LT43}")
+    else()
+        set(_GDM_GLAD_EXTENSION_DEFAULT "${_GDM_GLAD_EXT_DEFAULT_GE43}")
+    endif()
+
+    # Auto-update default when API version changes,
+    # but keep user-custom extension list untouched.
+    if (NOT DEFINED GDM_GLAD_EXTENSION
+        OR GDM_GLAD_EXTENSION STREQUAL ""
+        OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXT_DEFAULT_LT43}"
+        OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXT_DEFAULT_GE43}")
+        set(GDM_GLAD_EXTENSION "${_GDM_GLAD_EXTENSION_DEFAULT}" CACHE STRING
+            "Additional GL extensions for glad (semicolon-separated list)" FORCE
+        )
+    endif()
+
+    unset(_GDM_GLAD_EXT_DEFAULT_LT43)
+    unset(_GDM_GLAD_EXT_DEFAULT_GE43)
+    unset(_GDM_GLAD_EXTENSION_DEFAULT)
+
     option(GDM_FORCE_GEN_GLAD "Force generate GLAD using CMake/Python" OFF)
+
+elseif (GDM_GL_LOADER STREQUAL "glew")
+    set(GDM_GLEW_VERSION "2.3.1" CACHE STRING "GLEW version")
+    option(GDM_GLEW_STATIC "Use static GLEW when available" ON)
 endif()
 
 # Clean up stale cache variables when provider selection changes
@@ -77,16 +112,26 @@ endif()
 if (NOT GDM_GL_LOADER STREQUAL "glad")
     unset(GDM_GLAD_VERSION CACHE)
     unset(GDM_GLAD_API CACHE)
+    unset(GDM_GLAD_PROFILE CACHE)
+    unset(GDM_GLAD_EXTENSION CACHE)
     unset(GDM_FORCE_GEN_GLAD CACHE)
 endif()
 
+if (NOT GDM_GL_LOADER STREQUAL "glew")
+    unset(GDM_GLEW_VERSION CACHE)
+    unset(GDM_GLEW_STATIC CACHE)
+endif()
+unset(GDM_GLEW_LINK_TYPE CACHE)
+
 # For dependencies
 include(cmake/Dependencies.cmake)
+include(cmake/FetchGlad.cmake)
 
 # -----------------------
 # OpenGL (system)
 # -----------------------
 find_package(OpenGL REQUIRED)
+set(_gdm_defs GDM_HAS_OPENGL)
 
 # -----------------------
 # Window backend (GLFW, FreeGLUT)
@@ -94,6 +139,7 @@ find_package(OpenGL REQUIRED)
 if (GDM_WINDOW_BACKEND STREQUAL "none")
     add_library(gdm_window INTERFACE)
     add_library(gdm::window ALIAS gdm_window)
+    list(APPEND _gdm_defs GDM_HAS_WINDOW_NONE)
 elseif (GDM_WINDOW_BACKEND STREQUAL "glfw")
     # Derive git tag from version (strip trailing .0)
     set(GDM_GLFW_GIT_TAG ${GDM_GLFW_VERSION})
@@ -113,11 +159,14 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "glfw")
         CANDIDATE_TARGETS glfw glfw3
     )
 
-    foreach(t glfw glfw3)
-        if(TARGET ${t})
-            target_compile_options(${t} PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-        endif()
-    endforeach()
+    if (MSVC)
+        foreach(t glfw glfw3)
+            if(TARGET ${t})
+                target_compile_options(${t} PRIVATE "/utf-8")
+            endif()
+        endforeach()
+    endif()
+    list(APPEND _gdm_defs GDM_HAS_GLFW)
 elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
     set(GDM_FREEGLUT_GIT_TAG "v${GDM_FREEGLUT_VERSION}")
 
@@ -131,8 +180,9 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
         ALIAS_TARGET gdm::window
         CANDIDATE_TARGETS freeglut freeglut_static freeglut::freeglut freeglut::freeglut_static
     )
+    list(APPEND _gdm_defs GDM_HAS_FREEGLUT)
 else()
-    message(FATAL_ERROR "[GDM} Unsupported GDM_WINDOW_BACKEND: ${GDM_WINDOW_BACKEND}")
+    message(FATAL_ERROR "[GDM] Unsupported GDM_WINDOW_BACKEND: ${GDM_WINDOW_BACKEND}")
 endif()
 
 # -----------------------
@@ -142,6 +192,7 @@ endif()
 if (GDM_GL_LOADER STREQUAL "none")
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
+    list(APPEND _gdm_defs GDM_HAS_LOADER_NONE)
 elseif (GDM_GL_LOADER STREQUAL "glad")
     include(FetchContent)
 
@@ -149,11 +200,36 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
     set(GDM_GLAD_DEBUG_DIR ${GDM_EXTERNAL_DIR}/glad_debug)
     set(GDM_GLAD_RELEASE_DIR ${GDM_EXTERNAL_DIR}/glad_release)
     set(GDM_GLAD_SINGLE_DIR ${GDM_EXTERNAL_DIR}/glad)
-    string(FIND "${GDM_GLAD_API}" "gl:core=" GDM_GLAD_IS_GLCORE)
 
     if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
-        message(STATUS "[GDM} Found installed glad_debug and glad_release")
+        message(STATUS "[GDM] Found installed glad_debug and glad_release")
 
+    elseif (EXISTS ${GDM_GLAD_SINGLE_DIR}/src/gl.c)
+        message(STATUS "[GDM] Found installed single glad")
+
+    else()
+        message(STATUS "[GDM] Fetching glad debug/release mode")
+        fetch_glad(
+            OUT_VAR _glad_debug_src
+            NAME glad_debug_remote
+            DEST_DIR ${GDM_GLAD_DEBUG_DIR}
+            APIS "gl=${GDM_GLAD_API}"
+            PROFILES "gl=${GDM_GLAD_PROFILE}"
+            OPTIONS DEBUG
+            EXTENSIONS ${GDM_GLAD_EXTENSION}
+        )
+
+        fetch_glad(
+            OUT_VAR _glad_release_src
+            NAME glad_release_remote
+            DEST_DIR ${GDM_GLAD_RELEASE_DIR}
+            APIS "gl=${GDM_GLAD_API}"
+            PROFILES "gl=${GDM_GLAD_PROFILE}"
+            EXTENSIONS ${GDM_GLAD_EXTENSION}
+        )
+    endif()
+
+    if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
         add_library(gdm_glad_debug STATIC
             ${GDM_GLAD_DEBUG_DIR}/src/gl.c
         )
@@ -169,7 +245,6 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         )
 
     elseif (EXISTS ${GDM_GLAD_SINGLE_DIR}/src/gl.c)
-        message(STATUS "[GDM} Found installed single glad")
 
         add_library(gdm_glad_single STATIC
             ${GDM_GLAD_SINGLE_DIR}/src/gl.c
@@ -182,94 +257,8 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         add_library(gdm_glad_release INTERFACE)
         target_link_libraries(gdm_glad_debug INTERFACE gdm_glad_single)
         target_link_libraries(gdm_glad_release INTERFACE gdm_glad_single)
-
-    elseif (GDM_GLAD_IS_GLCORE EQUAL 0)
-        string(REGEX MATCH "([0-9]+\\.[0-9]+)$" GDM_GLAD_VERSION_MATCH ${GDM_GLAD_API})
-        set(GDM_GLAD_API_VERSION ${CMAKE_MATCH_1})
-
-        if (GDM_GLAD_API MATCHES "^gl:core=3\\.[0-3]$" OR GDM_GLAD_API MATCHES "^gl:core=[0-2]\\.[0-9]+$")
-            set(GDM_GLAD_PREGEN_VERSION "3.3")
-        else()
-            set(GDM_GLAD_PREGEN_VERSION "4.6")
-        endif()
-
-        message(STATUS "[GDM] Fetching pre-generated glad ${GDM_GLAD_PREGEN_VERSION}")
-
-        set(GDM_RELEASE_BASE_URL "https://github.com/awidesky/gdm/releases/download/v0.0.1")
-
-        FetchContent_Declare(
-            glad_debug_pregen
-            URL ${GDM_RELEASE_BASE_URL}/glad.${GDM_GLAD_PREGEN_VERSION}_debug.zip
-            SOURCE_DIR ${GDM_GLAD_DEBUG_DIR}
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        )
-        FetchContent_Declare(
-            glad_release_pregen
-            URL ${GDM_RELEASE_BASE_URL}/glad.${GDM_GLAD_PREGEN_VERSION}_release.zip
-            SOURCE_DIR ${GDM_GLAD_RELEASE_DIR}
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        )
-
-        if (NOT EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c)
-            FetchContent_MakeAvailable(glad_debug_pregen)
-        endif()
-
-        if (NOT EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
-            FetchContent_MakeAvailable(glad_release_pregen)
-        endif()
-
-        add_library(gdm_glad_debug STATIC
-            ${glad_debug_pregen_SOURCE_DIR}/src/gl.c
-        )
-        target_include_directories(gdm_glad_debug PUBLIC
-            ${glad_debug_pregen_SOURCE_DIR}/include
-        )
-
-        add_library(gdm_glad_release STATIC
-            ${glad_release_pregen_SOURCE_DIR}/src/gl.c
-        )
-        target_include_directories(gdm_glad_release PUBLIC
-            ${glad_release_pregen_SOURCE_DIR}/include
-        )
-
     else()
-        if (GDM_FORCE_GEN_GLAD)
-            message(STATUS "[GDM} Force-generating GLAD")
-
-            find_package(Python3 REQUIRED)
-
-            FetchContent_Declare(
-                glad
-                URL https://github.com/Dav1dde/glad/archive/v${GDM_GLAD_VERSION}.zip
-                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            )
-            FetchContent_GetProperties(glad)
-            if (NOT glad_POPULATED)
-                FetchContent_Populate(glad)
-                add_subdirectory(${glad_SOURCE_DIR}/cmake ${glad_BINARY_DIR})
-            endif()
-
-            glad_add_library(gdm_glad_debug
-                STATIC
-                API ${GDM_GLAD_API}
-                LANGUAGE c
-                OPTIONS DEBUG
-            )
-
-            glad_add_library(gdm_glad_release
-                STATIC
-                API ${GDM_GLAD_API}
-                LANGUAGE c
-            )
-        else()
-            message(FATAL_ERROR
-                "[GDM} If you want custom glad loader other than OpenGL core, you might want to generate it yourself.\n"
-                "[GDM} Generating glad with cmake is tricky and requires Python3 and jinja2\n"
-                "[GDM} Generate glad with your configuration in https://gen.glad.sh and place \"glad\" folder in \"external\" directory.\n"
-                "[GDM} If you place both \"glad_debug\" and \"glad_release\", GDM will link \"glad_debug\" if build configuration is Debug and \"glad_release\" if otherwise\n"
-                "[GDM} If you want GDM to generate glad via CMake and Python, set GDM_FORCE_GEN_GLAD ON"
-            )
-        endif()
+        message(FATAL_ERROR "[GDM] glad source was not generated correctly.")
     endif()
 
     add_library(gdm_loader INTERFACE)
@@ -279,14 +268,55 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         $<$<CONFIG:Debug>:gdm_glad_debug>
         $<$<NOT:$<CONFIG:Debug>>:gdm_glad_release>
     )
+    list(APPEND _gdm_defs GDM_HAS_GLAD)
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
-    find_package(GLEW REQUIRED)
+    set(GLEW_USE_STATIC_LIBS ${GDM_GLEW_STATIC})
+
+    # Prefer system-installed GLEW package first.
+    find_package(GLEW QUIET)
+
+    if (TARGET GLEW::GLEW)
+        message(STATUS "[GDM] Found installed GLEW target: GLEW::GLEW")
+    else()
+        # Fallback to fetching glew-cmake.
+        set(GDM_GLEW_GIT_TAG "glew-cmake-${GDM_GLEW_VERSION}")
+
+        # Configure glew-cmake to build only libs (no glewinfo/visualinfo)
+        set(ONLY_LIBS ON CACHE BOOL "" FORCE)
+
+        if (GDM_GLEW_STATIC)
+            set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+            set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
+            set(_GDM_GLEW_CANDIDATES libglew_static libglew_shared GLEW::GLEW)
+        else()
+            set(glew-cmake_BUILD_SHARED ON CACHE BOOL "" FORCE)
+            set(glew-cmake_BUILD_STATIC OFF CACHE BOOL "" FORCE)
+            set(_GDM_GLEW_CANDIDATES libglew_shared libglew_static GLEW::GLEW)
+        endif()
+
+        use_or_fetch_package(
+            NAME glew-cmake
+            VERSION ${GDM_GLEW_VERSION}
+            GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
+            GIT_TAG ${GDM_GLEW_GIT_TAG}
+            ALIAS_TARGET GLEW::GLEW
+            CANDIDATE_TARGETS ${_GDM_GLEW_CANDIDATES}
+        )
+
+        unset(_GDM_GLEW_CANDIDATES)
+    endif()
+
+    if (NOT TARGET GLEW::GLEW)
+        message(FATAL_ERROR "[GDM] Failed to resolve GLEW target (expected GLEW::GLEW).")
+    endif()
+
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
     target_link_libraries(gdm_loader INTERFACE GLEW::GLEW)
+    list(APPEND _gdm_defs GDM_HAS_GLEW)
 else()
-    message(FATAL_ERROR "[GDM} Unsupported GDM_GL_LOADER: ${GDM_GL_LOADER}")
+    message(FATAL_ERROR "[GDM] Unsupported GDM_GL_LOADER: ${GDM_GL_LOADER}")
 endif()
 
 if (TARGET gdm_glad_debug)
@@ -315,6 +345,7 @@ if (GDM_USE_GLM)
     add_library(gdm_math INTERFACE)
     add_library(gdm::math ALIAS gdm_math)
     target_link_libraries(gdm_math INTERFACE glm::glm)
+    list(APPEND _gdm_defs GDM_HAS_GLM)
 else()
     add_library(gdm_math INTERFACE)
     add_library(gdm::math ALIAS gdm_math)
@@ -334,12 +365,18 @@ target_link_libraries(gdm_deps
         gdm::math
 )
 
+set_property(TARGET gdm_deps PROPERTY INTERFACE_COMPILE_DEFINITIONS "")
+
 # -----------------------
 # GLUtil (internal, optional)
 # -----------------------
 if (GDM_USE_GLUTIL)
     add_subdirectory(external/glutil)
+    list(APPEND _gdm_defs GDM_HAS_GLUTIL)
 endif()
+
+target_compile_definitions(gdm_deps INTERFACE ${_gdm_defs})
+unset(_gdm_defs)
 
 # -----------------------
 # meta target (for user)

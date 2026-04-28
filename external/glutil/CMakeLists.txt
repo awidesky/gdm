@@ -26,8 +26,11 @@ target_sources(glutil
       include/glutil/shader.hpp
       include/glutil/inspector.hpp
       include/glutil/glutil.hpp
+      include/glutil/path.hpp
+      include/glutil/math.hpp
       include/glutil/logging.hpp
       include/glutil/texture.hpp
+      include/glutil/model.hpp
 )
 
 target_sources(glutil
@@ -37,9 +40,11 @@ target_sources(glutil
     src/glutil.cpp
     src/logging.cpp
     src/texture.cpp
+    src/model.cpp
 
     src/stb_image.h
     src/dds-ktx.h
+    src/tiny_obj_loader.h
 )
 
 target_include_directories(glutil PRIVATE
@@ -56,57 +61,78 @@ target_compile_features(glutil PRIVATE cxx_std_17)
 
 # Tests (only when GDM is standalone project)
 if (GDM_BUILD_TESTS)
-  add_executable(glutil_shaderTest)
-  target_sources(glutil_shaderTest
-        PRIVATE test/shaderTest.cpp
-  )
-  target_include_directories(glutil_shaderTest
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_shaderTest PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_shaderTest PRIVATE cxx_std_17)
-  target_compile_options(glutil_shaderTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_shaderTest PROPERTIES
-        FOLDER "GLUTIL_Tests"
-  )
-  add_test(NAME ShaderTest COMMAND glutil_shaderTest)
+  if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM_USE_GLM)
+    add_executable(glutil_shaderTest)
+    target_sources(glutil_shaderTest
+          PRIVATE test/shaderTest.cpp
+    )
+    target_include_directories(glutil_shaderTest
+          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    target_link_libraries(glutil_shaderTest PRIVATE
+          glutil
+          gdm::gdm
+    )
+    target_compile_features(glutil_shaderTest PRIVATE cxx_std_17)
+    target_compile_options(glutil_shaderTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    set_target_properties(glutil_shaderTest PROPERTIES
+          FOLDER "GLUTIL_Tests"
+    )
+    add_test(NAME ShaderTest COMMAND glutil_shaderTest)
 
-  add_executable(glutil_encodingCheckBenchMark)
-  target_sources(glutil_encodingCheckBenchMark
-        PRIVATE test/encodingCheck.cpp
-  )
-  target_include_directories(glutil_encodingCheckBenchMark
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_compile_definitions(glutil_encodingCheckBenchMark PRIVATE GLUTIL_ENABLE_BENCHMARKS)
-  target_link_libraries(glutil_encodingCheckBenchMark PRIVATE
-        glutil gdm::gdm
-  )
-  target_compile_features(glutil_encodingCheckBenchMark PRIVATE cxx_std_17)
-  target_compile_options(glutil_encodingCheckBenchMark PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_encodingCheckBenchMark PROPERTIES
-        FOLDER "GLUTIL_Tests"
-  )
-  add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
+    add_executable(glutil_encodingCheckBenchMark)
+    target_sources(glutil_encodingCheckBenchMark
+          PRIVATE test/encodingCheck.cpp
+    )
+    target_include_directories(glutil_encodingCheckBenchMark
+          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    target_compile_definitions(glutil_encodingCheckBenchMark PRIVATE GLUTIL_ENABLE_BENCHMARKS)
+    target_link_libraries(glutil_encodingCheckBenchMark PRIVATE
+          glutil gdm::gdm
+    )
+    target_compile_features(glutil_encodingCheckBenchMark PRIVATE cxx_std_17)
+    target_compile_options(glutil_encodingCheckBenchMark PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    set_target_properties(glutil_encodingCheckBenchMark PROPERTIES
+          FOLDER "GLUTIL_Tests"
+    )
+    add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
 
-  add_executable(glutil_textureTest)
-  target_sources(glutil_textureTest
-        PRIVATE test/textureTest.cpp
-  )
-  target_include_directories(glutil_textureTest
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_textureTest PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_textureTest PRIVATE cxx_std_17)
-  target_compile_options(glutil_textureTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_textureTest PROPERTIES
-        FOLDER "GLUTIL_Tests"
-  )
-  add_test(NAME TextureTest COMMAND glutil_textureTest)
+    add_executable(glutil_textureTest)
+    target_sources(glutil_textureTest
+          PRIVATE test/textureTest.cpp
+    )
+    target_include_directories(glutil_textureTest
+          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    target_link_libraries(glutil_textureTest PRIVATE
+          glutil
+          gdm::gdm
+    )
+    target_compile_features(glutil_textureTest PRIVATE cxx_std_17)
+    target_compile_options(glutil_textureTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    set_target_properties(glutil_textureTest PROPERTIES
+          FOLDER "GLUTIL_Tests"
+    )
+    add_test(NAME TextureTest COMMAND glutil_textureTest)
+    add_executable(glutil_modelTest)
+    target_sources(glutil_modelTest
+          PRIVATE test/modelTest.cpp
+    )
+    target_include_directories(glutil_modelTest
+          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    target_link_libraries(glutil_modelTest PRIVATE
+          glutil
+          gdm::gdm
+    )
+    target_compile_features(glutil_modelTest PRIVATE cxx_std_17)
+    target_compile_options(glutil_modelTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    set_target_properties(glutil_modelTest PROPERTIES
+          FOLDER "GLUTIL_Tests"
+    )
+    add_test(NAME ModelTest COMMAND glutil_modelTest)
+  else()
+    message(STATUS "[glutil] Tests skipped: require GDM_WINDOW_BACKEND=glfw, GDM_GL_LOADER=glad, and GDM_USE_GLM=ON")
+  endif()
 endif()

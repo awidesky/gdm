@@ -1,7 +1,22 @@
+#ifdef GDM_HAS_GLEW
+#include <GL/glew.h>
+#endif
+
+#ifdef GDM_HAS_GLAD
 #include <glad/gl.h>
+#endif
+
+#ifdef GDM_HAS_GLFW
 #include <GLFW/glfw3.h>
+#elif defined(GDM_HAS_FREEGLUT)
+#include <GL/freeglut.h>
+#endif
+
+#ifdef GDM_HAS_GLM
 #include <glm/glm.hpp>
-#if GDM_HAS_GLUTIL
+#endif
+
+#ifdef GDM_HAS_GLUTIL
 #include <glutil/glutil.hpp>
 #endif
 
@@ -11,14 +26,24 @@
 
 namespace {
 
+#ifdef GDM_HAS_FREEGLUT
+bool g_shouldClose = false;
+
+void onFreeglutKeyboard(unsigned char key, int, int) {
+    if (key == 27) {
+        g_shouldClose = true;
+    }
+}
+#endif
+
 GLuint compileShader(GLenum type, const char* source) {
     const GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
 
-#if GDM_HAS_GLUTIL
+#ifdef GDM_HAS_GLUTIL
     const glutil::InspectResult result = glutil::Inspector::shaderCompileResult(shader);
-    if (result.ok == true) {
+    if (result.ok) {
         return shader;
     }
 
@@ -36,6 +61,7 @@ GLuint compileShader(GLenum type, const char* source) {
     glGetShaderInfoLog(shader, length, nullptr, log.data());
     std::cerr << "Shader compile failed:\n" << log << std::endl;
 #endif
+
     glDeleteShader(shader);
     return 0;
 }
@@ -79,9 +105,9 @@ void main() {
     glDeleteShader(vs);
     glDeleteShader(fs);
 
-#if GDM_HAS_GLUTIL
+#ifdef GDM_HAS_GLUTIL
     const glutil::InspectResult result = glutil::Inspector::programLinkResult(program);
-    if (result.ok == true) {
+    if (result.ok) {
         return program;
     }
 
@@ -99,25 +125,110 @@ void main() {
     glGetProgramInfoLog(program, length, nullptr, log.data());
     std::cerr << "Program link failed:\n" << log << std::endl;
 #endif
+
     glDeleteProgram(program);
     return 0;
 }
 
-void printOpenGLInfo() {
+void printRuntimeInfo() {
+    std::cout << "=== Runtime Dependency Info ===\n";
+
+#ifdef GDM_HAS_GLFW
+    int major = 0;
+    int minor = 0;
+    int rev = 0;
+    glfwGetVersion(&major, &minor, &rev);
+    std::cout << "[GLFW] version: " << major << "." << minor << "." << rev
+              << ", string: " << glfwGetVersionString() << "\n";
+#endif
+
+#ifdef GDM_HAS_FREEGLUT
+    const int glutVersion = glutGet(GLUT_VERSION); // ex: 30400 = 3.4.0
+    std::cout << "[FreeGLUT] GLUT_VERSION(raw): " << glutVersion << "\n";
+#endif
+
+#ifdef GDM_HAS_GLEW
+    const GLubyte* glewVer = glewGetString(GLEW_VERSION);
+    std::cout << "[GLEW] version: " << (glewVer ? reinterpret_cast<const char*>(glewVer) : "(null)") << "\n";
+#endif
+
+#ifdef GDM_HAS_GLAD
+    std::cout << "[GLAD] Generator version : " << GLAD_GENERATOR_VERSION << ", Debug option "
+    #ifdef GLAD_OPTION_GL_DEBUG
+        << "ON"
+    #else
+        << "OFF"
+    #endif
+    << "\n";
+#endif
+
+#ifdef GDM_HAS_GLM
+    std::cout << "[GLM]  version: "
+              << GLM_VERSION_MAJOR << "."
+              << GLM_VERSION_MINOR << "."
+              << GLM_VERSION_PATCH << "."
+              << GLM_VERSION_REVISION << "\n";
+#endif
+
+#ifdef GDM_HAS_GLUTIL
+    // TODO : print glutil version
+    std::cout << "[GLUtil] enabled (Inspector API available)\n";
+#else
+    std::cout << "[GLUtil] disabled\n";
+#endif
+    std::cout << "\n";
+
     const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     const char* slVersion = reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
     const char* vendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
     const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
 
-    std::cout << "OpenGL connection : " << (version ? version : "(null)") << '\n';
-    std::cout << "GLSL language version : " << (slVersion ? slVersion : "(null)") << '\n';
-    std::cout << "Vendor : " << (vendor ? vendor : "(null)")
-              << ", Renderer : " << (renderer ? renderer : "(null)") << std::endl;
+    std::cout << "[OpenGL] version: " << (version ? version : "(null)") << "\n";
+    std::cout << "[OpenGL] GLSL: " << (slVersion ? slVersion : "(null)") << "\n";
+    std::cout << "[OpenGL] vendor: " << (vendor ? vendor : "(null)")
+              << ", renderer: " << (renderer ? renderer : "(null)") << "\n";
+    std::cout << "===============================\n";
+}
+
+bool initializeLoader() {
+#ifdef GDM_HAS_GLAD
+    int gladVersion = 0;
+    #ifdef GDM_HAS_GLFW
+    gladVersion = gladLoadGL(glfwGetProcAddress);
+    #elif defined(GDM_HAS_FREEGLUT)
+    gladVersion = gladLoadGL(reinterpret_cast<GLADloadfunc>(glutGetProcAddress));
+    #endif
+
+    if (gladVersion == 0) {
+        std::cerr << "Failed to initialize GLAD context." << std::endl;
+        return false;
+    }
+
+    std::cout << "GLAD loaded OpenGL: "
+              << GLAD_VERSION_MAJOR(gladVersion) << "."
+              << GLAD_VERSION_MINOR(gladVersion) << std::endl;
+    return true;
+#elif defined(GDM_HAS_GLEW)
+    glewExperimental = GL_TRUE;
+    const GLenum glewErr = glewInit();
+    std::cout << "GLEW init : " << glewGetErrorString(glewErr) << std::endl;
+    if (glewErr != GLEW_OK) {
+        std::cerr << "Failed to initialize GLEW: "
+                  << reinterpret_cast<const char*>(glewGetErrorString(glewErr))
+                  << std::endl;
+        return false;
+    }
+    return true;
+#else
+    std::cerr << "No loader selected. (expected GLAD or GLEW)" << std::endl;
+    return false;
+#endif
 }
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+#ifdef GDM_HAS_GLFW
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return 1;
@@ -139,21 +250,39 @@ int main() {
 
     glfwMakeContextCurrent(window);
 
-    const int gladVersion = gladLoadGL(glfwGetProcAddress);
-    if (gladVersion == 0) {
-        std::cerr << "Failed to initialize OpenGL context!" << std::endl;
-        glfwDestroyWindow(window);
-        glfwTerminate();
+#elif defined(GDM_HAS_FREEGLUT)
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutInitContextVersion(3, 3);
+#ifdef GLUT_CORE_PROFILE
+    glutInitContextProfile(GLUT_CORE_PROFILE);
+#endif
+
+    const int window = glutCreateWindow("GDM Example 1 - Hello Window");
+    if (window <= 0) {
+        std::cerr << "Failed to create FreeGLUT window" << std::endl;
         return 1;
     }
 
-    std::cout << "GLAD loaded OpenGL : "
-              << GLAD_VERSION_MAJOR(gladVersion) << "."
-              << GLAD_VERSION_MINOR(gladVersion) << std::endl;
-    printOpenGLInfo();
-#if GDM_HAS_GLUTIL
-    //glutil::test();
+    glutKeyboardFunc(onFreeglutKeyboard);
+
+#else
+    std::cerr << "No window backend selected. (expected GLFW or FreeGLUT)" << std::endl;
+    return 1;
 #endif
+
+    if (!initializeLoader()) {
+#ifdef GDM_HAS_GLFW
+        glfwDestroyWindow(window);
+        glfwTerminate();
+#elif defined(GDM_HAS_FREEGLUT)
+        glutDestroyWindow(glutGetWindow());
+#endif
+        return 1;
+    }
+
+    printRuntimeInfo();
 
     const std::array<float, 18> vertices = {
         -0.5f, -0.5f, 0.0f, 1.0f, 0.2f, 0.2f,
@@ -179,13 +308,26 @@ int main() {
     if (program == 0) {
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
+#ifdef GDM_HAS_GLFW
         glfwDestroyWindow(window);
         glfwTerminate();
+#elif defined(GDM_HAS_FREEGLUT)
+        glutDestroyWindow(glutGetWindow());
+#endif
         return 1;
     }
 
+#ifdef GDM_HAS_GLM
     const glm::vec3 clearColor(0.0f, 0.0f, 0.4f);
+#else
+    struct {
+        float r;
+        float g;
+        float b;
+    } clearColor = {0.0f, 0.0f, 0.4f};
+#endif
 
+#ifdef GDM_HAS_GLFW
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -198,11 +340,31 @@ int main() {
 
         glfwSwapBuffers(window);
     }
+#elif defined(GDM_HAS_FREEGLUT)
+    while (!g_shouldClose) {
+        glutMainLoopEvent();
+
+        glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glUseProgram(program);
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glutSwapBuffers();
+    }
+#endif
 
     glDeleteProgram(program);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
+
+#ifdef GDM_HAS_GLFW
     glfwDestroyWindow(window);
     glfwTerminate();
+#elif defined(GDM_HAS_FREEGLUT)
+    glutDestroyWindow(glutGetWindow());
+#endif
+
     return 0;
 }
