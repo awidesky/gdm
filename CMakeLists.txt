@@ -47,6 +47,7 @@ option(GDM_USE_GLM "Enable GLM support" ON)
 # Create version/config cache variables only for selected dependencies
 if (GDM_WINDOW_BACKEND STREQUAL "glfw")
     set(GDM_GLFW_VERSION "3.4.0" CACHE STRING "GLFW version")
+    find_package(Threads REQUIRED) # pre-find threads
 elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
     set(GDM_FREEGLUT_VERSION "3.8.0" CACHE STRING "FreeGLUT version")
 endif()
