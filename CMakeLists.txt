@@ -34,9 +34,9 @@ set_property(CACHE GDM_WINDOW_BACKEND
     PROPERTY STRINGS none glfw freeglut)
 
 set(GDM_GL_LOADER "glad" CACHE STRING
-    "OpenGL loader: none, glad, or glew")
+    "OpenGL loader: none, glad, or glew glew-glad(glad wrapped by glew. gives glew interface but use glad internally for debug feature)")
 set_property(CACHE GDM_GL_LOADER
-    PROPERTY STRINGS none glad glew)
+    PROPERTY STRINGS none glad glew glew-glad)
 
 option(GDM_USE_GLM "Enable GLM support" ON)
 
@@ -90,11 +90,14 @@ if (GDM_GL_LOADER STREQUAL "glad")
     unset(_GDM_GLAD_EXT_DEFAULT_GE43)
     unset(_GDM_GLAD_EXTENSION_DEFAULT)
 
-    option(GDM_FORCE_GEN_GLAD "Force generate GLAD using CMake/Python" OFF)
-
 elseif (GDM_GL_LOADER STREQUAL "glew")
     set(GDM_GLEW_VERSION "2.3.1" CACHE STRING "GLEW version")
     option(GDM_GLEW_STATIC "Use static GLEW when available" ON)
+
+elseif (GDM_GL_LOADER STREQUAL "glew-glad")
+    # GLEW (public interface) + GLAD (actual GL entrypoints via fetch_glad_allEXT)
+    set(GDM_GLEW_VERSION "2.3.1" CACHE STRING "GLEW version")
+
 endif()
 
 # Clean up stale cache variables when provider selection changes
@@ -118,11 +121,10 @@ if (NOT GDM_GL_LOADER STREQUAL "glad")
     unset(GDM_FORCE_GEN_GLAD CACHE)
 endif()
 
-if (NOT GDM_GL_LOADER STREQUAL "glew")
+if (NOT (GDM_GL_LOADER STREQUAL "glew" OR GDM_GL_LOADER STREQUAL "glew-glad"))
     unset(GDM_GLEW_VERSION CACHE)
     unset(GDM_GLEW_STATIC CACHE)
 endif()
-unset(GDM_GLEW_LINK_TYPE CACHE)
 
 # For dependencies
 include(cmake/Dependencies.cmake)
@@ -193,15 +195,13 @@ endif()
 # -----------------------
 # OpenGL loader (GLAD, GLEW)
 # -----------------------
+set(GDM_EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
 if (GDM_GL_LOADER STREQUAL "none")
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
     list(APPEND _gdm_defs GDM_HAS_LOADER_NONE)
 elseif (GDM_GL_LOADER STREQUAL "glad")
-    include(FetchContent)
-
-    set(GDM_EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
     set(GDM_GLAD_DEBUG_DIR ${GDM_EXTERNAL_DIR}/glad_debug)
     set(GDM_GLAD_RELEASE_DIR ${GDM_EXTERNAL_DIR}/glad_release)
     set(GDM_GLAD_SINGLE_DIR ${GDM_EXTERNAL_DIR}/glad)
@@ -276,6 +276,9 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
     list(APPEND _gdm_defs GDM_HAS_GLAD)
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
+    if (GDM_WINDOW_BACKEND STREQUAL "none")
+        message(FATAL_ERROR "[GDM] GDM_GL_LOADER=glew-glad requires GDM_WINDOW_BACKEND=glfw or freeglut.")
+    endif()
     set(GLEW_USE_STATIC_LIBS ${GDM_GLEW_STATIC})
 
     # Prefer system-installed GLEW package first.
@@ -320,6 +323,186 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
     add_library(gdm::loader ALIAS gdm_loader)
     target_link_libraries(gdm_loader INTERFACE GLEW::GLEW)
     list(APPEND _gdm_defs GDM_HAS_GLEW)
+
+elseif (GDM_GL_LOADER STREQUAL "glew-glad")
+    # Dedicated GLAD dirs for glew-glad (ALL extensions, gl=4.6 core)
+    set(GDM_GLAD_ALLEXT_DEBUG_DIR   ${GDM_EXTERNAL_DIR}/glad_ALLEXT_debug)
+    set(GDM_GLAD_ALLEXT_RELEASE_DIR ${GDM_EXTERNAL_DIR}/glad_ALLEXT_release)
+
+    if (EXISTS ${GDM_GLAD_ALLEXT_DEBUG_DIR}/src/gl.c
+        AND EXISTS ${GDM_GLAD_ALLEXT_RELEASE_DIR}/src/gl.c)
+        message(STATUS "[GDM] Found installed glad_ALLEXT_debug and glad_ALLEXT_release")
+    else()
+        message(STATUS "[GDM] Fetching glad (ALL extensions) for glew-glad debug/release mode")
+
+        fetch_glad_allEXT(
+            OUT_VAR _glad_allex_debug_src
+            NAME glad_allex_debug_remote
+            DEST_DIR ${GDM_GLAD_ALLEXT_DEBUG_DIR}
+            GLAD_OPTIONS DEBUG
+        )
+
+        fetch_glad_allEXT(
+            OUT_VAR _glad_allex_release_src
+            NAME glad_allex_release_remote
+            DEST_DIR ${GDM_GLAD_ALLEXT_RELEASE_DIR}
+        )
+    endif()
+
+    if (NOT EXISTS ${GDM_GLAD_ALLEXT_DEBUG_DIR}/src/gl.c
+        OR NOT EXISTS ${GDM_GLAD_ALLEXT_RELEASE_DIR}/src/gl.c)
+        message(FATAL_ERROR "[GDM] glad_ALLEXT source was not generated correctly (glew-glad).")
+    endif()
+
+    add_library(gdm_glad_allext_debug STATIC
+        ${GDM_GLAD_ALLEXT_DEBUG_DIR}/src/gl.c
+    )
+    target_include_directories(gdm_glad_allext_debug PUBLIC
+        ${GDM_GLAD_ALLEXT_DEBUG_DIR}/include
+    )
+
+    add_library(gdm_glad_allext_release STATIC
+        ${GDM_GLAD_ALLEXT_RELEASE_DIR}/src/gl.c
+    )
+    target_include_directories(gdm_glad_allext_release PUBLIC
+        ${GDM_GLAD_ALLEXT_RELEASE_DIR}/include
+    )
+
+    # GLEW (always fetch from glew-cmake for glew-glad)
+    set(GDM_GLEW_GIT_TAG "glew-cmake-${GDM_GLEW_VERSION}")
+
+    # Configure glew-cmake to build only libs (no glewinfo/visualinfo)
+    set(ONLY_LIBS ON CACHE BOOL "" FORCE)
+
+    set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
+
+    use_or_fetch_package(
+        NAME glew-cmake
+        VERSION ${GDM_GLEW_VERSION}
+        GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
+        GIT_TAG ${GDM_GLEW_GIT_TAG}
+        CANDIDATE_TARGETS libglew_static
+    )
+    if (NOT TARGET libglew_static)
+        message(FATAL_ERROR "[GDM] Failed to resolve glew-cmake target for glew-glad.")
+    endif()
+
+    # Generate shim headers (fake GL/glew.h + undefGls.h)
+    get_target_property(_gdm_glew_includes libglew_static INTERFACE_INCLUDE_DIRECTORIES)
+    if (NOT _gdm_glew_includes)
+        message(FATAL_ERROR "[GDM] Could not get include dirs from libglew_static")
+    endif()
+
+    # Find the directory that contains GL/glew.h
+    set(_gdm_real_glew_root "")
+    foreach(inc IN LISTS _gdm_glew_includes)
+        if (EXISTS "${inc}/GL/glew.h")
+            set(_gdm_real_glew_root "${inc}")
+            break()
+        endif()
+    endforeach()
+    if (NOT _gdm_real_glew_root)
+        message(FATAL_ERROR "[GDM] Could not locate real GL/glew.h from libglew_static include dirs: ${_gdm_glew_includes}")
+    endif()
+    unset(_gdm_glew_includes)
+    set(_gdm_real_glew_h "${_gdm_real_glew_root}/GL/glew.h")
+
+    set(_gdm_glewglad_gen_root "${CMAKE_CURRENT_BINARY_DIR}/gdm_glew_glad_gen")
+    set(_gdm_glewglad_gen_inc  "${_gdm_glewglad_gen_root}/include")
+    file(MAKE_DIRECTORY "${_gdm_glewglad_gen_inc}/GL")
+    file(MAKE_DIRECTORY "${_gdm_glewglad_gen_inc}/gdm")
+    set(_gdm_undef_gls_h "${_gdm_glewglad_gen_inc}/gdm/undefGls.h")
+    set(_gdm_fake_glew_h "${_gdm_glewglad_gen_inc}/GL/glew.h")
+    file(READ "${_gdm_real_glew_h}" _gdm_glew_h_text)
+
+    # Extract macro names defined as "#define glSomething ..."
+    string(REGEX MATCHALL
+        "\n[ \t]*#[ \t]*define[ \t]+(gl[A-Za-z0-9_]+)[ \t]+[^\\n\\r]*GLEW_GET_FUN\\([^\\n\\r]*"
+        _gdm_gl_def_lines
+        "${_gdm_glew_h_text}"
+    )
+    unset(_gdm_glew_h_text)
+
+    set(_gdm_undef_text "/* Auto-generated by GDM: undef GLEW's gl* macros so GLAD can remap them */\n#ifndef GDM_GLEW_GLAD_UNDEF_GLS_H\n#define GDM_GLEW_GLAD_UNDEF_GLS_H\n\n")
+    foreach(line IN LISTS _gdm_gl_def_lines)
+        string(REGEX REPLACE ".*#[ \t]*define[ \t]+(gl[A-Za-z0-9_]+).*" "\\1" _gdm_macro "${line}")
+        string(APPEND _gdm_undef_text "#ifdef ${_gdm_macro}\n#  undef ${_gdm_macro}\n#endif\n")
+    endforeach()
+    unset(_gdm_gl_def_lines)
+    unset(_gdm_macro)
+    string(APPEND _gdm_undef_text "#endif //GDM_GLEW_GLAD_UNDEF_GLS_H\n")
+    file(WRITE "${_gdm_undef_gls_h}" "${_gdm_undef_text}")
+    unset(_gdm_undef_text)
+
+        # Escape backslashes for Windows paths in a C string include
+    file(TO_CMAKE_PATH "${_gdm_real_glew_h}" _gdm_real_glew_h_posix)
+    unset(_gdm_real_glew_h)
+
+    set(_gdm_fake_glew_h_text
+"/* Auto-generated by GDM: GLEW interface, GLAD implementation */\n"
+"#ifndef GDM_GLEW_GLAD_GLEW_H\n#define GDM_GLEW_GLAD_GLEW_H\n"
+"\n"
+"// Include the real GLEW header (kept private by GDM)\n"
+"#include \"${_gdm_real_glew_h_posix}\"\n" # TODO : using absolute path; use relative path? copy original into include dir?
+"\n"
+"// Remove GLEW's gl* macro mappings so GLAD can define its debug wrappers\n"
+"#include <gdm/undefGls.h>\n"
+"\n"
+"// GLAD will define gl* to glad_debug_gl* when generated with DEBUG option\n"
+"#include <glad/gl.h>\n"
+"\n"
+"// Redirect glewInit() calls in user code to GDM wrapper\n"
+"#define glewInit gdm_glew_glad_glewInit\n"
+"#endif //GDM_GLEW_GLAD_GLEW_H\n"
+)
+    file(WRITE "${_gdm_fake_glew_h}" "${_gdm_fake_glew_h_text}")
+    unset(_gdm_fake_glew_h_text)
+    unset(_gdm_real_glew_h_posix)
+
+    # add glew wrapper front target
+    add_library(gdm_glew_glad STATIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/glewToGlad.cpp
+    )
+
+    target_include_directories(gdm_glew_glad
+        PUBLIC ${_gdm_glewglad_gen_inc}
+    )
+    # Private: ensure the wrapper itself includes the *real* GLEW headers first
+    target_include_directories(gdm_glew_glad
+        BEFORE PRIVATE ${_gdm_real_glew_root}
+    )
+    unset(_gdm_real_glew_root)
+    unset(_gdm_glewglad_gen_inc)
+    unset(_gdm_glewglad_gen_root)
+
+    add_library(gdm_glewglad_glad INTERFACE)
+    add_dependencies(gdm_glewglad_glad gdm_glad_allext_debug gdm_glad_allext_release)
+    target_link_libraries(gdm_glewglad_glad INTERFACE
+        $<$<CONFIG:Debug>:gdm_glad_allext_debug>
+        $<$<NOT:$<CONFIG:Debug>>:gdm_glad_allext_release>
+    )
+    target_link_libraries(gdm_glew_glad
+        PRIVATE
+            gdm::window
+            libglew_static
+            gdm_glewglad_glad
+    )
+    target_compile_definitions(gdm_glew_glad PRIVATE GDM_HAS_GLEW_GLAD)
+
+    add_library(gdm_loader INTERFACE)
+    add_library(gdm::loader ALIAS gdm_loader)
+    target_link_libraries(gdm_loader INTERFACE gdm_glew_glad)
+
+    list(APPEND _gdm_defs GDM_HAS_GLEW)
+    list(APPEND _gdm_defs GDM_HAS_GLAD)
+    list(APPEND _gdm_defs GDM_HAS_GLEW_GLAD)
+
+    set_target_properties(gdm_glad_allext_debug   PROPERTIES FOLDER "GLEW_GLAD")
+    set_target_properties(gdm_glad_allext_release PROPERTIES FOLDER "GLEW_GLAD")
+    set_target_properties(libglew_static          PROPERTIES FOLDER "GLEW_GLAD")
+    set_target_properties(gdm_glew_glad           PROPERTIES FOLDER "GLEW_GLAD")
+
 else()
     message(FATAL_ERROR "[GDM] Unsupported GDM_GL_LOADER: ${GDM_GL_LOADER}")
 endif()
