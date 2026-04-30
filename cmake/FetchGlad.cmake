@@ -130,21 +130,31 @@ function(fetch_glad)
   message(STATUS "[${PROJECT_NAME}] Downloading ${zip_url}")
   message(STATUS "[${PROJECT_NAME}]   into ${FG_DEST_DIR}")
 
-  # Time the FetchContent download and extraction for glad.zip
+  # Download
+  set(_zip_path "${CMAKE_BINARY_DIR}/${_cfg_tag}_glad.zip")
   string(TIMESTAMP _fetch_start_time "%s" UTC)
-
-  FetchContent_Declare(${FG_NAME}
-    URL "${zip_url}"
-    SOURCE_DIR "${FG_DEST_DIR}"
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  file(DOWNLOAD "${zip_url}" "${_zip_path}"
+    STATUS _dl_status
+    TLS_VERIFY ON
   )
-  FetchContent_MakeAvailable(${FG_NAME})
+  list(GET _dl_status 0 _dl_code)
+  if(NOT _dl_code EQUAL 0)
+    list(GET _dl_status 1 _dl_msg)
+    message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: Failed to download glad.zip: ${_dl_msg}\nURL=${zip_url}")
+  endif()
+
+  # Extract
+  file(MAKE_DIRECTORY "${FG_DEST_DIR}")
+  file(ARCHIVE_EXTRACT
+    INPUT "${_zip_path}"
+    DESTINATION "${FG_DEST_DIR}"
+  )
 
   string(TIMESTAMP _fetch_end_time "%s" UTC)
   math(EXPR _fetch_elapsed_time "${_fetch_end_time} - ${_fetch_start_time}")
-  message(STATUS "[${PROJECT_NAME}] FetchContent for ${FG_NAME} completed in ${_fetch_elapsed_time}s")
+  message(STATUS "[${PROJECT_NAME}] DOWNLOAD/EXTRACT for ${FG_NAME} completed in ${_fetch_elapsed_time}s")
 
-  set(${FG_OUT_VAR} "${${FG_NAME}_SOURCE_DIR}" PARENT_SCOPE)
+  set(${FG_OUT_VAR} "${FG_DEST_DIR}" PARENT_SCOPE)
 endfunction()
 
 # fetch_glad_allEXT(
