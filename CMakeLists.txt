@@ -127,10 +127,12 @@ if (NOT (GDM_GL_LOADER STREQUAL "glew" OR GDM_GL_LOADER STREQUAL "glew-glad"))
 endif()
 
 # For dependencies
+include(FetchContent)
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "")
 include(cmake/Dependencies.cmake)
 include(cmake/FetchGlad.cmake)
 
-# -----------------------
+# -----------------------초
 # OpenGL (system)
 # -----------------------
 find_package(OpenGL REQUIRED)

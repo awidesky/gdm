@@ -70,9 +70,6 @@ function(use_or_fetch_package)
             "[${PROJECT_NAME}] Fetching ${PKG_NAME} ${PKG_GIT_TAG}"
         )
 
-        include(FetchContent)
-        set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
-
         # Time the FetchContent operation
         string(TIMESTAMP _pkg_start_time "%s" UTC)
 
