@@ -24,9 +24,11 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <cmath>
 #include <random>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #ifdef GDM_HAS_FREEGLUT
 bool g_shouldClose = false;
@@ -38,19 +40,19 @@ void onFreeglutKeyboard(unsigned char key, int, int) {
 static const float kCubeVertices[] = {
     // position         // color
     // front
-    -0.5f,-0.5f, 0.5f,  0,1,0,  0.5f,-0.5f, 0.5f,  0,1,0,  0.5f, 0.5f, 0.5f, 1,1,1,
+    -0.5f,-0.5f, 0.5f,  0,1,0,  0.5f,-0.5f, 0.5f, 0,1,0,  0.5f, 0.5f, 0.5f, 1,1,1,
     -0.5f,-0.5f, 0.5f,  0,1,0,  0.5f, 0.5f, 0.5f, 1,1,1, -0.5f, 0.5f, 0.5f, 1,1,0,
     // back
-    -0.5f,-0.5f,-0.5f,  0,0,0, -0.5f, 0.5f,-0.5f,  1,0,0,  0.5f, 0.5f,-0.5f, 1,0,1,
+    -0.5f,-0.5f,-0.5f,  0,0,0, -0.5f, 0.5f,-0.5f, 1,0,0,  0.5f, 0.5f,-0.5f, 1,0,1,
     -0.5f,-0.5f,-0.5f,  0,0,0,  0.5f, 0.5f,-0.5f, 1,0,1,  0.5f,-0.5f,-0.5f, 0,0,1,
     // left
-    -0.5f,-0.5f,-0.5f,  0,0,0, -0.5f,-0.5f, 0.5f,  0,1,0, -0.5f, 0.5f, 0.5f, 1,1,0,
+    -0.5f,-0.5f,-0.5f,  0,0,0, -0.5f,-0.5f, 0.5f, 0,1,0, -0.5f, 0.5f, 0.5f, 1,1,0,
     -0.5f,-0.5f,-0.5f,  0,0,0, -0.5f, 0.5f, 0.5f, 1,1,0, -0.5f, 0.5f,-0.5f, 1,0,0,
     // right
      0.5f,-0.5f,-0.5f,  0,0,1,  0.5f, 0.5f,-0.5f, 1,0,1,  0.5f, 0.5f, 0.5f, 1,1,1,
      0.5f,-0.5f,-0.5f,  0,0,1,  0.5f, 0.5f, 0.5f, 1,1,1,  0.5f,-0.5f, 0.5f, 0,1,0,
     // top
-    -0.5f, 0.5f,-0.5f,  1,0,0, -0.5f, 0.5f, 0.5f,  1,1,0,  0.5f, 0.5f, 0.5f, 1,1,1,
+    -0.5f, 0.5f,-0.5f,  1,0,0, -0.5f, 0.5f, 0.5f, 1,1,0,  0.5f, 0.5f, 0.5f, 1,1,1,
     -0.5f, 0.5f,-0.5f,  1,0,0,  0.5f, 0.5f, 0.5f, 1,1,1,  0.5f, 0.5f,-0.5f, 1,0,1,
     // bottom
     -0.5f,-0.5f,-0.5f,  0,0,0,  0.5f,-0.5f,-0.5f, 0,0,1,  0.5f,-0.5f, 0.5f, 0,1,0,
@@ -336,8 +338,15 @@ int main(int argc, char** argv) {
         uniform mat4 proj;
 
         out vec3 vColor;
+        out vec3 vNormal;
+        out vec3 vPosition;
+
         void main() {
             vColor = aColor;
+            // compute normal using inverse-transpose (intentionally heavy for demo)
+            mat3 normalMat = transpose(inverse(mat3(model)));
+            vNormal = normalize(normalMat * aPos);
+            vPosition = vec3(model * vec4(aPos, 1.0));
             gl_Position = proj * view * model * vec4(aPos, 1.0);
         }
     )";
@@ -345,8 +354,63 @@ int main(int argc, char** argv) {
     const char* fragmentShaderSrc = R"(
         #version 330 core
         in vec3 vColor;
+        in vec3 vNormal;
+        in vec3 vPosition;
         out vec4 FragColor;
-        void main() { FragColor = vec4(vColor, 1.0); }
+
+        uniform float time;
+        uniform vec3 viewPos;
+        uniform float lightDensity;
+
+        // configurable heavy work
+        const int NUM_LIGHTS = 8;
+
+        vec3 computeLight(in vec3 pos, in vec3 normal) {
+            vec3 result = vec3(0.0);
+            for (int i = 0; i < NUM_LIGHTS; ++i) {
+                // animate light positions in a meaningful way
+                float fi = float(i);
+                vec3 lightPos = vec3(5.0 * sin(time * (0.2 + 0.05 * fi) + fi),
+                                     3.0 * cos(time * (0.12 + 0.03 * fi) - fi),
+                                     5.0 * sin(time * (0.15 + 0.04 * fi) + fi * 0.7));
+
+                vec3 L = normalize(lightPos - pos);
+                float diff = max(dot(normal, L), 0.0);
+                // simple Phong-like specular
+                vec3 V = normalize(viewPos - pos);
+                vec3 H = normalize(V + L);
+                float spec = pow(max(dot(normal, H), 0.0), 32.0);
+
+                // distance attenuation
+                float dist = length(lightPos - pos);
+                float att = 1.0 / (1.0 + 0.2 * dist + 0.05 * dist * dist);
+
+                vec3 lightCol = vec3(0.25 + 0.35 * sin(fi + time), 0.20 + 0.35 * cos(fi * 0.7 + time * 0.6), 0.18 + 0.30 * sin(fi * 1.3 - time * 0.4));
+                result += (diff * vec3(0.28) + spec * vec3(0.08)) * lightCol * att;
+            }
+
+            // additional per-pixel procedural work to amplify fragment cost
+            float heavy = 0.0;
+            for (int k = 1; k <= 16; ++k) {
+                heavy += abs(sin(dot(pos, vec3(float(k) * 0.13, float(k) * 0.17, float(k) * 0.19)) + time * 2.0));
+                heavy += abs(cos(dot(normal, vec3(float(k) * 0.11, float(k) * 0.07, float(k) * 0.09)) * 1.3 - time * 0.7));
+            }
+            heavy = heavy / 32.0;
+
+            return result + vec3(heavy * 0.12) * lightDensity;
+        }
+
+        void main() {
+            vec3 n = normalize(vNormal);
+            vec3 base = mix(vColor, vec3(dot(vColor, vec3(0.3333))), 0.1);
+            base = base * 0.95 + vec3(0.03, 0.04, 0.05);
+            vec3 light = computeLight(vPosition, n);
+            // mix base color with computed lighting
+            vec3 color = clamp(base * 0.80 + light * lightDensity, 0.0, 1.0);
+            // slight darkening to avoid washed-out highlights
+            color = pow(color, vec3(1.18));
+            FragColor = vec4(color, 1.0);
+        }
     )";
 
     const GLuint program = createProgram(vertexShaderSrc, fragmentShaderSrc);
@@ -379,10 +443,18 @@ int main(int argc, char** argv) {
     std::uniform_real_distribution<float> rotDist(0.0f, 3.14159f);
     for (int i = 0; i < num_cubes; ++i) rotations.emplace_back(rotDist(rng), rotDist(rng), rotDist(rng));
 
+    // per-instance velocities for CPU-side simulation (meaningful work: basic collision/response)
+    std::vector<glm::vec3> velocities; velocities.reserve(num_cubes);
+    std::uniform_real_distribution<float> velDist(-0.5f, 0.5f);
+    for (int i = 0; i < num_cubes; ++i) velocities.emplace_back(velDist(rng), velDist(rng), velDist(rng));
+
     glUseProgram(program);
     const GLint modelLoc = glGetUniformLocation(program, "model");
     const GLint viewLoc = glGetUniformLocation(program, "view");
     const GLint projLoc = glGetUniformLocation(program, "proj");
+    const GLint timeLoc = glGetUniformLocation(program, "time");
+    const GLint viewPosLoc = glGetUniformLocation(program, "viewPos");
+    const GLint lightDensityLoc = glGetUniformLocation(program, "lightDensity");
 
     // prepare static view/proj
     glm::mat4 view = glm::lookAt(camPos, camTarget, camUp);
@@ -397,6 +469,10 @@ int main(int argc, char** argv) {
     auto lastPrint = std::chrono::steady_clock::now();
     unsigned int frameCount = 0;
     double renderTime = 0.0;
+    double cpuTime = 0.0;
+    double gpuTime = 0.0;
+    auto simLastTime = std::chrono::steady_clock::now();
+    auto simStartTime = simLastTime;
 
 #ifdef GDM_HAS_GLFW
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window)) {
@@ -407,7 +483,43 @@ int main(int argc, char** argv) {
 #endif
         const auto frameBegin = std::chrono::steady_clock::now();
 
-        // rotate some cubes
+        // --- CPU-heavy meaningful work: per-frame simulation (velocities + pairwise collision)
+        const auto simNow = frameBegin;
+        const double dt = std::chrono::duration<double>(simNow - simLastTime).count();
+        // protect against huge dt on pause
+        const float fdt = std::min(0.05, dt * 1.0);
+        simLastTime = simNow;
+
+        // integrate velocities
+        for (int i = 0; i < num_cubes; ++i) positions[i] += velocities[i] * static_cast<float>(fdt);
+
+        // naive O(N^2) pairwise collisions (meaningful CPU work; scales badly with num_cubes)
+        const float collisionRadius = 1.0f; // cubes treated as radius-1 spheres for collision
+        const float minDist = collisionRadius;
+        const float minDist2 = minDist * minDist;
+        for (int i = 0; i < num_cubes; ++i) {
+            for (int j = i + 1; j < num_cubes; ++j) {
+                glm::vec3 d = positions[j] - positions[i];
+                float dist2 = glm::dot(d, d);
+                if (dist2 < minDist2) {
+                    float dist = sqrtf(dist2) + 1e-6f;
+                    glm::vec3 dir = d / dist;
+                    float overlap = 0.5f * (minDist - dist);
+                    // positional correction
+                    positions[i] -= dir * overlap;
+                    positions[j] += dir * overlap;
+                    // exchange a bit of velocity to push them apart (simple impulse)
+                    const float impulse = 10.0f;
+                    velocities[i] -= dir * impulse * static_cast<float>(fdt);
+                    velocities[j] += dir * impulse * static_cast<float>(fdt);
+                }
+            }
+        }
+
+        // slight damping to stabilize simulation
+        for (int i = 0; i < num_cubes; ++i) velocities[i] *= 0.995f;
+
+        // rotate some cubes (visual)
         for (int i = 0; i < num_cubes; ++i) {
             if (i & 1) rotations[i].y += randf(0.007f, 0.013f);
             else rotations[i].y -= randf(0.007f, 0.013f);
@@ -419,12 +531,20 @@ int main(int argc, char** argv) {
     #else
         glViewport(0, 0, winW, winH);
     #endif
-        const auto renderBegin = std::chrono::steady_clock::now();
+
+        const auto cpuEnd = std::chrono::steady_clock::now();
+    
         glClearColor(0.0f, 0.0f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glBindVertexArray(vao);
         glUseProgram(program);
+
+        // set per-frame uniforms (time, view position)
+        const double timeSec = std::chrono::duration<double>(frameBegin - simStartTime).count();
+        if (timeLoc >= 0) glUniform1f(timeLoc, static_cast<float>(timeSec));
+        if (viewPosLoc >= 0) glUniform3fv(viewPosLoc, 1, glm::value_ptr(camPos));
+        if (lightDensityLoc >= 0) glUniform1f(lightDensityLoc, 2.0f);
 
         for (int i = 0; i < num_cubes; ++i) {
             glm::mat4 model(1.0f);
@@ -446,9 +566,13 @@ int main(int argc, char** argv) {
         glutSwapBuffers();
 #endif
 
-        const std::chrono::duration<double> renderElapsed = renderEnd - renderBegin;
+        const std::chrono::duration<double> cpuElapsed = cpuEnd - frameBegin;
+        const std::chrono::duration<double> gpuElapsed = renderEnd - cpuEnd;
+        const std::chrono::duration<double> renderElapsed = cpuElapsed + gpuElapsed;
 
         renderTime += renderElapsed.count();
+        cpuTime += cpuElapsed.count();
+        gpuTime += gpuElapsed.count();
         frameCount++;
 
         const auto printNow = std::chrono::steady_clock::now();
@@ -456,18 +580,24 @@ int main(int argc, char** argv) {
         if (printElapsed.count() >= 5.0) {
             const double frameTimeAvgMs = (printElapsed.count() / static_cast<double>(frameCount)) * 1000.0;
             const double renderTimeAvgMs = (renderTime / static_cast<double>(frameCount)) * 1000.0;
+            const double cpuTimeAvgMs = (cpuTime / static_cast<double>(frameCount)) * 1000.0;
+            const double gpuTimeAvgMs = (gpuTime / static_cast<double>(frameCount)) * 1000.0;
 
             std::cout << "[FPS] " << static_cast<int>(frameCount / printElapsed.count())
                       << ", [Render Time / Frame Time] "
                       << std::fixed << std::setprecision(4)
                       << renderTimeAvgMs << " / " << frameTimeAvgMs << " ms ("
                       << std::setprecision(2)
-                      << (100.0 * renderTimeAvgMs / frameTimeAvgMs) << "% )"
+                      << (100.0 * renderTimeAvgMs / frameTimeAvgMs) << "%), [CPU / GPU] "
+                      << std::setprecision(4)
+                      << cpuTimeAvgMs << " / " << gpuTimeAvgMs << " ms"
                       << std::endl;
 
             lastPrint = printNow;
             frameCount = 0;
             renderTime = 0.0;
+            cpuTime = 0.0;
+            gpuTime = 0.0;
         }
     }
 
