@@ -78,7 +78,7 @@ function(use_or_fetch_package)
 
         FetchContent_Declare(
             ${PKG_NAME}
-            URL ${PKG_GIT_REPOSITORY}/archive/${PKG_GIT_TAG}.zip
+            URL ${PKG_GIT_REPOSITORY}/archive/${PKG_GIT_TAG}.tar.gz
             SOURCE_DIR ${PKG_EXTERNAL_DIR}
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         )
