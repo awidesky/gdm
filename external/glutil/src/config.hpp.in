@@ -5,6 +5,7 @@
 namespace glutil {
 inline const std::filesystem::path ROOT_DIR = R"(@GLUTIL_ROOT_DIR@)";
 inline const std::filesystem::path TEST_ASSET_DIR = R"(@GLUTIL_TEST_DIR@)";
+inline const std::filesystem::path EXAMPLE_ASSET_DIR = R"(@GLUTIL_EXAMPLE_DIR@)";
 }
 
 #endif // GLUTIL_CONFIG_HPP_IN

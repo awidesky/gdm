@@ -4,6 +4,7 @@ project(glutil)
 
 # TODO : only when test is enabled
 file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/test" GLUTIL_TEST_DIR)
+file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/example" GLUTIL_EXAMPLE_DIR)
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/config.hpp.in
     ${CMAKE_CURRENT_BINARY_DIR}/config.hpp
@@ -97,42 +98,61 @@ if (GDM_BUILD_TESTS)
           FOLDER "GLUTIL_Tests"
     )
     add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
-
-    add_executable(glutil_textureTest)
-    target_sources(glutil_textureTest
-          PRIVATE test/textureTest.cpp
-    )
-    target_include_directories(glutil_textureTest
-          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-    )
-    target_link_libraries(glutil_textureTest PRIVATE
-          glutil
-          gdm::gdm
-    )
-    target_compile_features(glutil_textureTest PRIVATE cxx_std_17)
-    target_compile_options(glutil_textureTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-    set_target_properties(glutil_textureTest PROPERTIES
-          FOLDER "GLUTIL_Tests"
-    )
-    add_test(NAME TextureTest COMMAND glutil_textureTest)
-    add_executable(glutil_modelTest)
-    target_sources(glutil_modelTest
-          PRIVATE test/modelTest.cpp
-    )
-    target_include_directories(glutil_modelTest
-          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-    )
-    target_link_libraries(glutil_modelTest PRIVATE
-          glutil
-          gdm::gdm
-    )
-    target_compile_features(glutil_modelTest PRIVATE cxx_std_17)
-    target_compile_options(glutil_modelTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-    set_target_properties(glutil_modelTest PROPERTIES
-          FOLDER "GLUTIL_Tests"
-    )
-    add_test(NAME ModelTest COMMAND glutil_modelTest)
   else()
     message(STATUS "[glutil] Tests skipped: require GDM_WINDOW_BACKEND=glfw, GDM_GL_LOADER=glad, and GDM_USE_GLM=ON")
   endif()
+endif()
+
+# Examples (require GLFW + GLAD + GLM)
+if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM_USE_GLM)
+  add_executable(glutil_textureExample)
+  target_sources(glutil_textureExample
+        PRIVATE example/textureExample.cpp
+  )
+  target_include_directories(glutil_textureExample
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_textureExample PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_textureExample PRIVATE cxx_std_17)
+  target_compile_options(glutil_textureExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_textureExample PROPERTIES
+        FOLDER "GLUTIL_Examples"
+  )
+
+  add_executable(glutil_modelExample)
+  target_sources(glutil_modelExample
+        PRIVATE example/modelExample.cpp
+  )
+  target_include_directories(glutil_modelExample
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_modelExample PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_modelExample PRIVATE cxx_std_17)
+  target_compile_options(glutil_modelExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_modelExample PROPERTIES
+        FOLDER "GLUTIL_Examples"
+  )
+
+  add_executable(glutil_manyCubesExample)
+  target_sources(glutil_manyCubesExample
+        PRIVATE example/manyCubes.cpp
+  )
+  target_include_directories(glutil_manyCubesExample
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_manyCubesExample PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_manyCubesExample PRIVATE cxx_std_17)
+  target_compile_options(glutil_manyCubesExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_manyCubesExample PROPERTIES
+        FOLDER "GLUTIL_Examples"
+  )
 endif()

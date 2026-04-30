@@ -60,7 +60,7 @@ int main()
     if (!(ctx = initGLFWAndContext()))
         return 1;
 
-    const std::filesystem::path objPath = glutil::TEST_ASSET_DIR / "model" / "cube.obj";
+    const std::filesystem::path objPath = glutil::EXAMPLE_ASSET_DIR / "model" / "cube.obj";
 
     glutil::ModelData model = glutil::ModelLoader::loadOBJ(objPath.string().c_str());
 
@@ -75,7 +75,7 @@ int main()
         return 1;
     }
 
-    std::cout << "[ModelTest] Loaded " << model.meshes.size() << " mesh(es) from "
+    std::cout << "[ModelExample] Loaded " << model.meshes.size() << " mesh(es) from "
               << objPath.filename() << std::endl;
 
     const GLuint program = createProgram(kVS, kFS);
@@ -145,17 +145,17 @@ int main()
                 glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(mesh.diffuseTexturePath.c_str());
                 if (dds.ok) {
                     gm.tex = uploadDDS2D(dds);
-                    std::cout << "[ModelTest] mesh \"" << mesh.name << "\": DDS texture loaded" << std::endl;
+                    std::cout << "[ModelExample] mesh \"" << mesh.name << "\": DDS texture loaded" << std::endl;
                 } else {
-                    std::cerr << "[ModelTest] mesh \"" << mesh.name << "\": DDS load failed: " << dds.error << std::endl;
+                    std::cerr << "[ModelExample] mesh \"" << mesh.name << "\": DDS load failed: " << dds.error << std::endl;
                 }
             } else {
                 glutil::TextureImage img = glutil::ImageLoader::loadImage(mesh.diffuseTexturePath.c_str());
                 if (img.ok) {
                     gm.tex = uploadStandard2D(img);
-                    std::cout << "[ModelTest] mesh \"" << mesh.name << "\": texture loaded" << std::endl;
+                    std::cout << "[ModelExample] mesh \"" << mesh.name << "\": texture loaded" << std::endl;
                 } else {
-                    std::cerr << "[ModelTest] mesh \"" << mesh.name << "\": texture load failed: " << img.error << std::endl;
+                    std::cerr << "[ModelExample] mesh \"" << mesh.name << "\": texture load failed: " << img.error << std::endl;
                 }
             }
         }
@@ -229,7 +229,7 @@ GLFWwindow* initGLFWAndContext()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    GLFWwindow* ret = glfwCreateWindow(1024, 768, "glutil model test", nullptr, nullptr);
+    GLFWwindow* ret = glfwCreateWindow(1024, 768, "glutil model example", nullptr, nullptr);
     if (!ret) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();

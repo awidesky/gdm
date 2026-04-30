@@ -25,26 +25,3 @@ endif()
 target_compile_features(gdm_example_1_HelloWindow PRIVATE cxx_std_17)
 target_compile_options(gdm_example_1_HelloWindow PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
-# Example 2: Many Cubes
-add_executable(gdm_example_2_ManyCubes
-    02_manyCubes.cpp
-)
-
-set_target_properties(gdm_example_2_ManyCubes PROPERTIES
-    FOLDER "GDM_Examples"
-)
-
-target_link_libraries(gdm_example_2_ManyCubes
-    PRIVATE
-        gdm
-)
-
-if (TARGET glutil)
-    target_link_libraries(gdm_example_2_ManyCubes
-        PRIVATE
-            glutil
-    )
-endif()
-
-target_compile_features(gdm_example_2_ManyCubes PRIVATE cxx_std_17)
-target_compile_options(gdm_example_2_ManyCubes PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")

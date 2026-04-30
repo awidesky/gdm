@@ -79,7 +79,7 @@ int main() {
     if (!(ctx = initGLFWAndContext()))
         return 1;
 
-    const std::filesystem::path textureDir = glutil::TEST_ASSET_DIR / "texture";
+    const std::filesystem::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
     const std::filesystem::path ddsPath = textureDir / "uvtemplate.DDS";
     const std::filesystem::path bmpPath = textureDir / "33.bmp";
 
@@ -204,7 +204,7 @@ GLFWwindow* initGLFWAndContext() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    GLFWwindow* ret = glfwCreateWindow(1024, 768, "glutil texture test", nullptr, nullptr);
+    GLFWwindow* ret = glfwCreateWindow(1024, 768, "glutil texture example", nullptr, nullptr);
     if (!ret) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
