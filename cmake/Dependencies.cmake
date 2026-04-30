@@ -62,7 +62,7 @@ function(use_or_fetch_package)
 
     endif()
 
-    # 3. FetchContent if not found
+    # 3. Download+extract if not found
     if (USE_EXTERNAL_PACKAGE
         AND NOT EXISTS ${PKG_EXTERNAL_DIR}/CMakeLists.txt)
 
@@ -70,21 +70,76 @@ function(use_or_fetch_package)
             "[${PROJECT_NAME}] Fetching ${PKG_NAME} ${PKG_GIT_TAG}"
         )
 
-        # Time the FetchContent operation
+        # Time the download+extract operation
         string(TIMESTAMP _pkg_start_time "%s" UTC)
 
-        FetchContent_Declare(
-            ${PKG_NAME}
-            URL ${PKG_GIT_REPOSITORY}/archive/${PKG_GIT_TAG}.tar.gz
-            SOURCE_DIR ${PKG_EXTERNAL_DIR}
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        set(_pkg_url "${PKG_GIT_REPOSITORY}/archive/${PKG_GIT_TAG}.tar.gz")
+        # Where to store downloaded archives (per build dir)
+        set(_pkg_dl_dir "${CMAKE_BINARY_DIR}/_gdm_downloads")
+        file(MAKE_DIRECTORY "${_pkg_dl_dir}")
+        # Stable filename keyed by (name, tag).
+        set(_pkg_archive "${_pkg_dl_dir}/${PKG_NAME}-${PKG_GIT_TAG}.tar.gz")
+
+        # Extract to temp dir first (GitHub tarballs have a top-level folder)
+        set(_pkg_extract_dir "${CMAKE_BINARY_DIR}/_gdm_extract/${PKG_NAME}-${PKG_GIT_TAG}")
+        file(REMOVE_RECURSE "${_pkg_extract_dir}")
+        file(MAKE_DIRECTORY "${_pkg_extract_dir}")
+
+        # Download (skip if already downloaded in this build dir)
+        if(NOT EXISTS "${_pkg_archive}")
+            file(DOWNLOAD "${_pkg_url}" "${_pkg_archive}"
+                STATUS _dl_status
+                TLS_VERIFY ON
+            )
+            list(GET _dl_status 0 _dl_code)
+            if(NOT _dl_code EQUAL 0)
+                list(GET _dl_status 1 _dl_msg)
+                message(FATAL_ERROR
+                    "[${PROJECT_NAME}] Failed to download ${PKG_NAME} ${PKG_GIT_TAG}: ${_dl_msg}\n"
+                    "URL: ${_pkg_url}\n"
+                    "Archive: ${_pkg_archive}"
+                )
+            endif()
+        else()
+            message(STATUS "[${PROJECT_NAME}] Using cached archive: ${_pkg_archive}")
+        endif()
+
+        # Extract archive to temp
+        file(ARCHIVE_EXTRACT
+            INPUT "${_pkg_archive}"
+            DESTINATION "${_pkg_extract_dir}"
         )
 
-        FetchContent_MakeAvailable(${PKG_NAME})
+        # Find extracted top-level directory (usually exactly one)
+        file(GLOB _pkg_children LIST_DIRECTORIES true "${_pkg_extract_dir}/*")
+        set(_pkg_root "")
+        foreach(p IN LISTS _pkg_children)
+            if(IS_DIRECTORY "${p}")
+                set(_pkg_root "${p}")
+                break()
+            endif()
+        endforeach()
+
+        if(NOT _pkg_root)
+            message(FATAL_ERROR
+                "[${PROJECT_NAME}] ${PKG_NAME}: could not find extracted root directory in ${_pkg_extract_dir}"
+            )
+        endif()
+
+        # Replace any partial/old directory and move extracted root into place
+        file(REMOVE_RECURSE "${PKG_EXTERNAL_DIR}")
+        file(RENAME "${_pkg_root}" "${PKG_EXTERNAL_DIR}")
+
+        if(NOT EXISTS "${PKG_EXTERNAL_DIR}/CMakeLists.txt")
+            message(FATAL_ERROR
+                "[${PROJECT_NAME}] ${PKG_NAME}: extracted directory does not contain CMakeLists.txt: ${PKG_EXTERNAL_DIR}"
+            )
+        endif()
+        add_subdirectory("${PKG_EXTERNAL_DIR}")
 
         string(TIMESTAMP _pkg_end_time "%s" UTC)
         math(EXPR _pkg_elapsed_time "${_pkg_end_time} - ${_pkg_start_time}")
-        message(STATUS "[${PROJECT_NAME}] FetchContent for ${PKG_NAME} completed in ${_pkg_elapsed_time}s")
+        message(STATUS "[${PROJECT_NAME}] Download+extract for ${PKG_NAME} completed in ${_pkg_elapsed_time}s")
 
     endif()
 
