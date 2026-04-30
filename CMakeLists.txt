@@ -138,7 +138,7 @@ set(_gdm_defs GDM_HAS_OPENGL)
 
 
 # measure start time for dependency fetching and generation
-string(TIMESTAMP START_TIME "%s")
+string(TIMESTAMP START_TIME "%s" UTC)
 
 # -----------------------
 # Window backend (GLFW, FreeGLUT)
@@ -540,7 +540,7 @@ else()
 endif()
 
 # measure end time for dependency fetching and generation
-string(TIMESTAMP END_TIME "%s")
+string(TIMESTAMP END_TIME "%s" UTC)
 math(EXPR ELAPSED_TIME "${END_TIME} - ${START_TIME}")
 message(STATUS "[GDM] Resolving dependencies took ${ELAPSED_TIME} seconds")
 

@@ -73,6 +73,8 @@ function(use_or_fetch_package)
         include(FetchContent)
         set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
+        # Time the FetchContent operation
+        string(TIMESTAMP _pkg_start_time "%s" UTC)
 
         FetchContent_Declare(
             ${PKG_NAME}
@@ -82,6 +84,10 @@ function(use_or_fetch_package)
         )
 
         FetchContent_MakeAvailable(${PKG_NAME})
+
+        string(TIMESTAMP _pkg_end_time "%s" UTC)
+        math(EXPR _pkg_elapsed_time "${_pkg_end_time} - ${_pkg_start_time}")
+        message(STATUS "[${PROJECT_NAME}] FetchContent for ${PKG_NAME} completed in ${_pkg_elapsed_time}s")
 
     endif()
 

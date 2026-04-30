@@ -84,12 +84,19 @@ function(fetch_glad)
     endif()
   endforeach()
 
+  # Time the curl POST request to gen.glad.sh
+  string(TIMESTAMP _start_time "%s" UTC)
+
   execute_process(
     COMMAND "${CURL_EXECUTABLE}" --config "${CURL_CFG_PATH}"
     OUTPUT_VARIABLE HTTP_OUT
     ERROR_VARIABLE HTTP_ERR
     RESULT_VARIABLE CURL_RES
   )
+
+  string(TIMESTAMP _end_time "%s" UTC)
+  math(EXPR _elapsed_time "${_end_time} - ${_start_time}")
+  message(STATUS "[${PROJECT_NAME}] curl POST to gen.glad.sh completed in ${_elapsed_time}s")
 
   if(NOT CURL_RES EQUAL 0)
     message(FATAL_ERROR
@@ -123,12 +130,19 @@ function(fetch_glad)
   message(STATUS "[${PROJECT_NAME}] Downloading ${zip_url}")
   message(STATUS "[${PROJECT_NAME}]   into ${FG_DEST_DIR}")
 
+  # Time the FetchContent download and extraction for glad.zip
+  string(TIMESTAMP _fetch_start_time "%s" UTC)
+
   FetchContent_Declare(${FG_NAME}
     URL "${zip_url}"
     SOURCE_DIR "${FG_DEST_DIR}"
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   )
   FetchContent_MakeAvailable(${FG_NAME})
+
+  string(TIMESTAMP _fetch_end_time "%s" UTC)
+  math(EXPR _fetch_elapsed_time "${_fetch_end_time} - ${_fetch_start_time}")
+  message(STATUS "[${PROJECT_NAME}] FetchContent for ${FG_NAME} completed in ${_fetch_elapsed_time}s")
 
   set(${FG_OUT_VAR} "${${FG_NAME}_SOURCE_DIR}" PARENT_SCOPE)
 endfunction()
@@ -137,7 +151,7 @@ endfunction()
 #   OUT_VAR      <var-to-set>
 #   NAME         <fetchcontent-name>
 #   DEST_DIR     <output-dir>
-#   GLAD_OPTIONS <optional; list like DEBUG;MX;...>
+#   GLAD_OPTIONS <optional; list like STATUS;MX;...>
 # )
 # Fixed:
 #   api=gl=4.6
@@ -171,6 +185,9 @@ function(fetch_glad_allEXT)
   set(GL_XML_URL "https://cvs.khronos.org/svn/repos/ogl/trunk/doc/registry/public/api/gl.xml")
   set(GL_XML_PATH "${CMAKE_BINARY_DIR}/khronos_gl.xml")
 
+  # Time the download of gl.xml from Khronos
+  string(TIMESTAMP _xml_start_time "%s" UTC)
+
   file(DOWNLOAD
     "${GL_XML_URL}"
     "${GL_XML_PATH}"
@@ -182,6 +199,10 @@ function(fetch_glad_allEXT)
     list(GET dl_status 1 dl_msg)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: Failed to download gl.xml: ${dl_msg}")
   endif()
+
+  string(TIMESTAMP _xml_end_time "%s" UTC)
+  math(EXPR _xml_elapsed_time "${_xml_end_time} - ${_xml_start_time}")
+  message(STATUS "[${PROJECT_NAME}] gl.xml download completed in ${_xml_elapsed_time}s")
 
   file(READ "${GL_XML_PATH}" GL_XML_TEXT)
   string(REGEX MATCHALL "<extension[^>]*>" EXT_TAGS "${GL_XML_TEXT}")
