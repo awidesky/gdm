@@ -87,12 +87,14 @@ function(use_or_fetch_package)
 
         # Download (skip if already downloaded in this build dir)
         if(NOT EXISTS "${_pkg_archive}")
+
             file(DOWNLOAD "${_pkg_url}" "${_pkg_archive}"
                 STATUS _dl_status
-                TLS_VERIFY ON
+                TLS_VERIFY ${GDM_TLS_VERIFY}
             )
             list(GET _dl_status 0 _dl_code)
             if(NOT _dl_code EQUAL 0)
+                file(REMOVE "${_pkg_archive}") 
                 list(GET _dl_status 1 _dl_msg)
                 message(FATAL_ERROR
                     "[${PROJECT_NAME}] Failed to download ${PKG_NAME} ${PKG_GIT_TAG}: ${_dl_msg}\n"

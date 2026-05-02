@@ -135,10 +135,11 @@ function(fetch_glad)
   string(TIMESTAMP _fetch_start_time "%s" UTC)
   file(DOWNLOAD "${zip_url}" "${_zip_path}"
     STATUS _dl_status
-    TLS_VERIFY ON
+    TLS_VERIFY ${GDM_TLS_VERIFY}
   )
   list(GET _dl_status 0 _dl_code)
   if(NOT _dl_code EQUAL 0)
+    file(REMOVE "${_zip_path}"
     list(GET _dl_status 1 _dl_msg)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: Failed to download glad.zip: ${_dl_msg}\nURL=${zip_url}")
   endif()
@@ -202,10 +203,11 @@ function(fetch_glad_allEXT)
     "${GL_XML_URL}"
     "${GL_XML_PATH}"
     STATUS dl_status
-    TLS_VERIFY ON
+    TLS_VERIFY ${GDM_TLS_VERIFY}
   )
   list(GET dl_status 0 dl_code)
   if(NOT dl_code EQUAL 0)
+    file(REMOVE "${GL_XML_PATH}"
     list(GET dl_status 1 dl_msg)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: Failed to download gl.xml: ${dl_msg}")
   endif()
