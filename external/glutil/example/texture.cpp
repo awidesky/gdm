@@ -60,18 +60,18 @@ const GLfloat kVertexData[] = {
 };
 
 const GLfloat kUvData[] = {
-    0.000059f, 1.0f-0.000004f, 0.000103f, 1.0f-0.336048f, 0.335973f, 1.0f-0.335903f,
-    1.000023f, 1.0f-0.000013f, 0.667979f, 1.0f-0.335851f, 0.999958f, 1.0f-0.336064f,
-    0.667979f, 1.0f-0.335851f, 0.336024f, 1.0f-0.671877f, 0.667969f, 1.0f-0.671889f,
-    1.000023f, 1.0f-0.000013f, 0.668104f, 1.0f-0.000013f, 0.667979f, 1.0f-0.335851f,
-    0.000059f, 1.0f-0.000004f, 0.335973f, 1.0f-0.335903f, 0.336098f, 1.0f-0.000071f,
-    0.667979f, 1.0f-0.335851f, 0.335973f, 1.0f-0.335903f, 0.336024f, 1.0f-0.671877f,
-    1.000004f, 1.0f-0.671847f, 0.999958f, 1.0f-0.336064f, 0.667979f, 1.0f-0.335851f,
-    0.668104f, 1.0f-0.000013f, 0.335973f, 1.0f-0.335903f, 0.667979f, 1.0f-0.335851f,
-    0.335973f, 1.0f-0.335903f, 0.668104f, 1.0f-0.000013f, 0.336098f, 1.0f-0.000071f,
-    0.000103f, 1.0f-0.336048f, 0.000004f, 1.0f-0.671870f, 0.336024f, 1.0f-0.671877f,
-    0.000103f, 1.0f-0.336048f, 0.336024f, 1.0f-0.671877f, 0.335973f, 1.0f-0.335903f,
-    0.667969f, 1.0f-0.671889f, 1.000004f, 1.0f-0.671847f, 0.667979f, 1.0f-0.335851f
+    0.002000f, 1.0f-0.002000f, 0.002000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.334000f,
+    0.998000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.334000f, 0.998000f, 1.0f-0.334000f,
+    0.666000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f, 0.666000f, 1.0f-0.666000f,
+    0.998000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.334000f,
+    0.002000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.002000f,
+    0.666000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f,
+    0.998000f, 1.0f-0.666000f, 0.998000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.334000f,
+    0.666000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.334000f,
+    0.334000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.002000f,
+    0.002000f, 1.0f-0.334000f, 0.002000f, 1.0f-0.666000f, 0.334000f, 1.0f-0.666000f,
+    0.002000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f, 0.334000f, 1.0f-0.334000f,
+    0.666000f, 1.0f-0.666000f, 0.998000f, 1.0f-0.666000f, 0.666000f, 1.0f-0.334000f
 };
 
 int main() {
@@ -271,10 +271,10 @@ GLuint uploadStandard2D(const glutil::TextureImage& image) {
     GLuint tex = 0;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     glTexImage2D(GL_TEXTURE_2D,
                  0,
@@ -285,7 +285,6 @@ GLuint uploadStandard2D(const glutil::TextureImage& image) {
                  image.format(),
                  GL_UNSIGNED_BYTE,
                  image.data());
-    glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
     return tex;
 }
@@ -297,10 +296,10 @@ GLuint uploadDDS2D(const glutil::TextureDDS& dds) {
     GLuint tex = 0;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)(dds.mips().size() - 1));
 

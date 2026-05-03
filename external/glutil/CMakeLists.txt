@@ -107,7 +107,7 @@ endif()
 if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM_USE_GLM)
   add_executable(glutil_textureExample)
   target_sources(glutil_textureExample
-        PRIVATE example/textureExample.cpp
+        PRIVATE example/texture.cpp
   )
   target_include_directories(glutil_textureExample
         PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
@@ -124,7 +124,7 @@ if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM
 
   add_executable(glutil_modelExample)
   target_sources(glutil_modelExample
-        PRIVATE example/modelExample.cpp
+        PRIVATE example/model.cpp
   )
   target_include_directories(glutil_modelExample
         PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
@@ -153,6 +153,23 @@ if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM
   target_compile_features(glutil_manyCubesExample PRIVATE cxx_std_17)
   target_compile_options(glutil_manyCubesExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
   set_target_properties(glutil_manyCubesExample PROPERTIES
+        FOLDER "GLUTIL_Examples"
+  )
+
+  add_executable(glutil_normalMappingExample)
+  target_sources(glutil_normalMappingExample
+        PRIVATE example/normalMapping.cpp
+  )
+  target_include_directories(glutil_normalMappingExample
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_normalMappingExample PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_normalMappingExample PRIVATE cxx_std_17)
+  target_compile_options(glutil_normalMappingExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_normalMappingExample PROPERTIES
         FOLDER "GLUTIL_Examples"
   )
 endif()

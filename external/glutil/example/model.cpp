@@ -1,4 +1,4 @@
-﻿#include <glutil/gl.hpp>
+#include <glutil/gl.hpp>
 #include <glutil/inspector.hpp>
 #include <glutil/texture.hpp>
 #include <glutil/model.hpp>
