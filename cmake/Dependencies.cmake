@@ -131,6 +131,7 @@ function(use_or_fetch_package)
         # Replace any partial/old directory and move extracted root into place
         file(REMOVE_RECURSE "${PKG_EXTERNAL_DIR}")
         file(RENAME "${_pkg_root}" "${PKG_EXTERNAL_DIR}")
+        file(REMOVE_RECURSE "${_pkg_extract_dir}")
 
         if(NOT EXISTS "${PKG_EXTERNAL_DIR}/CMakeLists.txt")
             message(FATAL_ERROR
