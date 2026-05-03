@@ -131,7 +131,7 @@ function(fetch_glad)
   message(STATUS "[${PROJECT_NAME}]   into ${FG_DEST_DIR}")
 
   # Download
-  set(_zip_path "${CMAKE_BINARY_DIR}/${_cfg_tag}_glad.zip")
+  set(_zip_path "${CMAKE_BINARY_DIR}/_gdm_downloads/${_cfg_tag}_glad.zip")
   string(TIMESTAMP _fetch_start_time "%s" UTC)
   file(DOWNLOAD "${zip_url}" "${_zip_path}"
     STATUS _dl_status
@@ -194,7 +194,7 @@ function(fetch_glad_allEXT)
   unset(_fgae_options)
 
   set(GL_XML_URL "https://cvs.khronos.org/svn/repos/ogl/trunk/doc/registry/public/api/gl.xml")
-  set(GL_XML_PATH "${CMAKE_BINARY_DIR}/khronos_gl.xml")
+  set(GL_XML_PATH "${CMAKE_BINARY_DIR}/_gdm_downloads/khronos_gl.xml")
 
   # Time the download of gl.xml from Khronos
   string(TIMESTAMP _xml_start_time "%s" UTC)
