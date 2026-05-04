@@ -22,42 +22,48 @@
 namespace fs = std::filesystem;
 
 const glutil::VertexPNT kVertices[] = {
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.000059f, 1.0f-0.000004f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.000103f, 1.0f-0.336048f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.000023f, 1.0f-0.000013f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.999958f, 1.0f-0.336064f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336024f, 1.0f-0.671877f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.667969f, 1.0f-0.671889f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.000023f, 1.0f-0.000013f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.668104f, 1.0f-0.000013f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.000059f, 1.0f-0.000004f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336098f, 1.0f-0.000071f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336024f, 1.0f-0.671877f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.000004f, 1.0f-0.671847f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.999958f, 1.0f-0.336064f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.668104f, 1.0f-0.000013f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.668104f, 1.0f-0.000013f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.336098f, 1.0f-0.000071f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.000103f, 1.0f-0.336048f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.000004f, 1.0f-0.671870f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336024f, 1.0f-0.671877f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.000103f, 1.0f-0.336048f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336024f, 1.0f-0.671877f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667969f, 1.0f-0.671889f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.000004f, 1.0f-0.671847f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f}
+    // Front (+Z)
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    // Back (-Z)
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    // Left (-X)
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    // Right (+X)
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    // Top (+Y)
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    // Bottom (-Y)
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
 };
 
 static GLFWwindow* initGLFWAndContext();
@@ -75,6 +81,13 @@ static std::vector<glm::vec3> generateRandomPositions(int num_cubes,
                                                       float fovY_deg,
                                                       float aspect);
 static std::vector<float> buildColorDataFromFaces();
+static std::vector<glm::vec3> computeNormals(const glutil::VertexPNT* vertices, size_t vertexCount);
+static std::vector<glm::vec3> computeTangents(
+    const glutil::VertexPNT* vertices,
+    const std::vector<glm::vec3>& normals);
+static std::vector<glm::vec3> computeBitangents(
+    const std::vector<glm::vec3>& normals,
+    const std::vector<glm::vec3>& tangents);
 
 static std::mt19937 g_rng(12345);
 
@@ -102,6 +115,9 @@ int main(int argc, char** argv) {
 
     GLuint vao = 0;
     GLuint vboVertex = 0;
+    GLuint vboNormal = 0;
+    GLuint vboTangent = 0;
+    GLuint vboBitangent = 0;
     GLuint vboColor = 0;
 
     glGenVertexArrays(1, &vao);
@@ -117,6 +133,38 @@ int main(int argc, char** argv) {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
                           reinterpret_cast<void*>(offsetof(glutil::VertexPNT, u)));
 
+    const size_t vertexCount = sizeof(kVertices) / sizeof(kVertices[0]);
+    const std::vector<glm::vec3> normals = computeNormals(kVertices, vertexCount);
+    const std::vector<glm::vec3> tangents = computeTangents(kVertices, normals);
+    const std::vector<glm::vec3> bitangents = computeBitangents(normals, tangents);
+
+    glGenBuffers(1, &vboNormal);
+    glBindBuffer(GL_ARRAY_BUFFER, vboNormal);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(normals.size() * sizeof(glm::vec3)),
+                 normals.data(),
+                 GL_STATIC_DRAW);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    glGenBuffers(1, &vboTangent);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTangent);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(tangents.size() * sizeof(glm::vec3)),
+                 tangents.data(),
+                 GL_STATIC_DRAW);
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    glGenBuffers(1, &vboBitangent);
+    glBindBuffer(GL_ARRAY_BUFFER, vboBitangent);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(bitangents.size() * sizeof(glm::vec3)),
+                 bitangents.data(),
+                 GL_STATIC_DRAW);
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
     const std::vector<float> colorData = buildColorDataFromFaces();
     glGenBuffers(1, &vboColor);
     glBindBuffer(GL_ARRAY_BUFFER, vboColor);
@@ -124,82 +172,114 @@ int main(int argc, char** argv) {
                  static_cast<GLsizeiptr>(colorData.size() * sizeof(float)),
                  colorData.data(),
                  GL_STATIC_DRAW);
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    std::vector<GLuint> textures;
-    textures.reserve(1);
-
     const fs::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
-    const std::vector<fs::path> texturePaths = {
-        textureDir / "33.bmp"
-    };
+    const fs::path diffusePath = textureDir / "diffuse.DDS";
+    const fs::path normalPath = textureDir / "normal.bmp";
+    const fs::path specularPath = textureDir / "specular.DDS";
 
-    for (const fs::path& texPath : texturePaths) {
-        if (!fs::exists(texPath)) {
-            std::cerr << "[ManyCubes] Texture not found: " << texPath << std::endl;
-            continue;
-        }
+    GLuint diffuseTex = 0;
+    GLuint normalTex = 0;
+    GLuint specularTex = 0;
 
-        GLuint tex = 0;
-        if (glutil::ImageLoader::isDDS(texPath.string().c_str())) {
-            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(texPath.string().c_str());
+    if (fs::exists(diffusePath)) {
+        if (glutil::ImageLoader::isDDS(diffusePath.string().c_str())) {
+            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(diffusePath.string().c_str());
             if (dds.ok) {
-                tex = uploadDDS2D(dds);
+                diffuseTex = uploadDDS2D(dds);
             } else {
-                std::cerr << "[ManyCubes] DDS load failed: " << texPath << "\n  reason: " << dds.error << std::endl;
+                std::cerr << "[ManyCubes] Diffuse DDS load failed: " << diffusePath
+                          << "\n  reason: " << dds.error << std::endl;
             }
         } else {
-            glutil::TextureImage img = glutil::ImageLoader::loadImage(texPath.string().c_str());
+            glutil::TextureImage img = glutil::ImageLoader::loadImage(diffusePath.string().c_str());
             if (img.ok) {
-                tex = uploadStandard2D(img);
+                diffuseTex = uploadStandard2D(img);
             } else {
-                std::cerr << "[ManyCubes] Texture load failed: " << texPath << "\n  reason: " << img.error << std::endl;
+                std::cerr << "[ManyCubes] Diffuse texture load failed: " << diffusePath
+                          << "\n  reason: " << img.error << std::endl;
             }
         }
+    } else {
+        std::cerr << "[ManyCubes] Diffuse texture not found: " << diffusePath << std::endl;
+    }
 
-        if (tex != 0) {
-            textures.push_back(tex);
+    if (fs::exists(normalPath)) {
+        glutil::TextureImage img = glutil::ImageLoader::loadImage(normalPath.string().c_str());
+        if (img.ok) {
+            normalTex = uploadStandard2D(img);
+        } else {
+            std::cerr << "[ManyCubes] Normal texture load failed: " << normalPath
+                      << "\n  reason: " << img.error << std::endl;
         }
+    } else {
+        std::cerr << "[ManyCubes] Normal texture not found: " << normalPath << std::endl;
     }
 
-    if (textures.empty()) {
-        std::cerr << "[ManyCubes] No textures loaded. Rendering will use fallback color." << std::endl;
+    if (fs::exists(specularPath)) {
+        if (glutil::ImageLoader::isDDS(specularPath.string().c_str())) {
+            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(specularPath.string().c_str());
+            if (dds.ok) {
+                specularTex = uploadDDS2D(dds);
+            } else {
+                std::cerr << "[ManyCubes] Specular DDS load failed: " << specularPath
+                          << "\n  reason: " << dds.error << std::endl;
+            }
+        } else {
+            glutil::TextureImage img = glutil::ImageLoader::loadImage(specularPath.string().c_str());
+            if (img.ok) {
+                specularTex = uploadStandard2D(img);
+            } else {
+                std::cerr << "[ManyCubes] Specular texture load failed: " << specularPath
+                          << "\n  reason: " << img.error << std::endl;
+            }
+        }
+    } else {
+        std::cerr << "[ManyCubes] Specular texture not found: " << specularPath << std::endl;
     }
 
-    std::vector<int> cubeTexIndex(num_cubes, -1);
-    if (!textures.empty()) {
-        std::uniform_int_distribution<int> texDist(0, static_cast<int>(textures.size()) - 1);
-        std::bernoulli_distribution useTexDist(0.3); // percentage of textured cube
+    const bool normalMapReady = (diffuseTex != 0 && normalTex != 0 && specularTex != 0);
+    if (!normalMapReady) {
+        std::cerr << "[ManyCubes] Normal mapping textures incomplete. Falling back to vertex colors."
+                  << std::endl;
+    }
+
+    const float normalMapRatio = 0.5f; // tweakable ratio for normal-mapped cubes
+    std::vector<int> cubeUseNormalMap(num_cubes, 0);
+    if (normalMapReady) {
+        std::bernoulli_distribution useNormalMapDist(normalMapRatio);
         for (int i = 0; i < num_cubes; ++i) {
-            if (useTexDist(g_rng)) {
-                cubeTexIndex[i] = texDist(g_rng);
-            }
+            cubeUseNormalMap[i] = useNormalMapDist(g_rng) ? 1 : 0;
         }
     }
 
     const GLint modelLoc = glGetUniformLocation(program, "uModel");
     const GLint viewLoc = glGetUniformLocation(program, "uView");
     const GLint projLoc = glGetUniformLocation(program, "uProj");
-    const GLint timeLoc = glGetUniformLocation(program, "uTime");
     const GLint viewPosLoc = glGetUniformLocation(program, "uViewPos");
-    const GLint lightDensityLoc = glGetUniformLocation(program, "uLightDensity");
-    const GLint texLoc = glGetUniformLocation(program, "uTexture");
-    const GLint hasTexLoc = glGetUniformLocation(program, "uHasTexture");
+    const GLint lightPosLoc = glGetUniformLocation(program, "uLightPos");
+    const GLint diffuseTexLoc = glGetUniformLocation(program, "uDiffuseTex");
+    const GLint normalTexLoc = glGetUniformLocation(program, "uNormalTex");
+    const GLint specularTexLoc = glGetUniformLocation(program, "uSpecularTex");
+    const GLint useNormalMapLoc = glGetUniformLocation(program, "uUseNormalMap");
 
     glUseProgram(program);
-    if (texLoc >= 0) {
-        glUniform1i(texLoc, 0);
-    }
+    if (diffuseTexLoc >= 0) glUniform1i(diffuseTexLoc, 0);
+    if (normalTexLoc >= 0) glUniform1i(normalTexLoc, 1);
+    if (specularTexLoc >= 0) glUniform1i(specularTexLoc, 2);
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_MULTISAMPLE);
 
     glm::vec3 camPos(4.0f, 3.0f, -3.0f);
     glm::vec3 camTarget(0.0f, 0.0f, 0.0f);
     glm::vec3 camUp(0.0f, 1.0f, 0.0f);
+    const glm::vec3 lightPos(6.0f, 6.0f, 6.0f);
     float fovY = 45.0f;
     float zNear = 0.1f;
     float zFar = 100.0f;
@@ -235,7 +315,6 @@ int main(int argc, char** argv) {
     double cpuTime = 0.0;
     double gpuTime = 0.0;
     auto simLastTime = std::chrono::steady_clock::now();
-    auto simStartTime = simLastTime;
 
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -298,10 +377,17 @@ int main(int argc, char** argv) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(program);
-        const double timeSec = std::chrono::duration<double>(frameBegin - simStartTime).count();
-        if (timeLoc >= 0) glUniform1f(timeLoc, static_cast<float>(timeSec));
         if (viewPosLoc >= 0) glUniform3fv(viewPosLoc, 1, glm::value_ptr(camPos));
-        if (lightDensityLoc >= 0) glUniform1f(lightDensityLoc, 2.0f);
+        if (lightPosLoc >= 0) glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
+
+        if (normalMapReady) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, diffuseTex);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, normalTex);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, specularTex);
+        }
 
         for (int i = 0; i < num_cubes; ++i) {
             glm::mat4 model(1.0f);
@@ -315,18 +401,9 @@ int main(int argc, char** argv) {
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
             }
 
-            GLuint boundTex = 0;
-            if (!textures.empty() && cubeTexIndex[i] >= 0) {
-                boundTex = textures[static_cast<size_t>(cubeTexIndex[i])];
-            }
-
-            if (hasTexLoc >= 0) {
-                glUniform1i(hasTexLoc, boundTex != 0 ? 1 : 0);
-            }
-
-            if (boundTex != 0) {
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, boundTex);
+            if (useNormalMapLoc >= 0) {
+                const int useNormal = (normalMapReady && cubeUseNormalMap[i] != 0) ? 1 : 0;
+                glUniform1i(useNormalMapLoc, useNormal);
             }
 
             glBindVertexArray(vao);
@@ -372,13 +449,16 @@ int main(int argc, char** argv) {
         }
     }
 
+    glDeleteBuffers(1, &vboBitangent);
+    glDeleteBuffers(1, &vboTangent);
+    glDeleteBuffers(1, &vboNormal);
     glDeleteBuffers(1, &vboColor);
     glDeleteBuffers(1, &vboVertex);
     glDeleteVertexArrays(1, &vao);
 
-    for (GLuint tex : textures) {
-        glDeleteTextures(1, &tex);
-    }
+    if (diffuseTex != 0) glDeleteTextures(1, &diffuseTex);
+    if (normalTex != 0) glDeleteTextures(1, &normalTex);
+    if (specularTex != 0) glDeleteTextures(1, &specularTex);
 
     glDeleteProgram(program);
     glfwDestroyWindow(window);
@@ -395,6 +475,7 @@ static GLFWwindow* initGLFWAndContext() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -658,4 +739,64 @@ static std::vector<float> buildColorDataFromFaces() {
     }
 
     return colors;
+}
+
+static std::vector<glm::vec3> computeNormals(const glutil::VertexPNT* vertices, size_t vertexCount) {
+    std::vector<glm::vec3> normals(vertexCount, glm::vec3(0.0f));
+    for (size_t i = 0; i < vertexCount; i += 3) {
+        glm::vec3 p0 = glutil::position(vertices[i + 0]);
+        glm::vec3 p1 = glutil::position(vertices[i + 1]);
+        glm::vec3 p2 = glutil::position(vertices[i + 2]);
+
+        glm::vec3 edge1 = p1 - p0;
+        glm::vec3 edge2 = p2 - p0;
+        glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
+
+        normals[i + 0] = faceNormal;
+        normals[i + 1] = faceNormal;
+        normals[i + 2] = faceNormal;
+    }
+    return normals;
+}
+
+static std::vector<glm::vec3> computeTangents(
+    const glutil::VertexPNT* vertices,
+    const std::vector<glm::vec3>& normals) {
+    std::vector<glm::vec3> tangents(normals.size(), glm::vec3(0.0f));
+    for (size_t i = 0; i < normals.size(); i += 3) {
+        const glutil::VertexPNT& v0 = vertices[i + 0];
+        const glutil::VertexPNT& v1 = vertices[i + 1];
+        const glutil::VertexPNT& v2 = vertices[i + 2];
+
+        glm::vec3 p0 = glutil::position(v0);
+        glm::vec3 p1 = glutil::position(v1);
+        glm::vec3 p2 = glutil::position(v2);
+
+        glm::vec2 uv0 = glutil::uv(v0);
+        glm::vec2 uv1 = glutil::uv(v1);
+        glm::vec2 uv2 = glutil::uv(v2);
+
+        glm::vec3 edge1 = p1 - p0;
+        glm::vec3 edge2 = p2 - p0;
+        glm::vec2 dUV1 = uv1 - uv0;
+        glm::vec2 dUV2 = uv2 - uv0;
+
+        float r = 1.0f / (dUV1.x * dUV2.y - dUV1.y * dUV2.x + 1e-6f);
+        glm::vec3 tangent = (edge1 * dUV2.y - edge2 * dUV1.y) * r;
+
+        tangents[i + 0] = glm::normalize(tangent);
+        tangents[i + 1] = glm::normalize(tangent);
+        tangents[i + 2] = glm::normalize(tangent);
+    }
+    return tangents;
+}
+
+static std::vector<glm::vec3> computeBitangents(
+    const std::vector<glm::vec3>& normals,
+    const std::vector<glm::vec3>& tangents) {
+    std::vector<glm::vec3> bitangents(normals.size());
+    for (size_t i = 0; i < normals.size(); ++i) {
+        bitangents[i] = glm::normalize(glm::cross(normals[i], tangents[i]));
+    }
+    return bitangents;
 }
