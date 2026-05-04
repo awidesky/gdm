@@ -30,12 +30,18 @@ function(use_or_fetch_package)
         ${GDM_EXTERNAL_DIR}/${PKG_NAME}-${PKG_VERSION}
     )
 
+    # When dependency sources live outside the current source tree 
+    # (e.g. GDM_EXTERNAL_DIR points to a parent project's external/),
+    # CMake requires an explicit binary directory argument to add_subdirectory().
+    # Keep builds isolated per-dependency in the top-level build tree.
+    set(_gdm_pkg_binary_dir "${CMAKE_BINARY_DIR}/_gdm_deps/${PKG_NAME}-${PKG_VERSION}")
+
     set(USE_EXTERNAL_PACKAGE FALSE)
 
     # 1. Prefer external/<name>-<version>
     if (EXISTS ${PKG_EXTERNAL_DIR}/CMakeLists.txt)
         message(STATUS "[${PROJECT_NAME}] Using external ${PKG_NAME} ${PKG_VERSION}" )
-        add_subdirectory(${PKG_EXTERNAL_DIR})
+        add_subdirectory("${PKG_EXTERNAL_DIR}" "${_gdm_pkg_binary_dir}")
         set(USE_EXTERNAL_PACKAGE TRUE)
     endif()
 
@@ -134,7 +140,7 @@ function(use_or_fetch_package)
                 "[${PROJECT_NAME}] ${PKG_NAME}: extracted directory does not contain CMakeLists.txt: ${PKG_EXTERNAL_DIR}"
             )
         endif()
-        add_subdirectory("${PKG_EXTERNAL_DIR}")
+        add_subdirectory("${PKG_EXTERNAL_DIR}" "${_gdm_pkg_binary_dir}")
 
         string(TIMESTAMP _pkg_end_time "%s" UTC)
         math(EXPR _pkg_elapsed_time "${_pkg_end_time} - ${_pkg_start_time}")
@@ -158,4 +164,6 @@ function(use_or_fetch_package)
             )
         endif()
     endif()
+
+    unset(_gdm_pkg_binary_dir)
 endfunction()
