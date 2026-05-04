@@ -61,7 +61,7 @@ const GLfloat kVertexData[] = {
 };
 
 // Cube mesh UVs (2D texture coordinates) - match textureExample layout
-const GLfloat kUvData[] = {
+const GLfloat kUvDataBase[] = {
     0.002000f, 1.0f-0.002000f, 0.002000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.334000f,
     0.998000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.334000f, 0.998000f, 1.0f-0.334000f,
     0.666000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f, 0.666000f, 1.0f-0.666000f,
@@ -75,6 +75,17 @@ const GLfloat kUvData[] = {
     0.002000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f, 0.334000f, 1.0f-0.334000f,
     0.666000f, 1.0f-0.666000f, 0.998000f, 1.0f-0.666000f, 0.666000f, 1.0f-0.334000f
 };
+
+constexpr GLfloat kUvRepeat = 3.0f;
+constexpr size_t kUvDataCount = sizeof(kUvDataBase) / sizeof(GLfloat);
+
+const std::array<GLfloat, kUvDataCount> kUvData = [] {
+    std::array<GLfloat, kUvDataCount> uvData{};
+    for (size_t i = 0; i < kUvDataCount; ++i) {
+        uvData[i] = kUvDataBase[i] * kUvRepeat;
+    }
+    return uvData;
+}();
 
 // Compute vertex normals for a cube mesh
 std::vector<glm::vec3> computeNormals(const GLfloat* positions, size_t vertexCount) {
@@ -324,7 +335,7 @@ int main() {
     // Compute normals, tangents, bitangents
     const size_t vertexCount = sizeof(kVertexData) / (sizeof(GLfloat) * 3);
     std::vector<glm::vec3> normals = computeNormals(kVertexData, vertexCount);
-    std::vector<glm::vec3> tangents = computeTangents(kVertexData, kUvData, normals);
+    std::vector<glm::vec3> tangents = computeTangents(kVertexData, kUvData.data(), normals);
     std::vector<glm::vec3> bitangents = computeBitangents(normals, tangents);
 
     // Create VAO and VBOs
@@ -348,7 +359,7 @@ int main() {
     // UV
     glGenBuffers(1, &vboUV);
     glBindBuffer(GL_ARRAY_BUFFER, vboUV);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(kUvData), kUvData, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(kUvData.size() * sizeof(GLfloat)), kUvData.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
@@ -603,8 +614,8 @@ GLuint uploadStandard2D(const glutil::TextureImage& image) {
     GLuint tex = 0;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -620,8 +631,8 @@ GLuint uploadDDS2D(const glutil::TextureDDS& dds) {
     GLuint tex = 0;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
