@@ -272,6 +272,8 @@ int main(int argc, char** argv) {
             rotations[i].x += randf(0.012f, 0.018f);
         }
 
+        const auto cpuEnd = std::chrono::steady_clock::now();
+
         glfwGetFramebufferSize(window, &fbW, &fbH);
         if (fbW > 0 && fbH > 0) {
             glViewport(0, 0, fbW, fbH);
@@ -282,8 +284,6 @@ int main(int argc, char** argv) {
         if (projLoc >= 0) {
             glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
         }
-
-        const auto cpuEnd = std::chrono::steady_clock::now();
 
         glClearColor(0.0f, 0.0f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
