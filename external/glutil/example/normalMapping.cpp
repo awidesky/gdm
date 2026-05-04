@@ -11,6 +11,7 @@
 
 #include <glutil/gl.hpp>
 #include <glutil/inspector.hpp>
+#include <glutil/math.hpp>
 #include <glutil/texture.hpp>
 
 #include <glm/glm.hpp>
@@ -18,6 +19,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <cmath>
+#include <cstddef>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -43,58 +45,60 @@ struct InputState {
     bool left=false, right=false, up=false, down=false;
 } g_input;
 
-// Cube mesh vertex data (positions) - grouped by face
-const GLfloat kVertexData[] = {
+// Cube mesh vertex data - grouped by face, whole image per face
+const glutil::VertexPNT kVertices[] = {
     // Front (+Z)
-    -1.0f, -1.0f,  1.0f,   1.0f, -1.0f,  1.0f,   1.0f,  1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,  -1.0f,  1.0f,  1.0f,  -1.0f, -1.0f,  1.0f,
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
     // Back (-Z)
-     1.0f, -1.0f, -1.0f,  -1.0f, -1.0f, -1.0f,  -1.0f,  1.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,   1.0f,  1.0f, -1.0f,   1.0f, -1.0f, -1.0f,
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
     // Left (-X)
-    -1.0f, -1.0f, -1.0f,  -1.0f, -1.0f,  1.0f,  -1.0f,  1.0f,  1.0f,
-    -1.0f,  1.0f,  1.0f,  -1.0f,  1.0f, -1.0f,  -1.0f, -1.0f, -1.0f,
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
     // Right (+X)
-     1.0f, -1.0f,  1.0f,   1.0f, -1.0f, -1.0f,   1.0f,  1.0f, -1.0f,
-     1.0f,  1.0f, -1.0f,   1.0f,  1.0f,  1.0f,   1.0f, -1.0f,  1.0f,
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
     // Top (+Y)
-    -1.0f,  1.0f,  1.0f,   1.0f,  1.0f,  1.0f,   1.0f,  1.0f, -1.0f,
-     1.0f,  1.0f, -1.0f,  -1.0f,  1.0f, -1.0f,  -1.0f,  1.0f,  1.0f,
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
     // Bottom (-Y)
-    -1.0f, -1.0f, -1.0f,   1.0f, -1.0f, -1.0f,   1.0f, -1.0f,  1.0f,
-     1.0f, -1.0f,  1.0f,  -1.0f, -1.0f,  1.0f,  -1.0f, -1.0f, -1.0f
-};
-
-// Cube mesh UVs (2D texture coordinates) - whole image per face
-const GLfloat kUvData[] = {
-    // Front
-    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-    // Back
-    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-    // Left
-    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-    // Right
-    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-    // Top
-    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-    // Bottom
-    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
 };
 
 // Compute vertex normals for a cube mesh
-std::vector<glm::vec3> computeNormals(const GLfloat* positions, size_t vertexCount) {
+std::vector<glm::vec3> computeNormals(const glutil::VertexPNT* vertices, size_t vertexCount) {
     std::vector<glm::vec3> normals(vertexCount, glm::vec3(0.0f));
     // 36 vertices = 12 triangles
     for (size_t i = 0; i < vertexCount; i += 3) {
-        glm::vec3 p0(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2]);
-        glm::vec3 p1(positions[(i + 1) * 3 + 0], positions[(i + 1) * 3 + 1], positions[(i + 1) * 3 + 2]);
-        glm::vec3 p2(positions[(i + 2) * 3 + 0], positions[(i + 2) * 3 + 1], positions[(i + 2) * 3 + 2]);
+        glm::vec3 p0 = glutil::position(vertices[i + 0]);
+        glm::vec3 p1 = glutil::position(vertices[i + 1]);
+        glm::vec3 p2 = glutil::position(vertices[i + 2]);
         
         glm::vec3 edge1 = p1 - p0;
         glm::vec3 edge2 = p2 - p0;
@@ -109,17 +113,21 @@ std::vector<glm::vec3> computeNormals(const GLfloat* positions, size_t vertexCou
 
 // Compute tangent and bitangent vectors from position and UV data using Lengyel's method
 std::vector<glm::vec3> computeTangents(
-    const GLfloat* positions, const GLfloat* uvs, const std::vector<glm::vec3>& normals) {
+    const glutil::VertexPNT* vertices, const std::vector<glm::vec3>& normals) {
     std::vector<glm::vec3> tangents(normals.size(), glm::vec3(0.0f));
     
     for (size_t i = 0; i < normals.size(); i += 3) {
-        glm::vec3 p0(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2]);
-        glm::vec3 p1(positions[(i + 1) * 3 + 0], positions[(i + 1) * 3 + 1], positions[(i + 1) * 3 + 2]);
-        glm::vec3 p2(positions[(i + 2) * 3 + 0], positions[(i + 2) * 3 + 1], positions[(i + 2) * 3 + 2]);
-        
-        glm::vec2 uv0(uvs[i * 2 + 0], uvs[i * 2 + 1]);
-        glm::vec2 uv1(uvs[(i + 1) * 2 + 0], uvs[(i + 1) * 2 + 1]);
-        glm::vec2 uv2(uvs[(i + 2) * 2 + 0], uvs[(i + 2) * 2 + 1]);
+        const glutil::VertexPNT& v0 = vertices[i + 0];
+        const glutil::VertexPNT& v1 = vertices[i + 1];
+        const glutil::VertexPNT& v2 = vertices[i + 2];
+
+        glm::vec3 p0 = glutil::position(v0);
+        glm::vec3 p1 = glutil::position(v1);
+        glm::vec3 p2 = glutil::position(v2);
+
+        glm::vec2 uv0 = glutil::uv(v0);
+        glm::vec2 uv1 = glutil::uv(v1);
+        glm::vec2 uv2 = glutil::uv(v2);
         
         glm::vec3 edge1 = p1 - p0;
         glm::vec3 edge2 = p2 - p0;
@@ -333,15 +341,14 @@ int main() {
     }
 
     // Compute normals, tangents, bitangents
-    const size_t vertexCount = sizeof(kVertexData) / (sizeof(GLfloat) * 3);
-    std::vector<glm::vec3> normals = computeNormals(kVertexData, vertexCount);
-    std::vector<glm::vec3> tangents = computeTangents(kVertexData, kUvData, normals);
+    const size_t vertexCount = sizeof(kVertices) / sizeof(kVertices[0]);
+    std::vector<glm::vec3> normals = computeNormals(kVertices, vertexCount);
+    std::vector<glm::vec3> tangents = computeTangents(kVertices, normals);
     std::vector<glm::vec3> bitangents = computeBitangents(normals, tangents);
 
     // Create VAO and VBOs
     GLuint vao = 0;
-    GLuint vboPos = 0;
-    GLuint vboUV = 0;
+    GLuint vboVertex = 0;
     GLuint vboNormal = 0;
     GLuint vboTangent = 0;
     GLuint vboBitangent = 0;
@@ -350,18 +357,15 @@ int main() {
     glBindVertexArray(vao);
 
     // Position
-    glGenBuffers(1, &vboPos);
-    glBindBuffer(GL_ARRAY_BUFFER, vboPos);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(kVertexData), kVertexData, GL_STATIC_DRAW);
+    glGenBuffers(1, &vboVertex);
+    glBindBuffer(GL_ARRAY_BUFFER, vboVertex);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(kVertices), kVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-    // UV
-    glGenBuffers(1, &vboUV);
-    glBindBuffer(GL_ARRAY_BUFFER, vboUV);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kUvData), kUvData, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, x)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, u)));
 
     // Normal
     glGenBuffers(1, &vboNormal);
@@ -505,8 +509,7 @@ int main() {
     glDeleteBuffers(1, &vboBitangent);
     glDeleteBuffers(1, &vboTangent);
     glDeleteBuffers(1, &vboNormal);
-    glDeleteBuffers(1, &vboUV);
-    glDeleteBuffers(1, &vboPos);
+    glDeleteBuffers(1, &vboVertex);
     glDeleteVertexArrays(1, &vao);
     glDeleteProgram(program);
     glDeleteTextures(1, &specularTex);

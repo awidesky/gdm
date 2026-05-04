@@ -1,11 +1,12 @@
 #include <glutil/gl.hpp>
 #include <glutil/inspector.hpp>
+#include <glutil/math.hpp>
 #include <glutil/texture.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <array>
+#include <cstddef>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -44,34 +45,43 @@ void main() {
 }
 )";
 
-const GLfloat kVertexData[] = {
-    -1.0f,-1.0f,-1.0f, -1.0f,-1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
-     1.0f, 1.0f,-1.0f, -1.0f,-1.0f,-1.0f, -1.0f, 1.0f,-1.0f,
-     1.0f,-1.0f, 1.0f, -1.0f,-1.0f,-1.0f, 1.0f,-1.0f,-1.0f,
-     1.0f, 1.0f,-1.0f,  1.0f,-1.0f,-1.0f, -1.0f,-1.0f,-1.0f,
-    -1.0f,-1.0f,-1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f,-1.0f,
-     1.0f,-1.0f, 1.0f, -1.0f,-1.0f, 1.0f, -1.0f,-1.0f,-1.0f,
-    -1.0f, 1.0f, 1.0f, -1.0f,-1.0f, 1.0f,  1.0f,-1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f,  1.0f,-1.0f,-1.0f,  1.0f, 1.0f,-1.0f,
-     1.0f,-1.0f,-1.0f,  1.0f, 1.0f, 1.0f,  1.0f,-1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f,  1.0f, 1.0f,-1.0f, -1.0f, 1.0f,-1.0f,
-     1.0f, 1.0f, 1.0f, -1.0f, 1.0f,-1.0f, -1.0f, 1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f,  1.0f,-1.0f, 1.0f
-};
-
-const GLfloat kUvData[] = {
-    0.002000f, 1.0f-0.002000f, 0.002000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.334000f,
-    0.998000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.334000f, 0.998000f, 1.0f-0.334000f,
-    0.666000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f, 0.666000f, 1.0f-0.666000f,
-    0.998000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.334000f,
-    0.002000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.002000f,
-    0.666000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f,
-    0.998000f, 1.0f-0.666000f, 0.998000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.334000f,
-    0.666000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.334000f,
-    0.334000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.002000f,
-    0.002000f, 1.0f-0.334000f, 0.002000f, 1.0f-0.666000f, 0.334000f, 1.0f-0.666000f,
-    0.002000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f, 0.334000f, 1.0f-0.334000f,
-    0.666000f, 1.0f-0.666000f, 0.998000f, 1.0f-0.666000f, 0.666000f, 1.0f-0.334000f
+const glutil::VertexPNT kVertices[] = {
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.002000f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.334000f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.002000f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.334000f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.666000f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.666000f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.002000f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.002000f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.002000f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.002000f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.666000f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.666000f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.334000f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.002000f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.002000f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.002000f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.666000f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.666000f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.334000f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.666000f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.666000f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.666000f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f}
 };
 
 int main() {
@@ -123,23 +133,20 @@ int main() {
     const GLint texLoc = glGetUniformLocation(program, "uTexture");
 
     GLuint vao = 0;
-    GLuint vboPos = 0;
-    GLuint vboUv = 0;
+    GLuint vboVertex = 0;
 
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    glGenBuffers(1, &vboPos);
-    glBindBuffer(GL_ARRAY_BUFFER, vboPos);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kVertexData), kVertexData, GL_STATIC_DRAW);
+    glGenBuffers(1, &vboVertex);
+    glBindBuffer(GL_ARRAY_BUFFER, vboVertex);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kVertices), kVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-    glGenBuffers(1, &vboUv);
-    glBindBuffer(GL_ARRAY_BUFFER, vboUv);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kUvData), kUvData, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, x)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, u)));
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -179,8 +186,7 @@ int main() {
         glfwSwapBuffers(ctx);
     }
 
-    glDeleteBuffers(1, &vboUv);
-    glDeleteBuffers(1, &vboPos);
+    glDeleteBuffers(1, &vboVertex);
     glDeleteVertexArrays(1, &vao);
     glDeleteProgram(program);
     glDeleteTextures(1, &bmpTex);

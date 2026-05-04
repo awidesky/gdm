@@ -1,12 +1,15 @@
 #include <glutil/glutil.hpp>
+#include <glutil/math.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
@@ -18,34 +21,43 @@
 
 namespace fs = std::filesystem;
 
-const GLfloat kVertexData[] = {
-    -1.0f,-1.0f,-1.0f, -1.0f,-1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
-     1.0f, 1.0f,-1.0f, -1.0f,-1.0f,-1.0f, -1.0f, 1.0f,-1.0f,
-     1.0f,-1.0f, 1.0f, -1.0f,-1.0f,-1.0f,  1.0f,-1.0f,-1.0f,
-     1.0f, 1.0f,-1.0f,  1.0f,-1.0f,-1.0f, -1.0f,-1.0f,-1.0f,
-    -1.0f,-1.0f,-1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f,-1.0f,
-     1.0f,-1.0f, 1.0f, -1.0f,-1.0f, 1.0f, -1.0f,-1.0f,-1.0f,
-    -1.0f, 1.0f, 1.0f, -1.0f,-1.0f, 1.0f,  1.0f,-1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f,  1.0f,-1.0f,-1.0f,  1.0f, 1.0f,-1.0f,
-     1.0f,-1.0f,-1.0f,  1.0f, 1.0f, 1.0f,  1.0f,-1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f,  1.0f, 1.0f,-1.0f, -1.0f, 1.0f,-1.0f,
-     1.0f, 1.0f, 1.0f, -1.0f, 1.0f,-1.0f, -1.0f, 1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f,  1.0f,-1.0f, 1.0f
-};
-
-const GLfloat kUvData[] = {
-    0.000059f, 1.0f-0.000004f, 0.000103f, 1.0f-0.336048f, 0.335973f, 1.0f-0.335903f,
-    1.000023f, 1.0f-0.000013f, 0.667979f, 1.0f-0.335851f, 0.999958f, 1.0f-0.336064f,
-    0.667979f, 1.0f-0.335851f, 0.336024f, 1.0f-0.671877f, 0.667969f, 1.0f-0.671889f,
-    1.000023f, 1.0f-0.000013f, 0.668104f, 1.0f-0.000013f, 0.667979f, 1.0f-0.335851f,
-    0.000059f, 1.0f-0.000004f, 0.335973f, 1.0f-0.335903f, 0.336098f, 1.0f-0.000071f,
-    0.667979f, 1.0f-0.335851f, 0.335973f, 1.0f-0.335903f, 0.336024f, 1.0f-0.671877f,
-    1.000004f, 1.0f-0.671847f, 0.999958f, 1.0f-0.336064f, 0.667979f, 1.0f-0.335851f,
-    0.668104f, 1.0f-0.000013f, 0.335973f, 1.0f-0.335903f, 0.667979f, 1.0f-0.335851f,
-    0.335973f, 1.0f-0.335903f, 0.668104f, 1.0f-0.000013f, 0.336098f, 1.0f-0.000071f,
-    0.000103f, 1.0f-0.336048f, 0.000004f, 1.0f-0.671870f, 0.336024f, 1.0f-0.671877f,
-    0.000103f, 1.0f-0.336048f, 0.336024f, 1.0f-0.671877f, 0.335973f, 1.0f-0.335903f,
-    0.667969f, 1.0f-0.671889f, 1.000004f, 1.0f-0.671847f, 0.667979f, 1.0f-0.335851f
+const glutil::VertexPNT kVertices[] = {
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.000059f, 1.0f-0.000004f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.000103f, 1.0f-0.336048f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.000023f, 1.0f-0.000013f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.999958f, 1.0f-0.336064f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336024f, 1.0f-0.671877f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.667969f, 1.0f-0.671889f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.000023f, 1.0f-0.000013f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.668104f, 1.0f-0.000013f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.000059f, 1.0f-0.000004f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336098f, 1.0f-0.000071f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336024f, 1.0f-0.671877f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.000004f, 1.0f-0.671847f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.999958f, 1.0f-0.336064f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.668104f, 1.0f-0.000013f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.668104f, 1.0f-0.000013f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.336098f, 1.0f-0.000071f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.000103f, 1.0f-0.336048f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.000004f, 1.0f-0.671870f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336024f, 1.0f-0.671877f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.000103f, 1.0f-0.336048f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.336024f, 1.0f-0.671877f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.335973f, 1.0f-0.335903f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667969f, 1.0f-0.671889f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.000004f, 1.0f-0.671847f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.667979f, 1.0f-0.335851f}
 };
 
 static GLFWwindow* initGLFWAndContext();
@@ -89,24 +101,21 @@ int main(int argc, char** argv) {
     }
 
     GLuint vao = 0;
-    GLuint vboPos = 0;
-    GLuint vboUv = 0;
+    GLuint vboVertex = 0;
     GLuint vboColor = 0;
 
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    glGenBuffers(1, &vboPos);
-    glBindBuffer(GL_ARRAY_BUFFER, vboPos);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kVertexData), kVertexData, GL_STATIC_DRAW);
+    glGenBuffers(1, &vboVertex);
+    glBindBuffer(GL_ARRAY_BUFFER, vboVertex);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kVertices), kVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-    glGenBuffers(1, &vboUv);
-    glBindBuffer(GL_ARRAY_BUFFER, vboUv);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kUvData), kUvData, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, x)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, u)));
 
     const std::vector<float> colorData = buildColorDataFromFaces();
     glGenBuffers(1, &vboColor);
@@ -364,8 +373,7 @@ int main(int argc, char** argv) {
     }
 
     glDeleteBuffers(1, &vboColor);
-    glDeleteBuffers(1, &vboUv);
-    glDeleteBuffers(1, &vboPos);
+    glDeleteBuffers(1, &vboVertex);
     glDeleteVertexArrays(1, &vao);
 
     for (GLuint tex : textures) {
@@ -621,16 +629,20 @@ static std::vector<float> buildColorDataFromFaces() {
     };
 
     for (int tri = 0; tri < 12; ++tri) {
-        const int base = tri * 9;
-        const float x0 = kVertexData[base + 0];
-        const float y0 = kVertexData[base + 1];
-        const float z0 = kVertexData[base + 2];
-        const float x1 = kVertexData[base + 3];
-        const float y1 = kVertexData[base + 4];
-        const float z1 = kVertexData[base + 5];
-        const float x2 = kVertexData[base + 6];
-        const float y2 = kVertexData[base + 7];
-        const float z2 = kVertexData[base + 8];
+        const int vtx = tri * 3;
+        const glutil::VertexPNT& v0 = kVertices[vtx + 0];
+        const glutil::VertexPNT& v1 = kVertices[vtx + 1];
+        const glutil::VertexPNT& v2 = kVertices[vtx + 2];
+
+        const float x0 = v0.x;
+        const float y0 = v0.y;
+        const float z0 = v0.z;
+        const float x1 = v1.x;
+        const float y1 = v1.y;
+        const float z1 = v1.z;
+        const float x2 = v2.x;
+        const float y2 = v2.y;
+        const float z2 = v2.z;
 
         char axis = 'z';
         if (x0 == x1 && x1 == x2) axis = 'x';
@@ -640,7 +652,6 @@ static std::vector<float> buildColorDataFromFaces() {
         const glm::vec3 c1 = pickColor(x1, y1, z1, axis);
         const glm::vec3 c2 = pickColor(x2, y2, z2, axis);
 
-        const int vtx = tri * 3;
         setColor(vtx + 0, c0.r, c0.g, c0.b);
         setColor(vtx + 1, c1.r, c1.g, c1.b);
         setColor(vtx + 2, c2.r, c2.g, c2.b);
