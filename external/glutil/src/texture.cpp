@@ -97,8 +97,8 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
     result.internalFmt = internalFmt;
     result.ok = true;
 
-    LOG_INFO() << "[TextureImage] load succeeded: " << pr.resolvedPath << " (" << w << "x" << h << ", flipV=" << flipV
-               << ")";
+    LOG_INFO() << "[TextureImage] Load succeeded: " << pr.resolvedPath;
+    LOG_INFO() << "[TextureImage]                 (" << w << "x" << h << ", flipV=" << flipV << ")";
     return result;
 }
 
