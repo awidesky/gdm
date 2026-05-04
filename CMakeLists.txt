@@ -41,6 +41,11 @@ set_property(CACHE GDM_GL_LOADER
 
 option(GDM_USE_GLM "Enable GLM support" ON)
 
+# Default external dependency directory; users may override via cache
+set(GDM_EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external" CACHE PATH
+    "Directory where GDM external dependencies are stored"
+)
+
 # -----------------------
 # User-configurable dependency versions
 # -----------------------
@@ -201,7 +206,6 @@ endif()
 # -----------------------
 # OpenGL loader (GLAD, GLEW)
 # -----------------------
-set(GDM_EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
 if (GDM_GL_LOADER STREQUAL "none")
     add_library(gdm_loader INTERFACE)

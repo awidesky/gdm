@@ -1,7 +1,3 @@
-get_filename_component(GDM_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
-set(GDM_EXTERNAL_DIR "${GDM_ROOT_DIR}/external" CACHE PATH
-    "Directory where GDM external dependencies are stored"
-)
 
 function(use_or_fetch_package)
     set(options)
