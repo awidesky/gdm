@@ -35,6 +35,14 @@ static GLuint createProgram(const char* vertexSource, const char* fragmentSource
 static GLuint uploadStandard2D(const glutil::TextureImage& image);
 static GLuint uploadDDS2D(const glutil::TextureDDS& dds);
 static glm::mat4 makeMVP(float t, float aspect);
+// Input handling (portable via GLFW callback)
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+struct InputState {
+    bool w=false, s=false, a=false, d=false;
+    bool space=false, shift=false;
+    bool left=false, right=false, up=false, down=false;
+} g_input;
 
 // Cube mesh vertex data (positions)
 const GLfloat kVertexData[] = {
@@ -229,6 +237,8 @@ void main() {
 int main() {
     GLFWwindow* window = initGLFWAndContext();
     if (!window) return 1;
+    // register portable input callback
+    glfwSetKeyCallback(window, keyCallback);
 
     const fs::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
     const fs::path diffusePath = textureDir / "diffuse.DDS";
@@ -388,9 +398,12 @@ int main() {
     if (lightPowerLoc >= 0) glUniform1f(lightPowerLoc, 4.0f);
 
     glm::vec3 cameraPos(3.0f, 3.0f, 3.0f);
-    glm::vec3 cameraTarget(0.0f, 0.0f, 0.0f);
     glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);
-    glm::vec3 lightPos;
+    glm::vec3 lightPos = cameraPos * 1.1f;
+    float cameraYaw = -135.0f;
+    float cameraPitch = -35.2643897f;
+    const float moveSpeed = 2.5f;
+    const float rotateSpeed = 90.0f;
 
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -402,13 +415,35 @@ int main() {
             glViewport(0, 0, fbW, fbH);
         }
 
-        const float t = (float)glfwGetTime();
+        const float currentTime = (float)glfwGetTime();
+        static float lastTime = currentTime;
+        const float deltaTime = glm::clamp(currentTime - lastTime, 0.0f, 0.1f);
+        lastTime = currentTime;
+        const float t = currentTime;
         const float aspect = (fbH > 0) ? ((float)fbW / (float)fbH) : 1.0f;
 
-        glm::vec3 camDir = glm::normalize(cameraTarget - cameraPos);
-        glm::vec3 camDown = -cameraUp;
-        glm::vec3 camRight = glm::normalize(glm::cross(camDir, cameraUp));
-        lightPos = cameraPos + camDown * 3.0f + camRight * 0.9f + camDir * 2.0f;
+        // compute orientation from yaw/pitch
+        if (g_input.left) cameraYaw -= rotateSpeed * deltaTime;
+        if (g_input.right) cameraYaw += rotateSpeed * deltaTime;
+        if (g_input.up) cameraPitch += rotateSpeed * deltaTime;
+        if (g_input.down) cameraPitch -= rotateSpeed * deltaTime;
+        cameraPitch = glm::clamp(cameraPitch, -89.0f, 89.0f);
+
+        glm::vec3 cameraFront;
+        cameraFront.x = cos(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
+        cameraFront.y = sin(glm::radians(cameraPitch));
+        cameraFront.z = sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
+        cameraFront = glm::normalize(cameraFront);
+        glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUp));
+
+        // apply movement along camera axes
+        if (g_input.w) cameraPos += cameraFront * moveSpeed * deltaTime;
+        if (g_input.s) cameraPos -= cameraFront * moveSpeed * deltaTime;
+        if (g_input.a) cameraPos -= cameraRight * moveSpeed * deltaTime;
+        if (g_input.d) cameraPos += cameraRight * moveSpeed * deltaTime;
+        if (g_input.space) cameraPos += glm::vec3(0.0f, 1.0f, 0.0f) * moveSpeed * deltaTime;
+        if (g_input.shift) cameraPos -= glm::vec3(0.0f, 1.0f, 0.0f) * moveSpeed * deltaTime;
+
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
@@ -420,7 +455,7 @@ int main() {
         model = glm::rotate(model, t * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::rotate(model, t * 0.3f, glm::vec3(1.0f, 0.0f, 0.0f));
 
-        glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
         glm::mat4 mvp = proj * view * model;
 
@@ -542,6 +577,24 @@ GLuint createProgram(const char* vertexSource, const char* fragmentSource) {
     std::cerr << "Program link failed:\n" << r.message << std::endl;
     glDeleteProgram(program);
     return 0;
+}
+
+// Key callback stores compact input state for portability and decoupled handling
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    const bool down = (action == GLFW_PRESS || action == GLFW_REPEAT);
+    switch (key) {
+        case GLFW_KEY_W: g_input.w = down; break;
+        case GLFW_KEY_S: g_input.s = down; break;
+        case GLFW_KEY_A: g_input.a = down; break;
+        case GLFW_KEY_D: g_input.d = down; break;
+        case GLFW_KEY_SPACE: g_input.space = down; break;
+        case GLFW_KEY_LEFT_SHIFT: case GLFW_KEY_RIGHT_SHIFT: g_input.shift = down; break;
+        case GLFW_KEY_LEFT: g_input.left = down; break;
+        case GLFW_KEY_RIGHT: g_input.right = down; break;
+        case GLFW_KEY_UP: g_input.up = down; break;
+        case GLFW_KEY_DOWN: g_input.down = down; break;
+        default: break;
+    }
 }
 
 GLuint uploadStandard2D(const glutil::TextureImage& image) {
