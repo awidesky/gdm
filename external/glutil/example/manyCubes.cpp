@@ -6,7 +6,6 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -20,6 +19,15 @@
 #include "config.hpp"
 
 namespace fs = std::filesystem;
+
+constexpr float kBoundaryRadius = 15.0f;
+constexpr float kCollisionRadius = 1.0f;
+constexpr float kBoundaryBounce = 0.9f;
+constexpr float kNormalMapRatio = 0.5f;
+constexpr float kMoveSpeed = 2.5f;
+constexpr float kRotateSpeed = 90.0f;
+constexpr float kInitialSpeedMin = 4.0f;
+constexpr float kInitialSpeedMax = 7.0f;
 
 const glutil::VertexPNT kVertices[] = {
     // Front (+Z)
@@ -72,14 +80,10 @@ static GLuint createProgramFromFiles(const fs::path& vsPath, const fs::path& fsP
 static GLuint uploadStandard2D(const glutil::TextureImage& image);
 static GLuint uploadDDS2D(const glutil::TextureDDS& dds);
 static float randf(float a, float b);
-static std::vector<glm::vec3> generateRandomPositions(int num_cubes,
-                                                      const glm::vec3& eye,
+static std::vector<glm::vec3> generateSpherePositions(int num_cubes,
                                                       const glm::vec3& center,
-                                                      const glm::vec3& up,
-                                                      float zNear,
-                                                      float zFar,
-                                                      float fovY_deg,
-                                                      float aspect);
+                                                      float radius,
+                                                      float padding);
 static std::vector<float> buildColorDataFromFaces();
 static std::vector<glm::vec3> computeNormals(const glutil::VertexPNT* vertices, size_t vertexCount);
 static std::vector<glm::vec3> computeTangents(
@@ -88,11 +92,18 @@ static std::vector<glm::vec3> computeTangents(
 static std::vector<glm::vec3> computeBitangents(
     const std::vector<glm::vec3>& normals,
     const std::vector<glm::vec3>& tangents);
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+struct InputState {
+    bool w=false, s=false, a=false, d=false;
+    bool space=false, shift=false;
+    bool left=false, right=false, up=false, down=false;
+} g_input;
 
 static std::mt19937 g_rng(12345);
 
 int main(int argc, char** argv) {
-    int num_cubes = 300;
+    int num_cubes = 150;
     if (argc == 2) {
         num_cubes = std::max(1, std::stoi(argv[1]));
     }
@@ -101,6 +112,7 @@ int main(int argc, char** argv) {
     if (!window) {
         return 1;
     }
+    glfwSetKeyCallback(window, keyCallback);
 
     const fs::path shaderDir = glutil::EXAMPLE_ASSET_DIR / "shader";
     const fs::path vsPath = shaderDir / "manyCubes.vert";
@@ -249,10 +261,9 @@ int main(int argc, char** argv) {
                   << std::endl;
     }
 
-    const float normalMapRatio = 0.5f; // tweakable ratio for normal-mapped cubes
     std::vector<int> cubeUseNormalMap(num_cubes, 0);
     if (normalMapReady) {
-        std::bernoulli_distribution useNormalMapDist(normalMapRatio);
+        std::bernoulli_distribution useNormalMapDist(kNormalMapRatio);
         for (int i = 0; i < num_cubes; ++i) {
             cubeUseNormalMap[i] = useNormalMapDist(g_rng) ? 1 : 0;
         }
@@ -276,10 +287,13 @@ int main(int argc, char** argv) {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
 
-    glm::vec3 camPos(4.0f, 3.0f, -3.0f);
-    glm::vec3 camTarget(0.0f, 0.0f, 0.0f);
+    glm::vec3 camPos = kBoundaryRadius * glm::vec3(1.0f) + glm::vec3(1.0f, kBoundaryRadius, 1.0f);
+    glm::vec3 camTarget(0.0f, kBoundaryRadius, 0.0f);
     glm::vec3 camUp(0.0f, 1.0f, 0.0f);
-    const glm::vec3 lightPos(6.0f, 6.0f, 6.0f);
+    const glm::vec3 initialDir = glm::normalize(camTarget - camPos);
+    float cameraYaw = glm::degrees(std::atan2(initialDir.z, initialDir.x));
+    float cameraPitch = glm::degrees(std::asin(initialDir.y));
+    const glm::vec3 lightPos = kBoundaryRadius * glm::vec3(1.1f);
     float fovY = 45.0f;
     float zNear = 0.1f;
     float zFar = 100.0f;
@@ -289,7 +303,8 @@ int main(int argc, char** argv) {
     glfwGetFramebufferSize(window, &fbW, &fbH);
     float aspect = (fbH > 0) ? static_cast<float>(fbW) / static_cast<float>(fbH) : 1.0f;
 
-    auto positions = generateRandomPositions(num_cubes, camPos, camTarget, camUp, zNear, zFar, fovY, aspect);
+    const glm::vec3 boundaryCenter(0.0f, kBoundaryRadius, 0.0f);
+    auto positions = generateSpherePositions(num_cubes, boundaryCenter, kBoundaryRadius, kCollisionRadius);
     std::vector<glm::vec3> rotations;
     rotations.reserve(num_cubes);
     std::uniform_real_distribution<float> rotDist(0.0f, 3.14159f);
@@ -299,14 +314,15 @@ int main(int argc, char** argv) {
 
     std::vector<glm::vec3> velocities;
     velocities.reserve(num_cubes);
-    std::uniform_real_distribution<float> velDist(-0.5f, 0.5f);
+    std::uniform_real_distribution<float> dirDist(-1.0f, 1.0f);
+    std::uniform_real_distribution<float> speedDist(kInitialSpeedMin, kInitialSpeedMax);
     for (int i = 0; i < num_cubes; ++i) {
-        velocities.emplace_back(velDist(g_rng), velDist(g_rng), velDist(g_rng));
-    }
-
-    glm::mat4 view = glm::lookAt(camPos, camTarget, camUp);
-    if (viewLoc >= 0) {
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glm::vec3 dir(dirDist(g_rng), dirDist(g_rng), dirDist(g_rng));
+        if (glm::dot(dir, dir) < 1e-6f) {
+            dir = glm::vec3(1.0f, 0.0f, 0.0f);
+        }
+        dir = glm::normalize(dir);
+        velocities.emplace_back(dir * speedDist(g_rng));
     }
 
     auto lastPrint = std::chrono::steady_clock::now();
@@ -326,12 +342,31 @@ int main(int argc, char** argv) {
         const float fdt = static_cast<float>(std::min(0.05, dt * 1.0));
         simLastTime = simNow;
 
+        if (g_input.left) cameraYaw -= kRotateSpeed * fdt;
+        if (g_input.right) cameraYaw += kRotateSpeed * fdt;
+        if (g_input.up) cameraPitch += kRotateSpeed * fdt;
+        if (g_input.down) cameraPitch -= kRotateSpeed * fdt;
+        cameraPitch = glm::clamp(cameraPitch, -89.0f, 89.0f);
+
+        glm::vec3 cameraFront;
+        cameraFront.x = cos(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
+        cameraFront.y = sin(glm::radians(cameraPitch));
+        cameraFront.z = sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
+        cameraFront = glm::normalize(cameraFront);
+        glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, camUp));
+
+        if (g_input.w) camPos += cameraFront * kMoveSpeed * fdt;
+        if (g_input.s) camPos -= cameraFront * kMoveSpeed * fdt;
+        if (g_input.a) camPos -= cameraRight * kMoveSpeed * fdt;
+        if (g_input.d) camPos += cameraRight * kMoveSpeed * fdt;
+        if (g_input.space) camPos += glm::vec3(0.0f, 1.0f, 0.0f) * kMoveSpeed * fdt;
+        if (g_input.shift) camPos -= glm::vec3(0.0f, 1.0f, 0.0f) * kMoveSpeed * fdt;
+
         for (int i = 0; i < num_cubes; ++i) {
             positions[i] += velocities[i] * fdt;
         }
 
-        const float collisionRadius = 1.0f;
-        const float minDist = collisionRadius;
+        const float minDist = kCollisionRadius;
         const float minDist2 = minDist * minDist;
         for (int i = 0; i < num_cubes; ++i) {
             for (int j = i + 1; j < num_cubes; ++j) {
@@ -351,7 +386,19 @@ int main(int argc, char** argv) {
         }
 
         for (int i = 0; i < num_cubes; ++i) {
-            velocities[i] *= 0.995f;
+            const float effectiveRadius = kBoundaryRadius - kCollisionRadius;
+            glm::vec3 toCenter = positions[i] - boundaryCenter;
+            const float dist2 = glm::dot(toCenter, toCenter);
+            if (dist2 > effectiveRadius * effectiveRadius) {
+                float dist = std::sqrt(dist2);
+                if (dist < 1e-6f) {
+                    toCenter = glm::vec3(1.0f, 0.0f, 0.0f);
+                    dist = 1.0f;
+                }
+                glm::vec3 n = toCenter / dist;
+                positions[i] = boundaryCenter + n * effectiveRadius;
+                velocities[i] = (velocities[i] - 2.0f * glm::dot(velocities[i], n) * n) * kBoundaryBounce;
+            }
         }
 
         for (int i = 0; i < num_cubes; ++i) {
@@ -371,6 +418,11 @@ int main(int argc, char** argv) {
         const glm::mat4 proj = glm::perspective(glm::radians(fovY), aspect, zNear, zFar);
         if (projLoc >= 0) {
             glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
+        }
+
+        glm::mat4 view = glm::lookAt(camPos, camPos + cameraFront, camUp);
+        if (viewLoc >= 0) {
+            glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         }
 
         glClearColor(0.0f, 0.0f, 0.15f, 1.0f);
@@ -625,36 +677,22 @@ static float randf(float a, float b) {
     return dist(g_rng);
 }
 
-static std::vector<glm::vec3> generateRandomPositions(int num_cubes,
-                                                      const glm::vec3& eye,
+static std::vector<glm::vec3> generateSpherePositions(int num_cubes,
                                                       const glm::vec3& center,
-                                                      const glm::vec3& up,
-                                                      float zNear,
-                                                      float zFar,
-                                                      float fovY_deg,
-                                                      float aspect) {
+                                                      float radius,
+                                                      float padding) {
     std::vector<glm::vec3> positions;
     positions.reserve(num_cubes);
 
-    float tanHalfFov = std::tan(fovY_deg * 0.5f * 3.14159265f / 180.0f);
-
-    const glm::vec3 forward = glm::normalize(center - eye);
-    const glm::vec3 right = glm::normalize(glm::cross(forward, up));
-    const glm::vec3 camUp = glm::cross(right, forward);
-
+    const float usableRadius = std::max(0.0f, radius - padding);
     for (int i = 0; i < num_cubes; ++i) {
-        float minDepth = zNear + 5.0f;
-        float d = randf(minDepth, zFar - 1.0f);
-        float h = 2.0f * d * tanHalfFov;
-        float w = h * aspect;
-
-        float rx = std::sqrt(std::sqrt(randf(0.0f, 1.0f)));
-        float ry = std::sqrt(std::sqrt(randf(0.0f, 1.0f)));
-
-        float x = randf(-1.0f, 1.0f) * (w * 0.5f) * rx;
-        float y = randf(-1.0f, 1.0f) * (h * 0.5f) * ry;
-
-        positions.push_back(eye + forward * d + right * x + camUp * y);
+        glm::vec3 dir(randf(-1.0f, 1.0f), randf(-1.0f, 1.0f), randf(-1.0f, 1.0f));
+        if (glm::dot(dir, dir) < 1e-6f) {
+            dir = glm::vec3(1.0f, 0.0f, 0.0f);
+        }
+        dir = glm::normalize(dir);
+        const float r = usableRadius * std::cbrt(randf(0.0f, 1.0f));
+        positions.emplace_back(center + dir * r);
     }
 
     return positions;
@@ -799,4 +837,21 @@ static std::vector<glm::vec3> computeBitangents(
         bitangents[i] = glm::normalize(glm::cross(normals[i], tangents[i]));
     }
     return bitangents;
+}
+
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    const bool down = (action == GLFW_PRESS || action == GLFW_REPEAT);
+    switch (key) {
+        case GLFW_KEY_W: g_input.w = down; break;
+        case GLFW_KEY_S: g_input.s = down; break;
+        case GLFW_KEY_A: g_input.a = down; break;
+        case GLFW_KEY_D: g_input.d = down; break;
+        case GLFW_KEY_SPACE: g_input.space = down; break;
+        case GLFW_KEY_LEFT_SHIFT: case GLFW_KEY_RIGHT_SHIFT: g_input.shift = down; break;
+        case GLFW_KEY_LEFT: g_input.left = down; break;
+        case GLFW_KEY_RIGHT: g_input.right = down; break;
+        case GLFW_KEY_UP: g_input.up = down; break;
+        case GLFW_KEY_DOWN: g_input.down = down; break;
+        default: break;
+    }
 }
