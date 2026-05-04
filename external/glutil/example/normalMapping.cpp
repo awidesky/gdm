@@ -17,7 +17,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <array>
 #include <cmath>
 #include <filesystem>
 #include <iostream>
@@ -44,48 +43,49 @@ struct InputState {
     bool left=false, right=false, up=false, down=false;
 } g_input;
 
-// Cube mesh vertex data (positions)
+// Cube mesh vertex data (positions) - grouped by face
 const GLfloat kVertexData[] = {
-    -1.0f, -1.0f, -1.0f,   -1.0f, -1.0f, 1.0f,    -1.0f, 1.0f, 1.0f,
-     1.0f,  1.0f, -1.0f,   -1.0f, -1.0f, -1.0f,   -1.0f, 1.0f, -1.0f,
-     1.0f, -1.0f,  1.0f,   -1.0f, -1.0f, -1.0f,    1.0f, -1.0f, -1.0f,
-     1.0f,  1.0f, -1.0f,    1.0f, -1.0f, -1.0f,   -1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f, -1.0f,   -1.0f,  1.0f,  1.0f,   -1.0f,  1.0f, -1.0f,
-     1.0f, -1.0f,  1.0f,   -1.0f, -1.0f,  1.0f,   -1.0f, -1.0f, -1.0f,
-    -1.0f,  1.0f,  1.0f,   -1.0f, -1.0f,  1.0f,    1.0f, -1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,    1.0f, -1.0f, -1.0f,    1.0f,  1.0f, -1.0f,
-     1.0f, -1.0f, -1.0f,    1.0f,  1.0f,  1.0f,    1.0f, -1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,    1.0f,  1.0f, -1.0f,   -1.0f,  1.0f, -1.0f,
-     1.0f,  1.0f,  1.0f,   -1.0f,  1.0f, -1.0f,   -1.0f,  1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,   -1.0f,  1.0f,  1.0f,    1.0f, -1.0f,  1.0f
+    // Front (+Z)
+    -1.0f, -1.0f,  1.0f,   1.0f, -1.0f,  1.0f,   1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,  -1.0f,  1.0f,  1.0f,  -1.0f, -1.0f,  1.0f,
+    // Back (-Z)
+     1.0f, -1.0f, -1.0f,  -1.0f, -1.0f, -1.0f,  -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,   1.0f,  1.0f, -1.0f,   1.0f, -1.0f, -1.0f,
+    // Left (-X)
+    -1.0f, -1.0f, -1.0f,  -1.0f, -1.0f,  1.0f,  -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,  -1.0f,  1.0f, -1.0f,  -1.0f, -1.0f, -1.0f,
+    // Right (+X)
+     1.0f, -1.0f,  1.0f,   1.0f, -1.0f, -1.0f,   1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,   1.0f,  1.0f,  1.0f,   1.0f, -1.0f,  1.0f,
+    // Top (+Y)
+    -1.0f,  1.0f,  1.0f,   1.0f,  1.0f,  1.0f,   1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,  -1.0f,  1.0f, -1.0f,  -1.0f,  1.0f,  1.0f,
+    // Bottom (-Y)
+    -1.0f, -1.0f, -1.0f,   1.0f, -1.0f, -1.0f,   1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,  -1.0f, -1.0f,  1.0f,  -1.0f, -1.0f, -1.0f
 };
 
-// Cube mesh UVs (2D texture coordinates) - match textureExample layout
-const GLfloat kUvDataBase[] = {
-    0.002000f, 1.0f-0.002000f, 0.002000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.334000f,
-    0.998000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.334000f, 0.998000f, 1.0f-0.334000f,
-    0.666000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f, 0.666000f, 1.0f-0.666000f,
-    0.998000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.002000f, 0.666000f, 1.0f-0.334000f,
-    0.002000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.002000f,
-    0.666000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f,
-    0.998000f, 1.0f-0.666000f, 0.998000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.334000f,
-    0.666000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.334000f,
-    0.334000f, 1.0f-0.334000f, 0.666000f, 1.0f-0.002000f, 0.334000f, 1.0f-0.002000f,
-    0.002000f, 1.0f-0.334000f, 0.002000f, 1.0f-0.666000f, 0.334000f, 1.0f-0.666000f,
-    0.002000f, 1.0f-0.334000f, 0.334000f, 1.0f-0.666000f, 0.334000f, 1.0f-0.334000f,
-    0.666000f, 1.0f-0.666000f, 0.998000f, 1.0f-0.666000f, 0.666000f, 1.0f-0.334000f
+// Cube mesh UVs (2D texture coordinates) - whole image per face
+const GLfloat kUvData[] = {
+    // Front
+    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+    // Back
+    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+    // Left
+    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+    // Right
+    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+    // Top
+    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+    // Bottom
+    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f
 };
-
-constexpr GLfloat kUvRepeat = 3.0f;
-constexpr size_t kUvDataCount = sizeof(kUvDataBase) / sizeof(GLfloat);
-
-const std::array<GLfloat, kUvDataCount> kUvData = [] {
-    std::array<GLfloat, kUvDataCount> uvData{};
-    for (size_t i = 0; i < kUvDataCount; ++i) {
-        uvData[i] = kUvDataBase[i] * kUvRepeat;
-    }
-    return uvData;
-}();
 
 // Compute vertex normals for a cube mesh
 std::vector<glm::vec3> computeNormals(const GLfloat* positions, size_t vertexCount) {
@@ -335,7 +335,7 @@ int main() {
     // Compute normals, tangents, bitangents
     const size_t vertexCount = sizeof(kVertexData) / (sizeof(GLfloat) * 3);
     std::vector<glm::vec3> normals = computeNormals(kVertexData, vertexCount);
-    std::vector<glm::vec3> tangents = computeTangents(kVertexData, kUvData.data(), normals);
+    std::vector<glm::vec3> tangents = computeTangents(kVertexData, kUvData, normals);
     std::vector<glm::vec3> bitangents = computeBitangents(normals, tangents);
 
     // Create VAO and VBOs
@@ -359,7 +359,7 @@ int main() {
     // UV
     glGenBuffers(1, &vboUV);
     glBindBuffer(GL_ARRAY_BUFFER, vboUV);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(kUvData.size() * sizeof(GLfloat)), kUvData.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kUvData), kUvData, GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
