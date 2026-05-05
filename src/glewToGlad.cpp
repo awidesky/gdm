@@ -5,6 +5,9 @@
 #ifdef GDM_HAS_GLEW_GLAD
 
 #include <GL/glew.h>  // should resolve to real GLEW via PRIVATE include dirs for this target
+#undef __gl_h_
+#undef __glext_h_
+// include undef??
 #include <glad/gl.h>
 
 #ifdef GDM_HAS_GLFW
