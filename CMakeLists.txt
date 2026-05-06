@@ -141,7 +141,7 @@ endif()
 include(cmake/Dependencies.cmake)
 include(cmake/FetchGlad.cmake)
 
-# -----------------------초
+# -----------------------
 # OpenGL (system)
 # -----------------------
 find_package(OpenGL REQUIRED)
@@ -427,8 +427,14 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
 #define GDM_GLEW_GLAD_GLEW_H
 
 #include <glad/gl.h>
+// if not undef, glew.h will complain that another gl header is included.
 #undef __gl_h_
 #undef __glext_h_
+// glad define those values like 0x000A, and glew does 0xA. so, undef or we get a warning
+#undef GL_LINES_ADJACENCY_EXT
+#undef GL_LINE_STRIP_ADJACENCY_EXT
+#undef GL_TRIANGLES_ADJACENCY_EXT
+#undef GL_TRIANGLE_STRIP_ADJACENCY_EXT
 
 ]=])
         foreach(line IN LISTS _gdm_glew_h_lines)
@@ -449,16 +455,24 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
             endif()
             string(APPEND _gdm_fake_glew_h_text "${line}\n")
         endforeach()
-        string(APPEND _gdm_fake_glew_h_text
-            "#define glewInit gdm_glew_glad_glewInit\n"
-            "#endif //GDM_GLEW_GLAD_GLEW_H\n"
-        )
+        string(APPEND _gdm_fake_glew_h_text [=[
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
+#ifdef __cplusplus
+}
+#endif
+#define glewInit gdm_glew_glad_glewInit
+#endif //GDM_GLEW_GLAD_GLEW_H
+]=])
         file(WRITE "${_gdm_fake_glew_h}" "${_gdm_fake_glew_h_text}")
         unset(_gdm_fake_glew_h_text)
         unset(_gdm_glew_h_lines)
         message(STATUS
-            "[GDM] glew-glad wrapper header generated: "
-            "removed ${_gdm_strip_define_count} gl-remap defines, "
+            "[GDM] glew-glad wrapper: "
+            "removed ${_gdm_strip_define_count} gl* functions, "
             "${_gdm_strip_typedef_count} PFNGL typedefs, "
             "${_gdm_strip_export_count} GLEW_FUN_EXPORT declarations"
         )
@@ -572,6 +586,9 @@ if (GDM_USE_GLUTIL)
 endif()
 
 target_compile_definitions(gdm_deps INTERFACE ${_gdm_defs})
+if (GDM_GL_LOADER STREQUAL "glew-glad")
+    target_compile_definitions(gdm_glew_glad PRIVATE ${_gdm_defs})
+endif()
 unset(_gdm_defs)
 
 # -----------------------

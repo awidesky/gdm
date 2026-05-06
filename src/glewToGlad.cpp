@@ -27,9 +27,9 @@ extern "C" GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void) {
     int glad_ok = 0;
 
 #if defined(GDM_HAS_GLFW)
-    glad_ok = gladLoadGL(reinterpret_cast<GLADloadfunc>(glfwGetProcAddress));
+    glad_ok = gladLoadGL((GLADloadfunc)glfwGetProcAddress);
 #elif defined(GDM_HAS_FREEGLUT)
-    glad_ok = gladLoadGL(reinterpret_cast<GLADloadfunc>(glutGetProcAddress));
+    glad_ok = gladLoadGL((GLADloadfunc)glutGetProcAddress);
 #else
 #  error "glew-glad requires GDM_WINDOW_BACKEND=glfw or freeglut."
 #endif
