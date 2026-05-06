@@ -21,7 +21,7 @@
 namespace fs = std::filesystem;
 
 constexpr float kBoundaryRadius = 15.0f;
-constexpr float kCollisionRadius = 1.0f;
+constexpr float kCollisionRadius = 1.207f; //0.5+0.5*sqrt(2) where 0.5 is half of the cube edge length
 constexpr float kBoundaryBounce = 0.9f;
 constexpr float kNormalMapRatio = 0.5f;
 constexpr float kMoveSpeed = 2.5f;
@@ -74,20 +74,40 @@ const glutil::VertexPNCT kVertices[] = {
     {-1.0f, -1.0f, -1.0f, 0.0f,-1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
 };
 
+struct InputState {
+    bool w=false, s=false, a=false, d=false;
+    bool space=false, shift=false;
+    bool left=false, right=false, up=false, down=false;
+} g_input;
+
+struct Cube {
+    glm::vec3 position, rotation, velocity;
+    glm::mat4 model;
+
+    void buildModelMatrix() {
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, position);
+        model = glm::rotate(model, rotation.x, glm::vec3(1, 0, 0));
+        model = glm::rotate(model, rotation.y, glm::vec3(0, 1, 0));
+        model = glm::rotate(model, rotation.z, glm::vec3(0, 0, 1));
+        model = glm::scale(model, glm::vec3(0.5f));
+    }
+};
+static std::mt19937 g_rng(12345);
+
 static GLFWwindow* initGLFWAndContext();
 static GLuint compileShader(GLenum type, const GLchar* src, GLint len);
 static GLuint createProgramFromFiles(const fs::path& vsPath, const fs::path& fsPath);
 static GLuint uploadStandard2D(const glutil::TextureImage& image);
 static GLuint uploadDDS2D(const glutil::TextureDDS& dds);
-static float randf(float a, float b);
-static std::vector<glm::vec3> generateSpherePositions(int num_cubes,
-                                                      const glm::vec3& center,
-                                                      float radius,
-                                                      float padding);
+static float randf(float a, float b) {
+    std::uniform_real_distribution<float> dist(a, b);
+    return dist(g_rng);
+}
+static void generateSpherePositions(std::vector<Cube>& cubes, const glm::vec3& center, float radius, float padding);
 static std::vector<glm::vec3> computeTangents(const glutil::VertexPNCT* vertices,size_t size);
-static std::vector<glm::vec3> computeBitangents(
-    const glutil::VertexPNCT* vertices, size_t size,
-    const std::vector<glm::vec3>& tangents);
+static std::vector<glm::vec3> computeBitangents(const glutil::VertexPNCT* vertices, size_t size,
+const std::vector<glm::vec3>& tangents);
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 #ifdef GDM_HAS_GLAD
@@ -129,13 +149,6 @@ static void gl_error_callback(void* ret, const char* name, GLADapiproc apiproc, 
 #endif
 #endif
 
-struct InputState {
-    bool w=false, s=false, a=false, d=false;
-    bool space=false, shift=false;
-    bool left=false, right=false, up=false, down=false;
-} g_input;
-
-static std::mt19937 g_rng(12345);
 
 int main(int argc, char** argv) {
     int num_cubes = 150;
@@ -323,25 +336,22 @@ int main(int argc, char** argv) {
     float aspect = (fbH > 0) ? static_cast<float>(fbW) / static_cast<float>(fbH) : 1.0f;
 
     const glm::vec3 boundaryCenter(0.0f, kBoundaryRadius, 0.0f);
-    auto positions = generateSpherePositions(num_cubes, boundaryCenter, kBoundaryRadius, kCollisionRadius);
-    std::vector<glm::vec3> rotations;
-    rotations.reserve(num_cubes);
-    std::uniform_real_distribution<float> rotDist(0.0f, 3.14159f);
-    for (int i = 0; i < num_cubes; ++i) {
-        rotations.emplace_back(rotDist(g_rng), rotDist(g_rng), rotDist(g_rng));
-    }
+    std::vector<Cube> cubes(num_cubes);
+    generateSpherePositions(cubes, boundaryCenter, kBoundaryRadius, kCollisionRadius);
 
-    std::vector<glm::vec3> velocities;
-    velocities.reserve(num_cubes);
+    std::uniform_real_distribution<float> rotDist(0.0f, 3.14159f);
     std::uniform_real_distribution<float> dirDist(-1.0f, 1.0f);
     std::uniform_real_distribution<float> speedDist(kInitialSpeedMin, kInitialSpeedMax);
+
     for (int i = 0; i < num_cubes; ++i) {
+        cubes[i].rotation = glm::vec3(rotDist(g_rng), rotDist(g_rng), rotDist(g_rng));
+
         glm::vec3 dir(dirDist(g_rng), dirDist(g_rng), dirDist(g_rng));
         if (glm::dot(dir, dir) < 1e-6f) {
             dir = glm::vec3(1.0f, 0.0f, 0.0f);
         }
         dir = glm::normalize(dir);
-        velocities.emplace_back(dir * speedDist(g_rng));
+        cubes[i].velocity = dir * speedDist(g_rng);
     }
 
     auto lastPrint = std::chrono::steady_clock::now();
@@ -382,31 +392,31 @@ int main(int argc, char** argv) {
         if (g_input.shift) camPos -= glm::vec3(0.0f, 1.0f, 0.0f) * kMoveSpeed * fdt;
 
         for (int i = 0; i < num_cubes; ++i) {
-            positions[i] += velocities[i] * fdt;
+            cubes[i].position += cubes[i].velocity * fdt;
         }
 
         const float minDist = kCollisionRadius;
         const float minDist2 = minDist * minDist;
         for (int i = 0; i < num_cubes; ++i) {
             for (int j = i + 1; j < num_cubes; ++j) {
-                glm::vec3 d = positions[j] - positions[i];
+                glm::vec3 d = cubes[j].position - cubes[i].position;
                 float dist2 = glm::dot(d, d);
                 if (dist2 < minDist2) {
                     float dist = std::sqrt(dist2) + 1e-6f;
                     glm::vec3 dir = d / dist;
                     float overlap = 0.5f * (minDist - dist);
-                    positions[i] -= dir * overlap;
-                    positions[j] += dir * overlap;
+                    cubes[i].position -= dir * overlap;
+                    cubes[j].position += dir * overlap;
                     const float impulse = 20.0f;
-                    velocities[i] -= dir * impulse * fdt;
-                    velocities[j] += dir * impulse * fdt;
+                    cubes[i].velocity -= dir * impulse * fdt;
+                    cubes[j].velocity += dir * impulse * fdt;
                 }
             }
         }
 
         for (int i = 0; i < num_cubes; ++i) {
             const float effectiveRadius = kBoundaryRadius - kCollisionRadius;
-            glm::vec3 toCenter = positions[i] - boundaryCenter;
+            glm::vec3 toCenter = cubes[i].position - boundaryCenter;
             const float dist2 = glm::dot(toCenter, toCenter);
             if (dist2 > effectiveRadius * effectiveRadius) {
                 float dist = std::sqrt(dist2);
@@ -415,15 +425,17 @@ int main(int argc, char** argv) {
                     dist = 1.0f;
                 }
                 glm::vec3 n = toCenter / dist;
-                positions[i] = boundaryCenter + n * effectiveRadius;
-                velocities[i] = (velocities[i] - 2.0f * glm::dot(velocities[i], n) * n) * kBoundaryBounce;
+                cubes[i].position = boundaryCenter + n * effectiveRadius;
+                cubes[i].velocity = (cubes[i].velocity - 2.0f * glm::dot(cubes[i].velocity, n) * n) * kBoundaryBounce;
             }
         }
 
         for (int i = 0; i < num_cubes; ++i) {
-            if (i & 1) rotations[i].y += randf(0.007f, 0.013f);
-            else rotations[i].y -= randf(0.007f, 0.013f);
-            rotations[i].x += randf(0.012f, 0.018f);
+            if (i & 1) cubes[i].rotation.y += randf(0.007f, 0.013f);
+            else cubes[i].rotation.y -= randf(0.007f, 0.013f);
+            cubes[i].rotation.x += randf(0.012f, 0.018f);
+            
+            cubes[i].buildModelMatrix();
         }
 
         const auto cpuEnd = std::chrono::steady_clock::now();
@@ -461,12 +473,7 @@ int main(int argc, char** argv) {
         }
 
         for (int i = 0; i < num_cubes; ++i) {
-            glm::mat4 model(1.0f);
-            model = glm::translate(model, positions[i]);
-            model = glm::rotate(model, rotations[i].x, glm::vec3(1, 0, 0));
-            model = glm::rotate(model, rotations[i].y, glm::vec3(0, 1, 0));
-            model = glm::rotate(model, rotations[i].z, glm::vec3(0, 0, 1));
-            model = glm::scale(model, glm::vec3(0.5f));
+            const glm::mat4& model = cubes[i].model;
 
             if (modelLoc >= 0) {
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -696,18 +703,11 @@ static GLuint uploadDDS2D(const glutil::TextureDDS& dds) {
     return tex;
 }
 
-static float randf(float a, float b) {
-    std::uniform_real_distribution<float> dist(a, b);
-    return dist(g_rng);
-}
-
-static std::vector<glm::vec3> generateSpherePositions(int num_cubes,
-                                                      const glm::vec3& center,
-                                                      float radius,
-                                                      float padding) {
-    std::vector<glm::vec3> positions;
-    positions.reserve(num_cubes);
-
+static void generateSpherePositions(std::vector<Cube>& cubes,
+                                    const glm::vec3& center,
+                                    float radius,
+                                    float padding) {
+    const int num_cubes = static_cast<int>(cubes.size());
     const float usableRadius = std::max(0.0f, radius - padding);
     for (int i = 0; i < num_cubes; ++i) {
         glm::vec3 dir(randf(-1.0f, 1.0f), randf(-1.0f, 1.0f), randf(-1.0f, 1.0f));
@@ -716,10 +716,8 @@ static std::vector<glm::vec3> generateSpherePositions(int num_cubes,
         }
         dir = glm::normalize(dir);
         const float r = usableRadius * std::cbrt(randf(0.0f, 1.0f));
-        positions.emplace_back(center + dir * r);
+        cubes[i].position = center + dir * r;
     }
-
-    return positions;
 }
 
 
