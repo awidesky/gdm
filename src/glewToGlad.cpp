@@ -4,10 +4,7 @@
 
 #ifdef GDM_HAS_GLEW_GLAD
 
-#include <gdm/stripped_glew.h>
-#undef __gl_h_
-#undef __glext_h_
-#include <glad/gl.h>
+#include <GL/glew.h>
 
 #ifdef GDM_HAS_GLFW
 #  include <GLFW/glfw3.h>
