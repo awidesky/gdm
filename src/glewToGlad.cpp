@@ -14,6 +14,8 @@
 #  include <GL/freeglut.h>
 #endif
 
+#include <stdio.h>
+
 extern "C" GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void) {
 // If the shim header was accidentally included first, avoid recursion.
 #ifdef glewInit
@@ -34,9 +36,12 @@ extern "C" GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void) {
 #  error "glew-glad requires GDM_WINDOW_BACKEND=glfw or freeglut."
 #endif
 
-    if (!glad_ok)
+    if (!glad_ok) {
+        printf("GLEW loading is successful, but gladLoadGL failed!");
         return GLEW_ERROR_NO_GL_VERSION;
+    }
 
+    //printf("GLEW and GLAD loading success\n");
     return GLEW_OK;
 }
 

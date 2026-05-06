@@ -426,16 +426,6 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
 #ifndef GDM_GLEW_GLAD_GLEW_H
 #define GDM_GLEW_GLAD_GLEW_H
 
-#include <glad/gl.h>
-// if not undef, glew.h will complain that another gl header is included.
-#undef __gl_h_
-#undef __glext_h_
-// glad define those values like 0x000A, and glew does 0xA. so, undef or we get a warning
-#undef GL_LINES_ADJACENCY_EXT
-#undef GL_LINE_STRIP_ADJACENCY_EXT
-#undef GL_TRIANGLES_ADJACENCY_EXT
-#undef GL_TRIANGLE_STRIP_ADJACENCY_EXT
-
 ]=])
         foreach(line IN LISTS _gdm_glew_h_lines)
             # Strip: #define glXxx GLEW_GET_FUN(...)
@@ -456,6 +446,29 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
             string(APPEND _gdm_fake_glew_h_text "${line}\n")
         endforeach()
         string(APPEND _gdm_fake_glew_h_text [=[
+
+// if not undef, glew.h will complain that another gl header is included.
+#undef __gl_h_
+#undef __glext_h_
+// glad define some values like 0x000A, and glew does 0xA. so, undef or we get a warning
+#if defined(_MSC_VER)
+	#pragma warning(push)
+	#pragma warning(disable : 4005)
+	#include <glad/gl.h>
+	#pragma warning(pop)
+#elif defined(__GNUC__)
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wmacro-redefined"
+	#include <glad/gl.h>
+	#pragma GCC diagnostic pop
+#elif defined(__clang__)
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wmacro-redefined"
+	#include <glad/gl.h>
+	#pragma clang diagnostic pop
+#else
+	#include <glad/gl.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
