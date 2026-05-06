@@ -485,7 +485,7 @@ int main(int argc, char** argv) {
             }
 
             glBindVertexArray(vao);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glDrawArrays(GL_TRIANGLES, 0, sizeof(kVertices) / sizeof(kVertices[0]));
         }
 
         const auto renderEnd = std::chrono::steady_clock::now();
