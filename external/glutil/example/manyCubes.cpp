@@ -1,5 +1,4 @@
 #include <glutil/glutil.hpp>
-#include <glutil/math.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -12,6 +11,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <random>
 #include <string>
 #include <vector>
@@ -93,6 +93,45 @@ static std::vector<glm::vec3> computeBitangents(
     const std::vector<glm::vec3>& normals,
     const std::vector<glm::vec3>& tangents);
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+#ifdef GDM_HAS_GLAD
+#ifdef GLAD_OPTION_GL_DEBUG
+static std::string glErrorToString(GLenum err) {
+    std::stringstream ss;
+    switch (err) {
+        case GL_NO_ERROR: ss << "GL_NO_ERROR"; break;
+        case GL_INVALID_ENUM: ss << "GL_INVALID_ENUM"; break;
+        case GL_INVALID_VALUE: ss << "GL_INVALID_VALUE"; break;
+        case GL_INVALID_OPERATION: ss << "GL_INVALID_OPERATION"; break;
+        case GL_OUT_OF_MEMORY: ss << "GL_OUT_OF_MEMORY"; break;
+        case GL_INVALID_FRAMEBUFFER_OPERATION: ss << "GL_INVALID_FRAMEBUFFER_OPERATION"; break;
+        case GL_FRAMEBUFFER_COMPLETE: return "GL_FRAMEBUFFER_COMPLETE";
+        case GL_FRAMEBUFFER_UNDEFINED: return "GL_FRAMEBUFFER_UNDEFINED";
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
+        case GL_FRAMEBUFFER_UNSUPPORTED: return "GL_FRAMEBUFFER_UNSUPPORTED";
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
+        default: ss << "UNKNOWN_ERROR";
+    }
+    ss << '(' << err << ')';
+    return ss.str();
+}
+
+static void gl_error_callback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
+    GLAD_UNUSED(ret);
+    GLAD_UNUSED(apiproc);
+    GLAD_UNUSED(len_args);
+
+    const GLenum error = glad_glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cerr << "[GL Error] " << glErrorToString(error) << " in function " << name << std::endl;
+    }
+}
+#endif
+#endif
 
 struct InputState {
     bool w=false, s=false, a=false, d=false;
@@ -546,6 +585,13 @@ static GLFWwindow* initGLFWAndContext() {
         glfwTerminate();
         return nullptr;
     }
+
+#ifdef GDM_HAS_GLAD
+#ifdef GLAD_OPTION_GL_DEBUG
+    gladSetGLPostCallback(gl_error_callback);
+    std::cout << "GL error checking enabled via GLAD post-callback" << std::endl;
+#endif
+#endif
 
     glfwSwapInterval(1);
     glfwSetInputMode(ret, GLFW_STICKY_KEYS, GL_TRUE);

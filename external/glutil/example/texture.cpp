@@ -1,7 +1,4 @@
-#include <glutil/gl.hpp>
-#include <glutil/inspector.hpp>
-#include <glutil/math.hpp>
-#include <glutil/texture.hpp>
+#include <glutil/glutil.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
