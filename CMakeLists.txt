@@ -426,6 +426,10 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
 #ifndef GDM_GLEW_GLAD_GLEW_H
 #define GDM_GLEW_GLAD_GLEW_H
 
+#include <glad/gl.h>
+#undef __gl_h_
+#undef __glext_h_
+
 ]=])
     foreach(line IN LISTS _gdm_glew_h_lines)
         if(line MATCHES "^[ \t]*#[ \t]*define[ \t]+gl[A-Za-z0-9_]+[ \t]+GLEW_GET_FUN[ \t]*[(]")
@@ -439,9 +443,6 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
         string(APPEND _gdm_fake_glew_h_text "${line}\n")
     endforeach()
     string(APPEND _gdm_fake_glew_h_text
-        "\n#undef __gl_h_\n"
-        "#undef __glext_h_\n"
-        "#include <glad/gl.h>\n"
         "#define glewInit gdm_glew_glad_glewInit\n"
         "#endif //GDM_GLEW_GLAD_GLEW_H\n"
     )
