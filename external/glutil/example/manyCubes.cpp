@@ -29,49 +29,49 @@ constexpr float kRotateSpeed = 90.0f;
 constexpr float kInitialSpeedMin = 4.0f;
 constexpr float kInitialSpeedMax = 7.0f;
 
-const glutil::VertexPNT kVertices[] = {
+const glutil::VertexPNCT kVertices[] = {
     // Front (+Z)
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
     // Back (-Z)
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f,-1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f,-1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f,-1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f,-1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f,-1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f,-1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
     // Left (-X)
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f, -1.0f, -1.0f,-1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f, -1.0f,  1.0f,-1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {-1.0f,  1.0f,  1.0f,-1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f,-1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f,-1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f, -1.0f,-1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
     // Right (+X)
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+    { 1.0f, -1.0f,  1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f},
     // Top (+Y)
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f},
+    { 1.0f,  1.0f,  1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
+    { 1.0f,  1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
+    {-1.0f,  1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    {-1.0f,  1.0f,  1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f},
     // Bottom (-Y)
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
+    {-1.0f, -1.0f, -1.0f, 0.0f,-1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+    { 1.0f, -1.0f, -1.0f, 0.0f,-1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f,-1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
+    { 1.0f, -1.0f,  1.0f, 0.0f,-1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
+    {-1.0f, -1.0f,  1.0f, 0.0f,-1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+    {-1.0f, -1.0f, -1.0f, 0.0f,-1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
 };
 
 static GLFWwindow* initGLFWAndContext();
@@ -84,13 +84,9 @@ static std::vector<glm::vec3> generateSpherePositions(int num_cubes,
                                                       const glm::vec3& center,
                                                       float radius,
                                                       float padding);
-static std::vector<float> buildColorDataFromFaces();
-static std::vector<glm::vec3> computeNormals(const glutil::VertexPNT* vertices, size_t vertexCount);
-static std::vector<glm::vec3> computeTangents(
-    const glutil::VertexPNT* vertices,
-    const std::vector<glm::vec3>& normals);
+static std::vector<glm::vec3> computeTangents(const glutil::VertexPNCT* vertices,size_t size);
 static std::vector<glm::vec3> computeBitangents(
-    const std::vector<glm::vec3>& normals,
+    const glutil::VertexPNCT* vertices, size_t size,
     const std::vector<glm::vec3>& tangents);
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
@@ -166,10 +162,8 @@ int main(int argc, char** argv) {
 
     GLuint vao = 0;
     GLuint vboVertex = 0;
-    GLuint vboNormal = 0;
     GLuint vboTangent = 0;
     GLuint vboBitangent = 0;
-    GLuint vboColor = 0;
 
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -178,25 +172,21 @@ int main(int argc, char** argv) {
     glBindBuffer(GL_ARRAY_BUFFER, vboVertex);
     glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kVertices), kVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
-                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, x)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, x)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
-                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, u)));
-
-    const size_t vertexCount = sizeof(kVertices) / sizeof(kVertices[0]);
-    const std::vector<glm::vec3> normals = computeNormals(kVertices, vertexCount);
-    const std::vector<glm::vec3> tangents = computeTangents(kVertices, normals);
-    const std::vector<glm::vec3> bitangents = computeBitangents(normals, tangents);
-
-    glGenBuffers(1, &vboNormal);
-    glBindBuffer(GL_ARRAY_BUFFER, vboNormal);
-    glBufferData(GL_ARRAY_BUFFER,
-                 static_cast<GLsizeiptr>(normals.size() * sizeof(glm::vec3)),
-                 normals.data(),
-                 GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, u)));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, nx)));
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, r)));
+
+
+    const std::vector<glm::vec3> tangents = computeTangents(kVertices, sizeof(kVertices) / sizeof(kVertices[0]));
+    const std::vector<glm::vec3> bitangents = computeBitangents(kVertices, sizeof(kVertices) / sizeof(kVertices[0]), tangents);
 
     glGenBuffers(1, &vboTangent);
     glBindBuffer(GL_ARRAY_BUFFER, vboTangent);
@@ -215,16 +205,6 @@ int main(int argc, char** argv) {
                  GL_STATIC_DRAW);
     glEnableVertexAttribArray(4);
     glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-    const std::vector<float> colorData = buildColorDataFromFaces();
-    glGenBuffers(1, &vboColor);
-    glBindBuffer(GL_ARRAY_BUFFER, vboColor);
-    glBufferData(GL_ARRAY_BUFFER,
-                 static_cast<GLsizeiptr>(colorData.size() * sizeof(float)),
-                 colorData.data(),
-                 GL_STATIC_DRAW);
-    glEnableVertexAttribArray(5);
-    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -542,8 +522,6 @@ int main(int argc, char** argv) {
 
     glDeleteBuffers(1, &vboBitangent);
     glDeleteBuffers(1, &vboTangent);
-    glDeleteBuffers(1, &vboNormal);
-    glDeleteBuffers(1, &vboColor);
     glDeleteBuffers(1, &vboVertex);
     glDeleteVertexArrays(1, &vao);
 
@@ -744,113 +722,13 @@ static std::vector<glm::vec3> generateSpherePositions(int num_cubes,
     return positions;
 }
 
-static std::vector<float> buildColorDataFromFaces() {
-    std::vector<float> colors;
-    colors.resize(36 * 3);
 
-    auto setColor = [&colors](int idx, float r, float g, float b) {
-        const int base = idx * 3;
-        colors[base + 0] = r;
-        colors[base + 1] = g;
-        colors[base + 2] = b;
-    };
-
-    auto pickColor = [](float x, float y, float z, char axis) -> glm::vec3 {
-        if (axis == 'x' && x < 0.0f) {
-            if (y < 0.0f && z < 0.0f) return {0.0f, 0.0f, 0.0f};
-            if (y < 0.0f && z > 0.0f) return {0.0f, 1.0f, 0.0f};
-            if (y > 0.0f && z > 0.0f) return {1.0f, 1.0f, 0.0f};
-            return {1.0f, 0.0f, 0.0f};
-        }
-        if (axis == 'x' && x > 0.0f) {
-            if (y < 0.0f && z < 0.0f) return {0.0f, 0.0f, 1.0f};
-            if (y > 0.0f && z < 0.0f) return {1.0f, 0.0f, 1.0f};
-            if (y > 0.0f && z > 0.0f) return {1.0f, 1.0f, 1.0f};
-            return {0.0f, 1.0f, 0.0f};
-        }
-        if (axis == 'y' && y > 0.0f) {
-            if (x < 0.0f && z < 0.0f) return {1.0f, 0.0f, 0.0f};
-            if (x < 0.0f && z > 0.0f) return {1.0f, 1.0f, 0.0f};
-            if (x > 0.0f && z > 0.0f) return {1.0f, 1.0f, 1.0f};
-            return {1.0f, 0.0f, 1.0f};
-        }
-        if (axis == 'y' && y < 0.0f) {
-            if (x < 0.0f && z < 0.0f) return {0.0f, 0.0f, 0.0f};
-            if (x > 0.0f && z < 0.0f) return {0.0f, 0.0f, 1.0f};
-            if (x > 0.0f && z > 0.0f) return {0.0f, 1.0f, 0.0f};
-            return {0.0f, 1.0f, 0.0f};
-        }
-        if (axis == 'z' && z > 0.0f) {
-            if (x < 0.0f && y < 0.0f) return {0.0f, 1.0f, 0.0f};
-            if (x > 0.0f && y < 0.0f) return {0.0f, 1.0f, 0.0f};
-            if (x > 0.0f && y > 0.0f) return {1.0f, 1.0f, 1.0f};
-            return {1.0f, 1.0f, 0.0f};
-        }
-        // z < 0.0f
-        if (x < 0.0f && y < 0.0f) return {0.0f, 0.0f, 0.0f};
-        if (x < 0.0f && y > 0.0f) return {1.0f, 0.0f, 0.0f};
-        if (x > 0.0f && y > 0.0f) return {1.0f, 0.0f, 1.0f};
-        return {0.0f, 0.0f, 1.0f};
-    };
-
-    for (int tri = 0; tri < 12; ++tri) {
-        const int vtx = tri * 3;
-        const glutil::VertexPNT& v0 = kVertices[vtx + 0];
-        const glutil::VertexPNT& v1 = kVertices[vtx + 1];
-        const glutil::VertexPNT& v2 = kVertices[vtx + 2];
-
-        const float x0 = v0.x;
-        const float y0 = v0.y;
-        const float z0 = v0.z;
-        const float x1 = v1.x;
-        const float y1 = v1.y;
-        const float z1 = v1.z;
-        const float x2 = v2.x;
-        const float y2 = v2.y;
-        const float z2 = v2.z;
-
-        char axis = 'z';
-        if (x0 == x1 && x1 == x2) axis = 'x';
-        else if (y0 == y1 && y1 == y2) axis = 'y';
-
-        const glm::vec3 c0 = pickColor(x0, y0, z0, axis);
-        const glm::vec3 c1 = pickColor(x1, y1, z1, axis);
-        const glm::vec3 c2 = pickColor(x2, y2, z2, axis);
-
-        setColor(vtx + 0, c0.r, c0.g, c0.b);
-        setColor(vtx + 1, c1.r, c1.g, c1.b);
-        setColor(vtx + 2, c2.r, c2.g, c2.b);
-    }
-
-    return colors;
-}
-
-static std::vector<glm::vec3> computeNormals(const glutil::VertexPNT* vertices, size_t vertexCount) {
-    std::vector<glm::vec3> normals(vertexCount, glm::vec3(0.0f));
-    for (size_t i = 0; i < vertexCount; i += 3) {
-        glm::vec3 p0 = glutil::position(vertices[i + 0]);
-        glm::vec3 p1 = glutil::position(vertices[i + 1]);
-        glm::vec3 p2 = glutil::position(vertices[i + 2]);
-
-        glm::vec3 edge1 = p1 - p0;
-        glm::vec3 edge2 = p2 - p0;
-        glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
-
-        normals[i + 0] = faceNormal;
-        normals[i + 1] = faceNormal;
-        normals[i + 2] = faceNormal;
-    }
-    return normals;
-}
-
-static std::vector<glm::vec3> computeTangents(
-    const glutil::VertexPNT* vertices,
-    const std::vector<glm::vec3>& normals) {
-    std::vector<glm::vec3> tangents(normals.size(), glm::vec3(0.0f));
-    for (size_t i = 0; i < normals.size(); i += 3) {
-        const glutil::VertexPNT& v0 = vertices[i + 0];
-        const glutil::VertexPNT& v1 = vertices[i + 1];
-        const glutil::VertexPNT& v2 = vertices[i + 2];
+static std::vector<glm::vec3> computeTangents(const glutil::VertexPNCT* vertices, size_t size) {
+    std::vector<glm::vec3> tangents(size, glm::vec3(0.0f));
+    for (size_t i = 0; i < size; i += 3) {
+        const glutil::VertexPNCT& v0 = vertices[i + 0];
+        const glutil::VertexPNCT& v1 = vertices[i + 1];
+        const glutil::VertexPNCT& v2 = vertices[i + 2];
 
         glm::vec3 p0 = glutil::position(v0);
         glm::vec3 p1 = glutil::position(v1);
@@ -876,11 +754,11 @@ static std::vector<glm::vec3> computeTangents(
 }
 
 static std::vector<glm::vec3> computeBitangents(
-    const std::vector<glm::vec3>& normals,
+    const glutil::VertexPNCT* vertices, size_t size,
     const std::vector<glm::vec3>& tangents) {
-    std::vector<glm::vec3> bitangents(normals.size());
-    for (size_t i = 0; i < normals.size(); ++i) {
-        bitangents[i] = glm::normalize(glm::cross(normals[i], tangents[i]));
+    std::vector<glm::vec3> bitangents(size);
+    for (size_t i = 0; i < size; ++i) {
+        bitangents[i] = glm::normalize(glm::cross(glutil::normal(vertices[i]), tangents[i]));
     }
     return bitangents;
 }
