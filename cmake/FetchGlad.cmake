@@ -40,8 +40,14 @@ function(fetch_glad)
     set(_fg_options "(no option)")
   endif()
 
+  list(LENGTH FG_EXTENSIONS _fg_ext_len)
+  if(_fg_ext_len GREATER 3)
+      set(_fg_ext_print " ${_fg_ext_len}extensions...")
+  else()
+      set(_fg_ext_print "${FG_EXTENSIONS}")
+  endif()
   message(STATUS
-    "[${PROJECT_NAME}] ${FG_NAME} : ${FG_APIS}, ${_fg_profiles}, ${_fg_options}, Extensions=${FG_EXTENSIONS}"
+      "[${PROJECT_NAME}] ${FG_NAME} : ${FG_APIS}, ${_fg_profiles}, ${_fg_options}, Extensions=${_fg_ext_print}"
   )
 
   unset(_fg_profiles)
@@ -182,16 +188,6 @@ function(fetch_glad_allEXT)
   if(NOT FGAE_DEST_DIR)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: DEST_DIR is required")
   endif()
-
-  if(FGAE_GLAD_OPTIONS)
-    set(_fgae_options "${FGAE_GLAD_OPTIONS}")
-  else()
-    set(_fgae_options "(none)")
-  endif()
-  message(STATUS
-    "[${PROJECT_NAME}] ${FGAE_NAME} : gl=4.6:core, ${_fgae_options}, Extensions=ALL"
-  )
-  unset(_fgae_options)
 
   set(GL_XML_URL "https://cvs.khronos.org/svn/repos/ogl/trunk/doc/registry/public/api/gl.xml")
   set(GL_XML_PATH "${CMAKE_BINARY_DIR}/_gdm_downloads/khronos_gl.xml")
