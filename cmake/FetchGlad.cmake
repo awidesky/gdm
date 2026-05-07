@@ -42,7 +42,7 @@ function(fetch_glad)
 
   list(LENGTH FG_EXTENSIONS _fg_ext_len)
   if(_fg_ext_len GREATER 3)
-      set(_fg_ext_print " ${_fg_ext_len}extensions...")
+      set(_fg_ext_print "{_fg_ext_len} extensions...")
   else()
       set(_fg_ext_print "${FG_EXTENSIONS}")
   endif()
