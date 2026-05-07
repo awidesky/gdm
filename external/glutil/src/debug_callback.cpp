@@ -12,7 +12,9 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
 
     const GLenum err = glad_glGetError();
     if (err != GL_NO_ERROR) {
-        LOG_ERROR() << "[GL Error] " << glErrorToString(err) << " in function " << name;
+        std::stringstream ss;
+        ss << "[GL Error] " << glErrorToString(err) << " in function " << name;
+        printStackTrace(ss.str());
     }
 }
 
