@@ -96,26 +96,26 @@ static bool initOpenGLDebugExtension() {
         #else
           glDebugMessageCallback;
         #endif
-    const bool hasCapability =
-        #if defined(GDM_HAS_GLAD) && !defined(GDM_HAS_GLEW_GLAD)
-          #if defined(GLAD_GL_KHR_debug)
-            (GLAD_GL_KHR_debug || GLAD_GL_VERSION_4_3)
-          #else
-            GLAD_GL_VERSION_4_3
-          #endif
+    const bool hasCapability = (
+        #if defined(GDM_HAS_GLEW_GLAD)
+          (GLEW_KHR_debug || GLEW_VERSION_4_3 || GLAD_GL_KHR_debug || GLAD_GL_VERSION_4_3)
         #elif defined(GDM_HAS_GLAD)
-          GLAD_GL_VERSION_4_3
+          #if defined(GL_KHR_debug)
+            GLAD_GL_KHR_debug ||
+          #endif
+            GLAD_GL_VERSION_4_3
         #elif defined(GDM_HAS_GLEW)
           (GLEW_KHR_debug || GLEW_VERSION_4_3)
         #else
           false
         #endif
-    ;
+        ) || glutil::debug::hasGLExtension("GL_KHR_debug");
 
     if (funcptr != nullptr && hasCapability) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(debugMessageCallback, nullptr);
+        LOG_INFO() << "OpenGL glDebugMessageCallback enabled.";
         return true;
     } else {
         LOG_WARNING() << "OpenGL debug output is available at compile time, but not supported by the current context!";
@@ -123,15 +123,16 @@ static bool initOpenGLDebugExtension() {
         #if defined(GDM_HAS_GLAD) && !defined(GDM_HAS_GLEW_GLAD)
             << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3 << ", GLAD_GL_KHR_debug=" 
             #if defined(GL_KHR_debug)
-              << GLAD_GL_KHR_debug;
+              << GLAD_GL_KHR_debug
             #else
-              << "undefined";
+              << "undefined"
             #endif
         #elif defined(GDM_HAS_GLAD)
-            << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3;
+            << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3
         #elif defined(GDM_HAS_GLEW)
-            << "GLEW_KHR_debug=" << GLEW_KHR_debug << ", GLEW_VERSION_4_3=" << GLEW_VERSION_4_3;
+            << "GLEW_KHR_debug=" << GLEW_KHR_debug << ", GLEW_VERSION_4_3=" << GLEW_VERSION_4_3
         #endif
+            << "glutil::debug::hasGLExtension(\"GL_KHR_debug\")=" << glutil::debug::hasGLExtension("GL_KHR_debug");
         return false;
     }
 #endif //  defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
