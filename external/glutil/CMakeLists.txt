@@ -35,6 +35,7 @@ target_sources(glutil
       
       include/glutil/debug.hpp
       include/glutil/debug_callback.hpp
+      include/glutil/debug_stacktrace.hpp
 )
 
 target_sources(glutil
@@ -48,6 +49,7 @@ target_sources(glutil
 
     src/debug.cpp
     src/debug_callback.cpp
+    src/debug_stacktrace.cpp
 
     src/stb_image.h
     src/dds-ktx.h
@@ -178,4 +180,22 @@ if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM
   set_target_properties(glutil_normalMappingExample PROPERTIES
         FOLDER "GLUTIL_Examples"
   )
+
+  add_executable(glutil_stacktraceExample)
+  target_sources(glutil_stacktraceExample
+        PRIVATE example/stacktrace.cpp
+  )
+  target_include_directories(glutil_stacktraceExample
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_stacktraceExample PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_stacktraceExample PRIVATE cxx_std_17)
+  target_compile_options(glutil_stacktraceExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_stacktraceExample PROPERTIES
+        FOLDER "GLUTIL_Examples"
+  )
+
 endif()

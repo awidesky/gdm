@@ -1,4 +1,4 @@
-#ifndef GLUTIL_GLUTIL
+﻿#ifndef GLUTIL_GLUTIL
 #define GLUTIL_GLUTIL
 
 #include <glutil/path.hpp>
@@ -9,6 +9,7 @@
 #include <glutil/model.hpp>
 #include <glutil/shader.hpp>
 #include <glutil/texture.hpp>
+#include <glutil/debug_stacktrace.hpp>
 
 #include <glutil/debug.hpp>
 
