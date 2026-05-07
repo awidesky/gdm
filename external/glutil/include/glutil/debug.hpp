@@ -2,6 +2,7 @@
 #define GLUTIL_DEBUG_HPP
 
 #include <glutil/debug_callback.hpp>
+#include <glutil/debug_stacktrace.hpp>
 
 #include <string>
 

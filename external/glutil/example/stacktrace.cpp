@@ -19,7 +19,7 @@ void postCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args
 
     std::cerr << "\n[GL ERROR] " << name << " (0x" << std::hex << err << std::dec << ")\n";
 
-    glutil::printStackTrace();
+    glutil::debug::printStackTrace();
 }
 int main() {
 
