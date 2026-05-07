@@ -84,6 +84,26 @@ TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
             return result;
     }
 
+    // OpenGL default unpack alignment is 4.
+    // RGB textures whose row size(width * channels) is not divisible by 4
+    // will appear diagonally skewed unless GL_UNPACK_ALIGNMENT is set to 1.
+    // TODO : should this check occur in glTexImage2D, so that we can check actual issue exists?
+    //        user may call glPixelStorei(GL_UNPACK_ALIGNMENT, 1) when they loading image, but we won't know at this point.
+    const int rowBytes = w * c;
+    GLint unpackAlignment = 0;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+    if ((rowBytes % 4) != 0 && unpackAlignment != 1) {
+        LOG_WARNING() << "[TextureImage] Potential GL_UNPACK_ALIGNMENT issue detected.";
+        LOG_WARNING() << "[TextureImage] Texture row size is not 4-byte aligned: " << rowBytes << " bytes per row"
+                      << " (width=" << w << ", channels=" << c << ")";
+        LOG_WARNING() << "[TextureImage] If texture appears diagonally skewed or torn,";
+        LOG_WARNING() << "[TextureImage] ensure GL_UNPACK_ALIGNMENT is set to 1 before glTexImage2D:";
+        LOG_WARNING() << "[TextureImage]     glBindTexture(GL_TEXTURE_2D, texID);";
+        LOG_WARNING() << "[TextureImage]     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);";
+        LOG_WARNING() << "[TextureImage]     glTexImage2D(...);";
+        LOG_WARNING() << "[TextureImage] Current GL_UNPACK_ALIGNMENT = " << unpackAlignment;
+    }
+
     // stbi_load internally uses malloc.
     // Copy to new memory and then immediately free with stbi_image_free. Destructor deletes new memory with delete[].
     const size_t sz = static_cast<size_t>(w * h * c);
