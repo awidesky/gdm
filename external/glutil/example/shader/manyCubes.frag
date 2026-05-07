@@ -26,7 +26,7 @@ void main() {
     vec3 lightDir = normalize(uLightPos - vPositionWorld);
     vec3 viewDir = normalize(uViewPos - vPositionWorld);
     vec3 specularColor = vec3(1.0);
-    float shininess = 96.0;
+    float shininess = 64.0;
 
     if (uUseNormalMap == 1) {
         diffuseColor = texture(uDiffuseTex, vUV).rgb;
@@ -36,6 +36,8 @@ void main() {
         viewDir = normalize(vEyeDirTangent);
         specularColor = texture(uSpecularTex, vUV).rgb;
         shininess = 32.0;
+    } else if (uUseNormalMap == -1) { // the bottom plane, only texture image is used
+        diffuseColor = texture(uDiffuseTex, vUV).rgb;
     }
 
     float diff = max(dot(normalDir, lightDir), 0.0);

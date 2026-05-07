@@ -73,6 +73,16 @@ const glutil::VertexPNCT kVertices[] = {
     {-1.0f, -1.0f,  1.0f, 0.0f,-1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
     {-1.0f, -1.0f, -1.0f, 0.0f,-1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
 };
+constexpr float kPlainsize = kBoundaryRadius + 5.0f;
+const glutil::VertexPNT kPlaneVertices[] = {
+    { kPlainsize, 0.0f,  kPlainsize, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    { kPlainsize, 0.0f, -kPlainsize, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+    {-kPlainsize, 0.0f, -kPlainsize, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
+
+    { kPlainsize, 0.0f,  kPlainsize, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    {-kPlainsize, 0.0f, -kPlainsize, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f},
+    {-kPlainsize, 0.0f,  kPlainsize, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f}
+};
 
 struct InputState {
     bool w=false, s=false, a=false, d=false;
@@ -184,18 +194,21 @@ int main(int argc, char** argv) {
     glGenBuffers(1, &vboVertex);
     glBindBuffer(GL_ARRAY_BUFFER, vboVertex);
     glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kVertices), kVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(0); // pos
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
                           reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, x)));
+    // normal -> location 1
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
-                          reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, u)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, nx)));
+    // color -> location 2
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
-                          reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, nx)));
-    glEnableVertexAttribArray(5);
-    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
                           reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, r)));
+    // uv -> location 3
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNCT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNCT, u)));
 
 
     const std::vector<glm::vec3> tangents = computeTangents(kVertices, sizeof(kVertices) / sizeof(kVertices[0]));
@@ -207,8 +220,9 @@ int main(int argc, char** argv) {
                  static_cast<GLsizeiptr>(tangents.size() * sizeof(glm::vec3)),
                  tangents.data(),
                  GL_STATIC_DRAW);
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    // tangent -> location 4
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
     glGenBuffers(1, &vboBitangent);
     glBindBuffer(GL_ARRAY_BUFFER, vboBitangent);
@@ -216,20 +230,59 @@ int main(int argc, char** argv) {
                  static_cast<GLsizeiptr>(bitangents.size() * sizeof(glm::vec3)),
                  bitangents.data(),
                  GL_STATIC_DRAW);
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    // bitangent -> location 5
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    GLuint planeVao = 0;
+    GLuint planeVbo = 0;
+    glGenVertexArrays(1, &planeVao);
+    glBindVertexArray(planeVao);
+
+    glGenBuffers(1, &planeVbo);
+    glBindBuffer(GL_ARRAY_BUFFER, planeVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(kPlaneVertices), kPlaneVertices, GL_STATIC_DRAW);
+
+    // plane: pos -> 0, normal -> 1, uv -> 3
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                        (void*)offsetof(glutil::VertexPNT, x));
+
+    // normal -> location 1
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                        (void*)offsetof(glutil::VertexPNT, nx));
+
+    // color (location 2) isn't present in VertexPNT: provide default white
+    glDisableVertexAttribArray(2);
+    glVertexAttrib3f(2, 1.0f, 1.0f, 1.0f);
+
+    // uv -> location 3
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                        (void*)offsetof(glutil::VertexPNT, u));
+
+    // tangent (4) / bitangent (5) not present on plane: supply defaults
+    glDisableVertexAttribArray(4);
+    glVertexAttrib3f(4, 1.0f, 0.0f, 0.0f);
+
+    glDisableVertexAttribArray(5);
+    glVertexAttrib3f(5, 0.0f, 0.0f, 1.0f);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
 
     const fs::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
     const fs::path diffusePath = textureDir / "diffuse.DDS";
     const fs::path normalPath = textureDir / "normal.bmp";
     const fs::path specularPath = textureDir / "specular.DDS";
+    const fs::path planePath = textureDir / "grid.bmp";
 
     GLuint diffuseTex = 0;
     GLuint normalTex = 0;
     GLuint specularTex = 0;
+    GLuint planeTex = 0;
 
     if (fs::exists(diffusePath)) {
         if (glutil::ImageLoader::isDDS(diffusePath.string().c_str())) {
@@ -286,6 +339,18 @@ int main(int argc, char** argv) {
     } else {
         std::cerr << "[ManyCubes] Specular texture not found: " << specularPath << std::endl;
     }
+    
+    if (fs::exists(planePath)) {
+        glutil::TextureImage img = glutil::ImageLoader::loadImage(planePath.string().c_str());
+        if (img.ok) {
+            planeTex = uploadStandard2D(img);
+        } else {
+            std::cerr << "[ManyCubes] Plain texture load failed: " << planePath
+                        << "\n  reason: " << img.error << std::endl;
+        }
+    } else {
+        std::cerr << "[ManyCubes] Plain texture not found: " << planePath << std::endl;
+    }
 
     const bool normalMapReady = (diffuseTex != 0 && normalTex != 0 && specularTex != 0);
     if (!normalMapReady) {
@@ -325,7 +390,7 @@ int main(int argc, char** argv) {
     const glm::vec3 initialDir = glm::normalize(camTarget - camPos);
     float cameraYaw = glm::degrees(std::atan2(initialDir.z, initialDir.x));
     float cameraPitch = glm::degrees(std::asin(initialDir.y));
-    const glm::vec3 lightPos = kBoundaryRadius * glm::vec3(1.1f);
+    const glm::vec3 lightPos = kBoundaryRadius * glm::vec3(0.6f, 1.1f, 1.1f);
     float fovY = 45.0f;
     float zNear = 0.1f;
     float zFar = 100.0f;
@@ -488,6 +553,21 @@ int main(int argc, char** argv) {
             glDrawArrays(GL_TRIANGLES, 0, sizeof(kVertices) / sizeof(kVertices[0]));
         }
 
+        const glm::mat4 planeModel = glm::mat4(1.0f);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, planeTex);
+
+        if (modelLoc >= 0) {
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(planeModel));
+        }
+        if (useNormalMapLoc >= 0) {
+            glUniform1i(useNormalMapLoc, -1);
+        }
+        glBindVertexArray(planeVao);
+        glDrawArrays(GL_TRIANGLES, 0, sizeof(kPlaneVertices) / sizeof(kPlaneVertices[0]));
+
+
         const auto renderEnd = std::chrono::steady_clock::now();
 
         glfwSwapBuffers(window);
@@ -531,6 +611,8 @@ int main(int argc, char** argv) {
     glDeleteBuffers(1, &vboTangent);
     glDeleteBuffers(1, &vboVertex);
     glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &planeVbo);
+    glDeleteVertexArrays(1, &planeVao);
 
     if (diffuseTex != 0) glDeleteTextures(1, &diffuseTex);
     if (normalTex != 0) glDeleteTextures(1, &normalTex);
@@ -644,6 +726,7 @@ static GLuint uploadStandard2D(const glutil::TextureImage& image) {
     GLuint tex = 0;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
