@@ -3,8 +3,10 @@
 #include <glutil/glutil.hpp>
 #include <iostream>
 #include "config.hpp"
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height){
+    glViewport(0, 0, width, height);
+}
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -50,7 +52,8 @@ int main() {
     glBindTexture(GL_TEXTURE_2D, 99999);
 
     while (!glfwWindowShouldClose(window)) {
-        processInput(window);
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(window, true);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -58,14 +61,4 @@ int main() {
 
     glfwTerminate();
     return 0;
-}
-
-
-void processInput(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
 }
