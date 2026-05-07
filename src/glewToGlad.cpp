@@ -16,6 +16,8 @@
 
 #include <stdio.h>
 
+#include <glutil/debug.hpp>
+
 extern "C" GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void) {
 // If the shim header was accidentally included first, avoid recursion.
 #ifdef glewInit
@@ -41,7 +43,8 @@ extern "C" GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void) {
         return GLEW_ERROR_NO_GL_VERSION;
     }
 
-    //printf("GLEW and GLAD loading success\n");
+    glutil::debug::init();
+
     return GLEW_OK;
 }
 

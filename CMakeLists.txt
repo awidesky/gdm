@@ -607,6 +607,13 @@ if (GDM_USE_GLUTIL)
     add_subdirectory(external/glutil)
     target_link_libraries(glutil PRIVATE cpptrace::cpptrace)
     list(APPEND _gdm_defs GDM_HAS_GLUTIL GDM_HAS_CPPTRACE)
+
+    add_library(gdm_glutil INTERFACE)
+    add_library(gdm::glutil ALIAS gdm_glutil)
+    target_link_libraries(gdm_glutil INTERFACE glutil)
+    if (GDM_GL_LOADER STREQUAL "glew-glad")
+        target_link_libraries(gdm_glew_glad PRIVATE glutil)
+    endif()
 endif()
 
 target_compile_definitions(gdm_deps INTERFACE ${_gdm_defs})
