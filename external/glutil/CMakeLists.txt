@@ -32,6 +32,9 @@ target_sources(glutil
       include/glutil/logging.hpp
       include/glutil/texture.hpp
       include/glutil/model.hpp
+      
+      include/glutil/debug.hpp
+      include/glutil/debug_callback.hpp
 )
 
 target_sources(glutil
@@ -42,6 +45,9 @@ target_sources(glutil
     src/logging.cpp
     src/texture.cpp
     src/model.cpp
+
+    src/debug.cpp
+    src/debug_callback.cpp
 
     src/stb_image.h
     src/dds-ktx.h

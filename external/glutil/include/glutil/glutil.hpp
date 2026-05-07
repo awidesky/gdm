@@ -10,4 +10,6 @@
 #include <glutil/shader.hpp>
 #include <glutil/texture.hpp>
 
+#include <glutil/debug.hpp>
+
 #endif // GLUTIL_GLUTIL

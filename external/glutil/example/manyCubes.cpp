@@ -120,45 +120,6 @@ static std::vector<glm::vec3> computeBitangents(const glutil::VertexPNCT* vertic
 const std::vector<glm::vec3>& tangents);
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-#ifdef GDM_HAS_GLAD
-#ifdef GLAD_OPTION_GL_DEBUG
-static std::string glErrorToString(GLenum err) {
-    std::stringstream ss;
-    switch (err) {
-        case GL_NO_ERROR: ss << "GL_NO_ERROR"; break;
-        case GL_INVALID_ENUM: ss << "GL_INVALID_ENUM"; break;
-        case GL_INVALID_VALUE: ss << "GL_INVALID_VALUE"; break;
-        case GL_INVALID_OPERATION: ss << "GL_INVALID_OPERATION"; break;
-        case GL_OUT_OF_MEMORY: ss << "GL_OUT_OF_MEMORY"; break;
-        case GL_INVALID_FRAMEBUFFER_OPERATION: ss << "GL_INVALID_FRAMEBUFFER_OPERATION"; break;
-        case GL_FRAMEBUFFER_COMPLETE: return "GL_FRAMEBUFFER_COMPLETE";
-        case GL_FRAMEBUFFER_UNDEFINED: return "GL_FRAMEBUFFER_UNDEFINED";
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
-        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
-        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
-        case GL_FRAMEBUFFER_UNSUPPORTED: return "GL_FRAMEBUFFER_UNSUPPORTED";
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
-        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
-        default: ss << "UNKNOWN_ERROR";
-    }
-    ss << '(' << err << ')';
-    return ss.str();
-}
-
-static void gl_error_callback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
-    GLAD_UNUSED(ret);
-    GLAD_UNUSED(apiproc);
-    GLAD_UNUSED(len_args);
-
-    const GLenum error = glad_glGetError();
-    if (error != GL_NO_ERROR) {
-        std::cerr << "[GL Error] " << glErrorToString(error) << " in function " << name << std::endl;
-    }
-}
-#endif
-#endif
-
 
 int main(int argc, char** argv) {
     int num_cubes = 150;
@@ -653,12 +614,7 @@ static GLFWwindow* initGLFWAndContext() {
         return nullptr;
     }
 
-#ifdef GDM_HAS_GLAD
-#ifdef GLAD_OPTION_GL_DEBUG
-    gladSetGLPostCallback(gl_error_callback);
-    std::cout << "GL error checking enabled via GLAD post-callback" << std::endl;
-#endif
-#endif
+    glutil::debug::init();
 
     glfwSwapInterval(1);
     glfwSetInputMode(ret, GLFW_STICKY_KEYS, GL_TRUE);
