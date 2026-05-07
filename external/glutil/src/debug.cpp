@@ -1,7 +1,9 @@
 #include <glutil/debug.hpp>
 #include <glutil/logging.hpp>
 
+#include <cstring>
 #include <sstream>
+#include <string_view>
 
 namespace glutil::debug {
 
@@ -12,6 +14,22 @@ static GLenum getGlError() {
 #else
     return glGetError();
 #endif
+}
+
+static std::set<std::string> loadGLExtensions() {
+    std::set<std::string> extensions;
+    GLint count = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+
+    if (count > 0) {
+        for (GLint i = 0; i < count; ++i) {
+            const GLubyte* ext = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));
+            if (ext != nullptr && *ext != '\0') {
+                extensions.emplace(reinterpret_cast<const char*>(ext));
+            }
+        }
+        return extensions;
+    }
 }
 } // namespace
 
@@ -37,6 +55,20 @@ std::string glErrorToString(GLenum err) {
     }
     ss << '(' << err << ')';
     return ss.str();
+}
+
+const std::set<std::string>& getGLExtensions() {
+    static const std::set<std::string> extensions = loadGLExtensions();
+    return extensions;
+}
+
+bool hasGLExtension(const char* extName) {
+    if (extName == nullptr || *extName == '\0') {
+        return false;
+    }
+
+    const auto& extensions = getGLExtensions();
+    return extensions.find(extName) != extensions.end();
 }
 
 void dumpGLState() {
