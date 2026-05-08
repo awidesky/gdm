@@ -43,34 +43,23 @@ void glutil::debug::snapshot()
         GLint texId = 0;
         glGetIntegerv(GL_TEXTURE_BINDING_2D, &texId);
         if (texId == 0)
-            LOG_ERROR() << "  No 2D texture bound";
-
+        {
+            continue;
+        }
+ 
         GLint width = 0, height = 0, internalFormat = 0;
         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
-        LOG_ERROR() << "  Current 2D texture bound (ID: " << bound << ") Size: " << width << "x" << height
+        LOG_ERROR() << "  Current 2D texture bound (ID: " << texId << ") Size: " << width << "x" << height
                     << ", Format: " << internalFormat;
     }
     glActiveTexture(currentUnit);
-    // glGetIntegerv(GL_TEXTURE_BINDING_2D, &bound);
-    // if (bound != 0) {
-    //     GLint width = 0, height = 0, internalFormat = 0;
-    //     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-    //     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
-    //     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
-    //     LOG_ERROR() << "  Current 2D texture bound (ID: " << bound << ") Size: " << width << "x" << height
-    //                 << ", Format: " << internalFormat;
-    // } else {
-    //     LOG_ERROR() << "  No 2D texture bound";
-    // }
 
-    // Check VAO/VBO/EBO Bind
-    // glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &bound);
-    // LOG_ERROR() << "  Current VAO bound: " << bound;'
 
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &bound);
     if (bound != 0) {
+        LOG_ERROR() << "  Current VAO bound: " << bound;
         GLint maxAttribs = 0;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
 
@@ -88,12 +77,13 @@ void glutil::debug::snapshot()
             glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &stride);
             glGetVertexAttribPointerv(i, GL_VERTEX_ATTRIB_ARRAY_POINTER, &offset);
 
+
             LOG_ERROR() << "    attrib[" << i << "]"
                         << " vbo=" << vbo << " size=" << size << " type=0x" << std::hex << type << std::dec
                         << " stride=" << stride << " offset=" << reinterpret_cast<uintptr_t>(offset);
         }
     } else {
-        LOG_ERROR() << "  No VBO bound: " << bound;
+        LOG_ERROR() << "  No VAO bound: " << bound;
     }
 
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &bound);
