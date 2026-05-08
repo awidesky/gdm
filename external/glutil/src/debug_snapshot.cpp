@@ -6,10 +6,18 @@
 #include <map>
 #include "config.hpp"
 
-struct AttribInfo {
-    GLint vbo, size, stride;
-    uintptr_t offset;
-};
+const char* glTypeToString(GLint type) {
+    switch (type) {
+        case GL_FLOAT: return "GL_FLOAT";
+        case GL_UNSIGNED_BYTE: return "GL_UNSIGNED_BYTE";
+        case GL_UNSIGNED_SHORT: return "GL_UNSIGNED_SHORT";
+        case GL_UNSIGNED_INT: return "GL_UNSIGNED_INT";
+        case GL_INT: return "GL_INT";
+        case GL_SHORT: return "GL_SHORT";
+        case GL_BYTE: return "GL_BYTE";
+        default: return "UNKNOWN";
+    }
+}
 
 void glutil::debug::snapshot() 
 {
@@ -103,7 +111,7 @@ void glutil::debug::snapshot()
             uintptr_t off = reinterpret_cast<uintptr_t>(offset);
 
             LOG_ERROR() << "    attrib[" << i << "]"
-                        << " vbo=" << vbo << " size=" << size << " type=0x" << std::hex << type << std::dec
+                        << " vbo=" << vbo << " size=" << size << " type=" << glTypeToString(type) << std::dec
                         << " stride=" << stride << " offset=" << off;
 
             int s = stride == 0 ? size * (int)sizeof(float) : stride;
