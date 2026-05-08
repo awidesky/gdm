@@ -43,6 +43,7 @@ target_sources(glutil
     src/shader.cpp
     src/inspector.cpp
     src/glutil.cpp
+    src/path.cpp
     src/logging.cpp
     src/texture.cpp
     src/model.cpp
@@ -106,6 +107,24 @@ if (GDM_BUILD_TESTS)
           FOLDER "GLUTIL_Tests"
     )
     add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
+
+    add_executable(glutil_pathResolveTest)
+    target_sources(glutil_pathResolveTest
+          PRIVATE test/pathResolveTest.cpp
+    )
+    target_include_directories(glutil_pathResolveTest
+          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    target_link_libraries(glutil_pathResolveTest PRIVATE
+          glutil
+          gdm::gdm
+    )
+    target_compile_features(glutil_pathResolveTest PRIVATE cxx_std_17)
+    target_compile_options(glutil_pathResolveTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    set_target_properties(glutil_pathResolveTest PROPERTIES
+          FOLDER "GLUTIL_Tests"
+    )
+    add_test(NAME PathResolveTest COMMAND glutil_pathResolveTest)
   else()
     message(STATUS "[glutil] Tests skipped: require GDM_WINDOW_BACKEND=glfw, GDM_GL_LOADER=glad, and GDM_USE_GLM=ON")
   endif()

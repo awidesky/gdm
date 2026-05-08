@@ -3,18 +3,18 @@
 
 #include <glutil/gl.hpp>
 
-#include <string>
+#include <filesystem>
 
 namespace glutil {
 
 struct PathResolveResult {
     bool success = false;
-    std::string originalPath;
-    std::string resolvedPath;
+    std::string resolvedPath{};
     std::string message;
 };
 
-PathResolveResult pathResolve(const std::string& inputPath);
+std::string getExecutableDirectory();
+PathResolveResult pathResolve(const std::filesystem::path& inputPath);
 
 } // namespace glutil
 
