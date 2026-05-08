@@ -5,14 +5,14 @@
 #include <glutil/debug_snapshot.hpp>
 #include "config.hpp"
 
-void snapshot()
+void glutil::debug::snapshot() 
 {
-    //Check Frame Buffer
+    // Check Frame Buffer
     const GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     LOG_ERROR() << "[OpenGL state dump]";
     LOG_ERROR() << "  Framebuffer status: " << glutil::debug::glErrorToString(fbStatus);
 
-    //Check Shader progame Link
+    // Check Shader progame Link
     GLint bound = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &bound);
     if (bound != 0) {
@@ -31,7 +31,7 @@ void snapshot()
         LOG_ERROR() << "  No shader program bound";
     }
 
-    //Check Texture 
+    // Check Texture
     GLint currentUnit = 0;
     glGetIntegerv(GL_ACTIVE_TEXTURE, &currentUnit);
 
@@ -53,22 +53,21 @@ void snapshot()
                     << ", Format: " << internalFormat;
     }
     glActiveTexture(currentUnit);
-    //glGetIntegerv(GL_TEXTURE_BINDING_2D, &bound);
-    //if (bound != 0) {
-    //    GLint width = 0, height = 0, internalFormat = 0;
-    //    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-    //    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
-    //    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
-    //    LOG_ERROR() << "  Current 2D texture bound (ID: " << bound << ") Size: " << width << "x" << height
-    //                << ", Format: " << internalFormat;
-    //} else {
-    //    LOG_ERROR() << "  No 2D texture bound";
-    //}
+    // glGetIntegerv(GL_TEXTURE_BINDING_2D, &bound);
+    // if (bound != 0) {
+    //     GLint width = 0, height = 0, internalFormat = 0;
+    //     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+    //     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+    //     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+    //     LOG_ERROR() << "  Current 2D texture bound (ID: " << bound << ") Size: " << width << "x" << height
+    //                 << ", Format: " << internalFormat;
+    // } else {
+    //     LOG_ERROR() << "  No 2D texture bound";
+    // }
 
-
-    //Check VAO/VBO/EBO Bind
-    //glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &bound);
-    //LOG_ERROR() << "  Current VAO bound: " << bound;'
+    // Check VAO/VBO/EBO Bind
+    // glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &bound);
+    // LOG_ERROR() << "  Current VAO bound: " << bound;'
 
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &bound);
     if (bound != 0) {
@@ -93,26 +92,21 @@ void snapshot()
                         << " vbo=" << vbo << " size=" << size << " type=0x" << std::hex << type << std::dec
                         << " stride=" << stride << " offset=" << reinterpret_cast<uintptr_t>(offset);
         }
-    }
-    else
-    {
+    } else {
         LOG_ERROR() << "  No VBO bound: " << bound;
     }
-
-
 
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &bound);
     LOG_ERROR() << "  Current VBO bound: " << bound;
     glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &bound);
     LOG_ERROR() << "  Current EBO bound: " << bound;
 
-
-    //Check Viewport
+    // Check Viewport
     GLint vp[4];
     glGetIntegerv(GL_VIEWPORT, vp);
     LOG_ERROR() << "  Viewport: x=" << vp[0] << ", y=" << vp[1] << ", w=" << vp[2] << ", h=" << vp[3];
 
-    //Check Render State 
+    // Check Render State
     LOG_ERROR() << "  [Render State]";
     LOG_ERROR() << "    Depth Test: " << (glIsEnabled(GL_DEPTH_TEST) ? "ON" : "OFF");
     LOG_ERROR() << "    Blend     : " << (glIsEnabled(GL_BLEND) ? "ON" : "OFF");
