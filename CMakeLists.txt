@@ -455,16 +455,14 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
 	#pragma warning(disable : 4005)
 	#include <glad/gl.h>
 	#pragma warning(pop)
-#elif defined(__GNUC__)
-	#pragma GCC diagnostic push
-	#pragma GCC diagnostic ignored "-Wmacro-redefined"
-	#include <glad/gl.h>
-	#pragma GCC diagnostic pop
 #elif defined(__clang__)
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wmacro-redefined"
 	#include <glad/gl.h>
 	#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+	#pragma GCC system_header
+	#include <glad/gl.h>
 #else
 	#include <glad/gl.h>
 #endif
