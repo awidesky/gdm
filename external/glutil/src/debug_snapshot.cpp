@@ -3,7 +3,13 @@
 #include <glutil/glutil.hpp>
 #include <iostream>
 #include <glutil/debug_snapshot.hpp>
+#include <map>
 #include "config.hpp"
+
+struct AttribInfo {
+    GLint vbo, size, stride;
+    uintptr_t offset;
+};
 
 void glutil::debug::snapshot() 
 {
@@ -57,9 +63,27 @@ void glutil::debug::snapshot()
     glActiveTexture(currentUnit);
 
 
+    //Check VAO/VBO limit 10
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &bound);
     if (bound != 0) {
-        LOG_ERROR() << "  Current VAO bound: " << bound;
+        GLint vboBound = 0, bufSize = 0, usage = 0;
+        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &vboBound);
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &bufSize);
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &usage);
+
+        const char* usageStr = "UNKNOWN";
+        switch (usage) {
+            case GL_STATIC_DRAW: usageStr = "GL_STATIC_DRAW"; break;
+            case GL_DYNAMIC_DRAW: usageStr = "GL_DYNAMIC_DRAW"; break;
+            case GL_STREAM_DRAW: usageStr = "GL_STREAM_DRAW"; break;
+        }
+
+        LOG_ERROR() << "  Current VAO bound: " << bound << "  VBO ID=" << vboBound << "  " << bufSize << " bytes"
+                    << "  " << usageStr;
+
+        std::vector<unsigned char> data(bufSize);
+        glGetBufferSubData(GL_ARRAY_BUFFER, 0, bufSize, data.data());
+
         GLint maxAttribs = 0;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
 
@@ -76,20 +100,40 @@ void glutil::debug::snapshot()
             glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_TYPE, &type);
             glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &stride);
             glGetVertexAttribPointerv(i, GL_VERTEX_ATTRIB_ARRAY_POINTER, &offset);
-
+            uintptr_t off = reinterpret_cast<uintptr_t>(offset);
 
             LOG_ERROR() << "    attrib[" << i << "]"
                         << " vbo=" << vbo << " size=" << size << " type=0x" << std::hex << type << std::dec
-                        << " stride=" << stride << " offset=" << reinterpret_cast<uintptr_t>(offset);
+                        << " stride=" << stride << " offset=" << off;
+
+            int s = stride == 0 ? size * (int)sizeof(float) : stride;
+            int numVerts = bufSize / s;
+            int printNum = std::min(numVerts, 10);
+
+            for (int v = 0; v < printNum; v++) {
+                const float* ptr = reinterpret_cast<const float*>(data.data() + v * s + off);
+                std::ostringstream oss;
+                oss << "      vertex[" << v << "]: (";
+                for (int c = 0; c < size; c++) {
+                    oss << ptr[c];
+                    if (c < size - 1)
+                        oss << ", ";
+                }
+                oss << ")";
+                LOG_ERROR() << oss.str();
+            }
+            if (numVerts > 10)
+                LOG_ERROR() << "      ... (" << numVerts - 10 << " more)";
         }
     } else {
         LOG_ERROR() << "  No VAO bound: " << bound;
     }
 
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &bound);
-    LOG_ERROR() << "  Current VBO bound: " << bound;
+
+    //Check EBO
     glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &bound);
     LOG_ERROR() << "  Current EBO bound: " << bound;
+
 
     // Check Viewport
     GLint vp[4];

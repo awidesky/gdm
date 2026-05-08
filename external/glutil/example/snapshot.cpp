@@ -29,7 +29,10 @@ GLuint makeDummyTexture(int unit, int w, int h, unsigned char r, unsigned char g
 
 
 void makeTestVAO(GLuint& vao, GLuint& vbo) {
-    float vertices[] = {0.0f, 0.5f, 0.0f, 0.5f, 1.0f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f};
+    float vertices[] = {
+        0.0f, 0.5f, 0.0f,       0.5f, 1.0f,
+        -0.5f, -0.5f, 0.0f,     0.0f, 0.0f,
+        0.5f, -0.5f, 0.0f,      1.0f, 0.0f};
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
