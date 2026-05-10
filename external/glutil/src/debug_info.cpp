@@ -61,18 +61,23 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
 #endif
 #ifdef GL_VERSION_2_0
     if(ver >= "2.0") {
+        GLint maxVertexAttribs = 0;
+        GLint maxVertexUniform = 0;
+        GLint maxFragUniform = 0;
         GLint maxTexImageUnits = 0;
         GLint maxCombinedTexUnits = 0;
-        GLint maxVertexAttribs = 0;
         GLint maxDrawBuffers = 0;
 
-        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxCombinedTexUnits);
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttribs);
+        glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &maxVertexUniform);
+        glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, &maxFragUniform);
         glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTexImageUnits);
+        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxCombinedTexUnits);
         glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
 
-        os << "[OpenGL] Texture Units (Fragment shader/Combined): " << maxTexImageUnits << " / " << maxCombinedTexUnits << "\n";
         os << "[OpenGL] Vertex Attributes: " << maxVertexAttribs << "\n";
+        os << "[OpenGL] Shader Uniform Components (Vertex/Fragment): " << maxVertexUniform << "/ " << maxFragUniform << "\n";
+        os << "[OpenGL] Shader Texture Units (Fragment/Combined): " << maxTexImageUnits << " / " << maxCombinedTexUnits << "\n";
         os << "[OpenGL] Color Buffers in a Framebuffer: " << maxDrawBuffers << "\n";
     }
 #endif
