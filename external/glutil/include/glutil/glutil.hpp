@@ -10,6 +10,7 @@
 #include <glutil/shader.hpp>
 #include <glutil/texture.hpp>
 #include <glutil/debug_stacktrace.hpp>
+#include <glutil/debug_snapshot.hpp>
 
 #include <glutil/debug.hpp>
 

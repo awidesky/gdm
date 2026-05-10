@@ -37,6 +37,7 @@ target_sources(glutil
       include/glutil/debug_callback.hpp
       include/glutil/debug_stacktrace.hpp
       include/glutil/debug_info.hpp
+      include/glutil/debug_snapshot.hpp
 )
 
 target_sources(glutil
@@ -53,6 +54,7 @@ target_sources(glutil
     src/debug_callback.cpp
     src/debug_stacktrace.cpp
     src/debug_info.cpp
+    src/debug_snapshot.cpp
 
     src/stb_image.h
     src/dds-ktx.h
@@ -219,4 +221,20 @@ if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM
         FOLDER "GLUTIL_Examples"
   )
 
+  add_executable(glutil_snapshotExample)
+  target_sources(glutil_snapshotExample
+        PRIVATE example/snapshot.cpp
+  )
+  target_include_directories(glutil_snapshotExample
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_snapshotExample PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_snapshotExample PRIVATE cxx_std_17)
+  target_compile_options(glutil_snapshotExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_snapshotExample PROPERTIES
+        FOLDER "GLUTIL_Examples"
+  )
 endif()
