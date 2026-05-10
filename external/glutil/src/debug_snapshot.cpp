@@ -139,17 +139,136 @@ void glutil::debug::snapshot()
 
 
     //Check EBO
-    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &bound);
-    LOG_ERROR() << "  Current EBO bound: " << bound;
+    GLint eboBound = 0;
+    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &eboBound);
+    if (eboBound != 0) {
+        GLint eboSize = 0, eboUsage = 0;
+        glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &eboSize);
+        glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_USAGE, &eboUsage);
 
+        const char* eboUsageStr = "UNKNOWN";
+        switch (eboUsage) {
+            case GL_STATIC_DRAW: eboUsageStr = "GL_STATIC_DRAW"; break;
+            case GL_DYNAMIC_DRAW: eboUsageStr = "GL_DYNAMIC_DRAW"; break;
+            case GL_STREAM_DRAW: eboUsageStr = "GL_STREAM_DRAW"; break;
+        }
 
-    // Check Viewport
-    GLint vp[4];
-    glGetIntegerv(GL_VIEWPORT, vp);
-    LOG_ERROR() << "  Viewport: x=" << vp[0] << ", y=" << vp[1] << ", w=" << vp[2] << ", h=" << vp[3];
+        LOG_ERROR() << "  [EBO dump] ID=" << eboBound << "  " << eboSize << " bytes"
+                    << "  " << eboUsageStr;
+
+        // VRAM → CPU 복사
+        std::vector<unsigned int> indices(eboSize / sizeof(unsigned int));
+        glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, eboSize, indices.data());
+
+        // 최대 30개 출력
+        int printNum = std::min((int)indices.size(), 30);
+        std::ostringstream oss;
+        oss << "    indices: ";
+        for (int i = 0; i < printNum; i++) {
+            oss << indices[i];
+            if (i < printNum - 1)
+                oss << ", ";
+        }
+        if ((int)indices.size() > 30)
+            oss << " ... (" << indices.size() - 30 << " more)";
+        LOG_ERROR() << oss.str();
+    } else {
+        LOG_ERROR() << "  EBO: (none)";
+    }
+
+    //Check Shader Uniform Value
+    GLint program = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+    if (program != 0) {
+        GLint count = 0;
+        glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
+
+        GLint maxLen = 0;
+        glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
+
+        LOG_ERROR() << "  [Uniforms] Shader ID=" << program << " count=" << count;
+
+        std::vector<char> name(maxLen);
+
+        for (GLint i = 0; i < count; i++) {
+            GLint size = 0;
+            GLenum type = 0;
+            glGetActiveUniform(program, i, maxLen, nullptr, &size, &type, name.data());
+
+            GLint loc = glGetUniformLocation(program, name.data());
+            if (loc == -1)
+                continue;
+
+            std::ostringstream oss;
+            oss << "    " << name.data() << " (";
+
+            switch (type) {
+                case GL_FLOAT: {
+                    GLfloat v;
+                    glGetUniformfv(program, loc, &v);
+                    oss << "float) = " << v;
+                    break;
+                }
+                case GL_FLOAT_VEC2: {
+                    GLfloat v[2];
+                    glGetUniformfv(program, loc, v);
+                    oss << "vec2) = (" << v[0] << ", " << v[1] << ")";
+                    break;
+                }
+                case GL_FLOAT_VEC3: {
+                    GLfloat v[3];
+                    glGetUniformfv(program, loc, v);
+                    oss << "vec3) = (" << v[0] << ", " << v[1] << ", " << v[2] << ")";
+                    break;
+                }
+                case GL_FLOAT_VEC4: {
+                    GLfloat v[4];
+                    glGetUniformfv(program, loc, v);
+                    oss << "vec4) = (" << v[0] << ", " << v[1] << ", " << v[2] << ", " << v[3] << ")";
+                    break;
+                }
+                case GL_FLOAT_MAT4: {
+                    GLfloat v[16];
+                    glGetUniformfv(program, loc, v);
+                    oss << "mat4) =\n";
+                    for (int row = 0; row < 4; row++) {
+                        oss << "                    [ ";
+                        for (int col = 0; col < 4; col++)
+                            oss << v[col * 4 + row] << " ";
+                        oss << "]";
+                        if (row < 3)
+                            oss << "\n";
+                    }
+                    break;
+                }
+                case GL_INT: {
+                    GLint v;
+                    glGetUniformiv(program, loc, &v);
+                    oss << "int) = " << v;
+                    break;
+                }
+                case GL_SAMPLER_2D: {
+                    GLint v;
+                    glGetUniformiv(program, loc, &v);
+                    oss << "sampler2D) = unit " << v;
+                    break;
+                }
+                default: oss << "type=0x" << std::hex << type << std::dec << ") = ?";
+            }
+            LOG_ERROR() << oss.str();
+        }
+    } else {
+        LOG_ERROR() << "  [Uniforms] No shader bound";
+    }
+
+    
 
     // Check Render State
     LOG_ERROR() << "  [Render State]";
+    // Check Viewport
+    GLint vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+    LOG_ERROR() << "    Viewport: x=" << vp[0] << ", y=" << vp[1] << ", w=" << vp[2] << ", h=" << vp[3];
     LOG_ERROR() << "    Depth Test: " << (glIsEnabled(GL_DEPTH_TEST) ? "ON" : "OFF");
     LOG_ERROR() << "    Blend     : " << (glIsEnabled(GL_BLEND) ? "ON" : "OFF");
     LOG_ERROR() << "    Cull Face : " << (glIsEnabled(GL_CULL_FACE) ? "ON" : "OFF");

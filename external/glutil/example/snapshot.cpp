@@ -1,6 +1,7 @@
 ﻿#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <glutil/glutil.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include "config.hpp"
 
@@ -26,17 +27,73 @@ GLuint makeDummyTexture(int unit, int w, int h, unsigned char r, unsigned char g
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     return tex;
 }
+GLuint makeTestShader() {
+    const char* vsSource = R"(
+        #version 330 core
+        layout(location = 0) in vec3 aPos;
+        layout(location = 1) in vec2 aUV;
+        uniform mat4 model;
+        uniform vec3 lightPos;
+        uniform float alpha;
+        out vec2 uv;
+        void main() {
+            gl_Position = model * vec4(aPos + lightPos * 0.0, 1.0);
+            uv = aUV;
+        }
+    )";
 
+    const char* fsSource = R"(
+        #version 330 core
+        in vec2 uv;
+        uniform sampler2D tex;
+        out vec4 FragColor;
+        uniform float alpha;
 
-void makeTestVAO(GLuint& vao, GLuint& vbo) {
+        void main() {
+            FragColor = vec4(texture(tex, uv).rgb, alpha);
+        }
+    )";
+
+    // 버텍스 셰이더
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &vsSource, nullptr);
+    glCompileShader(vs);
+
+    // 프래그먼트 셰이더
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &fsSource, nullptr);
+    glCompileShader(fs);
+
+    // 링크
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    return program;
+}
+
+void makeTestVAO(GLuint& vao, GLuint& vbo, GLuint& ebo) {
     float vertices[] = {
         0.0f, 0.5f, 0.0f,       0.5f, 1.0f,
         -0.5f, -0.5f, 0.0f,     0.0f, 0.0f,
         0.5f, -0.5f, 0.0f,      1.0f, 0.0f};
+
+    unsigned int indices[] = {
+      0, 1, 2, 
+      0, 2, 3  
+    };
+
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo); 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 20, (void*)0);
@@ -75,10 +132,18 @@ int main()
     // Make texture 2 , vao, vbo
     GLuint tex1 = makeDummyTexture(0, 1, 1, 255, 0, 0);
     GLuint tex2 = makeDummyTexture(1, 2, 2, 0, 255, 0);
-    GLuint vao, vbo;
-    makeTestVAO(vao, vbo);
-    glutil::debug::snapshot();
+    GLuint vao, vbo,ebo;
+    makeTestVAO(vao, vbo,ebo);
 
+    GLuint shader = makeTestShader();
+    glUseProgram(shader);
+    glm::mat4 model = glm::mat4(1.0f);
+    glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glUniform3f(glGetUniformLocation(shader, "lightPos"), 1.0f, 2.0f, 3.0f);
+    glUniform1f(glGetUniformLocation(shader, "alpha"), 0.8f);
+    glUniform1i(glGetUniformLocation(shader, "tex"), 0);
+
+    glutil::debug::snapshot();
 
 
     while (!glfwWindowShouldClose(window)) {
