@@ -28,8 +28,8 @@ static std::set<std::string> loadGLExtensions() {
                 extensions.emplace(reinterpret_cast<const char*>(ext));
             }
         }
-        return extensions;
     }
+    return extensions;
 }
 } // namespace
 
@@ -133,4 +133,4 @@ void init() {
     initDebugCallbacks();
 }
 
-} // namespace glutil
+} // namespace glutil::debug

@@ -130,66 +130,6 @@ void main() {
     return 0;
 }
 
-void printRuntimeInfo() {
-    std::cout << "=== Runtime Dependency Info ===\n";
-
-#ifdef GDM_HAS_GLFW
-    int major = 0;
-    int minor = 0;
-    int rev = 0;
-    glfwGetVersion(&major, &minor, &rev);
-    std::cout << "[GLFW] version: " << major << "." << minor << "." << rev
-              << ", string: " << glfwGetVersionString() << "\n";
-#endif
-
-#ifdef GDM_HAS_FREEGLUT
-    const int glutVersion = glutGet(GLUT_VERSION); // ex: 30400 = 3.4.0
-    std::cout << "[FreeGLUT] GLUT_VERSION(raw): " << glutVersion << "\n";
-#endif
-
-#ifdef GDM_HAS_GLEW
-    const GLubyte* glewVer = glewGetString(GLEW_VERSION);
-    std::cout << "[GLEW] version: " << (glewVer ? reinterpret_cast<const char*>(glewVer) : "(null)") << "\n";
-#endif
-
-#ifdef GDM_HAS_GLAD
-    std::cout << "[GLAD] Generator version : " << GLAD_GENERATOR_VERSION << ", Debug option "
-    #ifdef GLAD_OPTION_GL_DEBUG
-        << "ON"
-    #else
-        << "OFF"
-    #endif
-    << "\n";
-#endif
-
-#ifdef GDM_HAS_GLM
-    std::cout << "[GLM]  version: "
-              << GLM_VERSION_MAJOR << "."
-              << GLM_VERSION_MINOR << "."
-              << GLM_VERSION_PATCH << "."
-              << GLM_VERSION_REVISION << "\n";
-#endif
-
-#ifdef GDM_HAS_GLUTIL
-    // TODO : print glutil version
-    std::cout << "[GLUtil] enabled (Inspector API available)\n";
-#else
-    std::cout << "[GLUtil] disabled\n";
-#endif
-    std::cout << "\n";
-
-    const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
-    const char* slVersion = reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
-    const char* vendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-    const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-
-    std::cout << "[OpenGL] version: " << (version ? version : "(null)") << "\n";
-    std::cout << "[OpenGL] GLSL: " << (slVersion ? slVersion : "(null)") << "\n";
-    std::cout << "[OpenGL] vendor: " << (vendor ? vendor : "(null)")
-              << ", renderer: " << (renderer ? renderer : "(null)") << "\n";
-    std::cout << "===============================\n";
-}
-
 bool initializeLoader() {
 #ifdef GDM_HAS_GLAD
     int gladVersion = 0;
@@ -282,7 +222,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    printRuntimeInfo();
+    glutil::debug::printRuntimeInfo(true);
 
     const std::array<float, 18> vertices = {
         -0.5f, -0.5f, 0.0f, 1.0f, 0.2f, 0.2f,

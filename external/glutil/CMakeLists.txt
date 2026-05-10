@@ -36,6 +36,7 @@ target_sources(glutil
       include/glutil/debug.hpp
       include/glutil/debug_callback.hpp
       include/glutil/debug_stacktrace.hpp
+      include/glutil/debug_info.hpp
 )
 
 target_sources(glutil
@@ -51,6 +52,7 @@ target_sources(glutil
     src/debug.cpp
     src/debug_callback.cpp
     src/debug_stacktrace.cpp
+    src/debug_info.cpp
 
     src/stb_image.h
     src/dds-ktx.h
