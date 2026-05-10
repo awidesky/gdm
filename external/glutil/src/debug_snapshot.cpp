@@ -19,6 +19,32 @@ const char* glTypeToString(GLint type) {
     }
 }
 
+const char* glTextureFormatToString(GLint fmt) {
+    switch (fmt) {
+        case GL_RGB8: return "GL_RGB8";
+        case GL_RGBA8: return "GL_RGBA8";
+        case GL_R8: return "GL_R8";
+        case GL_RG8: return "GL_RG8";
+        case GL_RGB16F: return "GL_RGB16F";
+        case GL_RGBA16F: return "GL_RGBA16F";
+        case GL_RGB32F: return "GL_RGB32F";
+        case GL_RGBA32F: return "GL_RGBA32F";
+
+        case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
+        case GL_DEPTH_COMPONENT16: return "GL_DEPTH_COMPONENT16";
+        case GL_DEPTH_COMPONENT24: return "GL_DEPTH_COMPONENT24";
+        case GL_DEPTH_COMPONENT32F: return "GL_DEPTH_COMPONENT32F";
+        case GL_DEPTH_STENCIL: return "GL_DEPTH_STENCIL";
+
+        case GL_COMPRESSED_RGB_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGB_S3TC_DXT1";
+        case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT1";
+        case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT3";
+        case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT5";
+
+        default: return "UNKNOWN";
+    }
+}
+
 void glutil::debug::snapshot() 
 {
     // Check Frame Buffer
@@ -66,7 +92,7 @@ void glutil::debug::snapshot()
         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
         LOG_ERROR() << "  Current 2D texture bound (ID: " << texId << ") Size: " << width << "x" << height
-                    << ", Format: " << internalFormat;
+                    << ", Format: " << glTextureFormatToString(internalFormat);
     }
     glActiveTexture(currentUnit);
 
@@ -111,7 +137,7 @@ void glutil::debug::snapshot()
             glGetVertexAttribPointerv(i, GL_VERTEX_ATTRIB_ARRAY_POINTER, &offset);
             uintptr_t off = reinterpret_cast<uintptr_t>(offset);
 
-            // VBO가 바뀌면 새로 읽기
+            // if VBO is changed, read another one
             if (vboId != prevVboId) {
                 glBindBuffer(GL_ARRAY_BUFFER, vboId);
 
