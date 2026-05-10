@@ -71,7 +71,7 @@ void glutil::debug::snapshot()
     glActiveTexture(currentUnit);
 
 
-    //Check VAO/VBO limit 10
+     // Check VAO/VBO limit 10
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &bound);
     if (bound != 0) {
         GLint vboBound = 0, bufSize = 0, usage = 0;
@@ -89,11 +89,12 @@ void glutil::debug::snapshot()
         LOG_ERROR() << "  Current VAO bound: " << bound << "  VBO ID=" << vboBound << "  " << bufSize << " bytes"
                     << "  " << usageStr;
 
-        std::vector<unsigned char> data(bufSize);
-        glGetBufferSubData(GL_ARRAY_BUFFER, 0, bufSize, data.data());
-
         GLint maxAttribs = 0;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
+
+        GLint prevVboId = -1;
+        std::vector<unsigned char> data;
+        GLint curBufSize = 0;
 
         for (int i = 0; i < maxAttribs; i++) {
             GLint enabled = 0;
@@ -101,21 +102,44 @@ void glutil::debug::snapshot()
             if (!enabled)
                 continue;
 
-            GLint vbo = 0, size = 0, type = 0, stride = 0;
+            GLint vboId = 0, size = 0, type = 0, stride = 0;
             void* offset = nullptr;
-            glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &vbo);
+            glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &vboId);
             glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_SIZE, &size);
             glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_TYPE, &type);
             glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &stride);
             glGetVertexAttribPointerv(i, GL_VERTEX_ATTRIB_ARRAY_POINTER, &offset);
             uintptr_t off = reinterpret_cast<uintptr_t>(offset);
 
+            // VBO가 바뀌면 새로 읽기
+            if (vboId != prevVboId) {
+                glBindBuffer(GL_ARRAY_BUFFER, vboId);
+
+                GLint newUsage = 0;
+                glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &curBufSize);
+                glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &newUsage);
+
+                const char* usageStr = "UNKNOWN";
+                switch (newUsage) {
+                    case GL_STATIC_DRAW: usageStr = "GL_STATIC_DRAW"; break;
+                    case GL_DYNAMIC_DRAW: usageStr = "GL_DYNAMIC_DRAW"; break;
+                    case GL_STREAM_DRAW: usageStr = "GL_STREAM_DRAW"; break;
+                }
+
+                LOG_ERROR() << "  [VBO ID=" << vboId << "  " << curBufSize << " bytes"
+                            << "  " << usageStr << "]";
+
+                data.resize(curBufSize);
+                glGetBufferSubData(GL_ARRAY_BUFFER, 0, curBufSize, data.data());
+                prevVboId = vboId;
+            }
+
             LOG_ERROR() << "    attrib[" << i << "]"
-                        << " vbo=" << vbo << " size=" << size << " type=" << glTypeToString(type) << std::dec
+                        << " vbo=" << vboId << " size=" << size << " type=" << glTypeToString(type)
                         << " stride=" << stride << " offset=" << off;
 
             int s = stride == 0 ? size * (int)sizeof(float) : stride;
-            int numVerts = bufSize / s;
+            int numVerts = curBufSize / s;
             int printNum = std::min(numVerts, 10);
 
             for (int v = 0; v < printNum; v++) {
@@ -133,6 +157,7 @@ void glutil::debug::snapshot()
             if (numVerts > 10)
                 LOG_ERROR() << "      ... (" << numVerts - 10 << " more)";
         }
+        glBindBuffer(GL_ARRAY_BUFFER, vboBound);
     } else {
         LOG_ERROR() << "  No VAO bound: " << bound;
     }
