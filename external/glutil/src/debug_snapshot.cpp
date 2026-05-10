@@ -78,21 +78,36 @@ void glutil::debug::snapshot()
     GLint maxUnits = 0;
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxUnits);
 
+
+    struct TexType {
+        GLenum binding;
+        GLenum target;
+        const char* name;
+    };
+    TexType types[] = {
+      {GL_TEXTURE_BINDING_2D, GL_TEXTURE_2D, "2D"},
+      {GL_TEXTURE_BINDING_CUBE_MAP, GL_TEXTURE_CUBE_MAP, "CubeMap"},
+      {GL_TEXTURE_BINDING_3D, GL_TEXTURE_3D, "3D"},
+    };
+
+
     for (int i = 0; i < maxUnits; i++) {
         glActiveTexture(GL_TEXTURE0 + i);
-        GLint texId = 0;
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &texId);
-        if (texId == 0)
-        {
-            continue;
+        for (auto& t : types) {
+            GLint texId = 0;
+            glGetIntegerv(t.binding, &texId);
+            if (texId == 0)
+                continue;
+
+            GLint width = 0, height = 0, internalFormat = 0;
+            glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_WIDTH, &width);
+            glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_HEIGHT, &height);
+            glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+
+            LOG_ERROR() << "  Unit " << i << " (" << t.name << ")"
+                        << " ID=" << texId << " Size=" << width << "x" << height
+                        << " Format=" << glTextureFormatToString(internalFormat);
         }
- 
-        GLint width = 0, height = 0, internalFormat = 0;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
-        LOG_ERROR() << "  Current 2D texture bound (ID: " << texId << ") Size: " << width << "x" << height
-                    << ", Format: " << glTextureFormatToString(internalFormat);
     }
     glActiveTexture(currentUnit);
 
