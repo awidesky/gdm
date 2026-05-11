@@ -2,8 +2,10 @@
 #define GLUTIL_DEBUG_INFO_HPP
 
 #include <set>
+#include <string>
 #include <iosfwd>
-#include <stdio.h>
+#include <cstdio>
+#include <cassert>
 
 namespace glutil::debug {
 
@@ -15,8 +17,8 @@ void printRuntimeInfo(bool verbose = false);
 
 struct GLVersion; GLVersion parseGLVersion(const char* version);
 struct GLVersion {
-    int major = 0;
-    int minor = 0;
+    int major = -1;
+    int minor = -1;
 
     int compare(const GLVersion& other) const {
         if (major != other.major) return (major < other.major) ? -1 : 1;
@@ -46,7 +48,7 @@ public:
 GLVersion getOpenGLVersion();
 inline GLVersion parseGLVersion(const char* version) {
     GLVersion ret;
-    std::sscanf(version, "%d.%d", &ret.major, &ret.minor);
+    assert(std::sscanf(version, "%d.%d", &ret.major, &ret.minor) == 2);
     return ret;
 }
 }

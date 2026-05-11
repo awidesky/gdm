@@ -4,6 +4,7 @@
 #include <glutil/debug_callback.hpp>
 #include <glutil/debug_stacktrace.hpp>
 #include <glutil/debug_info.hpp>
+#include <glutil/debug_snapshot.hpp>
 
 #include <string>
 
