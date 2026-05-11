@@ -7,12 +7,38 @@
 #include <iostream>
 #include <map>
 
-void glutil::debug::snapshot() 
-{
+#define LOG LOG_ERROR()
+
+void glutil::debug::snapshot()  {
+
+    // TODO : 
+    // 1. static thread_local bool insideSnapshot = false;등 이용해서 recursion 방지
+    // 2. stacktrace처럼 builder함수를 이용한 객체로 다시 구조화. 필요한 정보만 골라서 출력할 수 있도록
+    // 예시 :
+    //    glutil::debug::snapshot{} //snapshot 타입 객체 생성
+    //          .shader(false) // 셰이더 관련 내용 출력할까?
+    //          .ebo(false) // EBO 관련 내용 출력할까?
+    //          .vbo(true) // VBO id나 크기 출력할까?
+    //          .vboAttribute(false) // VBO attribute 데이터 출력할까? (glGetBufferSubData호출하므로 시간 오래 걸릴 수 있음)
+    //          .shaderUniform(false) // shader 유니폼 값 출력할까?
+    //          .print(std::cerr); // 주어진 스트림(콘솔, 파일...)으로 출력
+    // 
+    // 그냥 glutil::debug::snapshot{}.print(...)하면 모든 내용 다 출력
+    // 각 함수는 bool값만 바꾸고, print시에 알맞게 출력하도록
+    // 
+    // 3. "=========== VBO Status ========="과 같이 구분선과 공백 출력하여, 잘 보이게 변경
+    // 
+    // 4. 유니폼이나 버텍스 데이터 출력할 때, 알맞게 길이 포매팅하여 한눈에 잘 들어올 수 있도록 해야 한다.
+    // 
+    // 5. 코드 내부에 있는 TODO도 수행해야 함!
+    // 
+    // 6. 함수 실행 중에 gl state를 오염시키지 않도록 주의해야 함. 실행 이후로는 모든 게 원래 상태여야 함.
+
+    
     // Check Frame Buffer
     const GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    LOG_ERROR() << "[OpenGL state dump]";
-    LOG_ERROR() << "  Framebuffer status: " << glutil::glErrorToString(fbStatus) << '(' << fbStatus << ')';
+    LOG << "[OpenGL state dump]";
+    LOG << "  Framebuffer status: " << glutil::glErrorToString(fbStatus) << '(' << fbStatus << ')';
 
     // Check Shader progame Link
     GLint bound = 0;
@@ -22,15 +48,15 @@ void glutil::debug::snapshot()
         glGetProgramiv(bound, GL_LINK_STATUS, &linkStatus);
         GLint infoLogLength = 0;
         glGetProgramiv(bound, GL_INFO_LOG_LENGTH, &infoLogLength);
-        LOG_ERROR() << "  Current shader program ID: " << bound
+        LOG << "  Current shader program ID: " << bound
                     << ", LinkStatus: " << (linkStatus == GL_TRUE ? "OK" : "FAIL");
         std::string infoLog(infoLogLength, '\0');
         if (infoLogLength > 0) {
             glGetProgramInfoLog(bound, infoLogLength, nullptr, infoLog.data());
-            LOG_ERROR() << "  Program InfoLog: " << infoLog;
+            LOG << "  Program InfoLog: " << infoLog;
         }
     } else {
-        LOG_ERROR() << "  No shader program bound";
+        LOG << "  No shader program bound";
     }
 
     // Check Texture
@@ -66,7 +92,7 @@ void glutil::debug::snapshot()
             glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_HEIGHT, &height);
             glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
 
-            LOG_ERROR() << "  Unit " << i << " (" << t.name << ")"
+            LOG << "  Unit " << i << " (" << t.name << ")"
                         << " ID=" << texId << " Size=" << width << "x" << height
                         << " Format=" << glTextureFormatToString(internalFormat);
         }
@@ -79,8 +105,10 @@ void glutil::debug::snapshot()
     if (bound != 0) {
         GLint vboBound = 0, bufSize = 0, usage = 0;
         glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &vboBound);
-        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &bufSize);
-        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &usage);
+        if (vboBound != 0) {
+            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &bufSize);
+            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &usage);
+        }
 
         const char* usageStr = "UNKNOWN";
         switch (usage) {
@@ -89,7 +117,7 @@ void glutil::debug::snapshot()
             case GL_STREAM_DRAW: usageStr = "GL_STREAM_DRAW"; break;
         }
 
-        LOG_ERROR() << "  Current VAO bound: " << bound << "  VBO ID=" << vboBound << "  " << bufSize << " bytes"
+        LOG << "  Current VAO bound: " << bound << "  Current global ARRAY_BUFFER binding (setup state)=" << vboBound << "  " << bufSize << " bytes"
                     << "  " << usageStr;
 
         GLint maxAttribs = 0;
@@ -129,7 +157,7 @@ void glutil::debug::snapshot()
                     case GL_STREAM_DRAW: usageStr = "GL_STREAM_DRAW"; break;
                 }
 
-                LOG_ERROR() << "  [VBO ID=" << vboId << "  " << curBufSize << " bytes"
+                LOG << "  [VBO ID=" << vboId << "  " << curBufSize << " bytes"
                             << "  " << usageStr << "]";
 
                 data.resize(curBufSize);
@@ -137,15 +165,17 @@ void glutil::debug::snapshot()
                 prevVboId = vboId;
             }
 
-            LOG_ERROR() << "    attrib[" << i << "]"
+            LOG << "    attrib[" << i << "]"
                         << " vbo=" << vboId << " size=" << size << " type=" << glTypeToString(type)
                         << " stride=" << stride << " offset=" << off;
 
+            // TODO : float가 아닌 경우 stride계산 잘못됨
             int s = stride == 0 ? size * (int)sizeof(float) : stride;
             int numVerts = curBufSize / s;
             int printNum = std::min(numVerts, 10);
 
             for (int v = 0; v < printNum; v++) {
+                // TODO : float아닌 값 있을 수도 있음!
                 const float* ptr = reinterpret_cast<const float*>(data.data() + v * s + off);
                 std::ostringstream oss;
                 oss << "      vertex[" << v << "]: (";
@@ -155,14 +185,14 @@ void glutil::debug::snapshot()
                         oss << ", ";
                 }
                 oss << ")";
-                LOG_ERROR() << oss.str();
+                LOG << oss.str();
             }
             if (numVerts > 10)
-                LOG_ERROR() << "      ... (" << numVerts - 10 << " more)";
+                LOG << "      ... (" << numVerts - 10 << " more)";
         }
         glBindBuffer(GL_ARRAY_BUFFER, vboBound);
     } else {
-        LOG_ERROR() << "  No VAO bound: " << bound;
+        LOG << "  No VAO bound: " << bound;
     }
 
 
@@ -181,10 +211,11 @@ void glutil::debug::snapshot()
             case GL_STREAM_DRAW: eboUsageStr = "GL_STREAM_DRAW"; break;
         }
 
-        LOG_ERROR() << "  [EBO dump] ID=" << eboBound << "  " << eboSize << " bytes"
+        LOG << "  [EBO dump] ID=" << eboBound << "  " << eboSize << " bytes"
                     << "  " << eboUsageStr;
 
-        // VRAM → CPU 복사
+        // VRAM -> CPU 복사
+        // TODO : GL_UNSIGNED_SHORT 등 다양한 여러 다른 타입일 수 있음!
         std::vector<unsigned int> indices(eboSize / sizeof(unsigned int));
         glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, eboSize, indices.data());
 
@@ -199,9 +230,9 @@ void glutil::debug::snapshot()
         }
         if ((int)indices.size() > 30)
             oss << " ... (" << indices.size() - 30 << " more)";
-        LOG_ERROR() << oss.str();
+        LOG << oss.str();
     } else {
-        LOG_ERROR() << "  EBO: (none)";
+        LOG << "  EBO: (none)";
     }
 
     //Check Shader Uniform Value
@@ -214,7 +245,7 @@ void glutil::debug::snapshot()
         GLint maxLen = 0;
         glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
 
-        LOG_ERROR() << "  [Uniforms] Shader ID=" << program << " count=" << count;
+        LOG << "  [Uniforms] Shader ID=" << program << " count=" << count;
 
         std::vector<char> name(maxLen);
 
@@ -283,21 +314,21 @@ void glutil::debug::snapshot()
                 }
                 default: oss << "type=0x" << std::hex << type << std::dec << ") = ?";
             }
-            LOG_ERROR() << oss.str();
+            LOG << oss.str();
         }
     } else {
-        LOG_ERROR() << "  [Uniforms] No shader bound";
+        LOG << "  [Uniforms] No shader bound";
     }
 
     
 
     // Check Render State
-    LOG_ERROR() << "  [Render State]";
+    LOG << "  [Render State]";
     // Check Viewport
     GLint vp[4];
     glGetIntegerv(GL_VIEWPORT, vp);
-    LOG_ERROR() << "    Viewport: x=" << vp[0] << ", y=" << vp[1] << ", w=" << vp[2] << ", h=" << vp[3];
-    LOG_ERROR() << "    Depth Test: " << (glIsEnabled(GL_DEPTH_TEST) ? "ON" : "OFF");
-    LOG_ERROR() << "    Blend     : " << (glIsEnabled(GL_BLEND) ? "ON" : "OFF");
-    LOG_ERROR() << "    Cull Face : " << (glIsEnabled(GL_CULL_FACE) ? "ON" : "OFF");
+    LOG << "    Viewport: x=" << vp[0] << ", y=" << vp[1] << ", w=" << vp[2] << ", h=" << vp[3];
+    LOG << "    Depth Test: " << (glIsEnabled(GL_DEPTH_TEST) ? "ON" : "OFF");
+    LOG << "    Blend     : " << (glIsEnabled(GL_BLEND) ? "ON" : "OFF");
+    LOG << "    Cull Face : " << (glIsEnabled(GL_CULL_FACE) ? "ON" : "OFF");
 }
