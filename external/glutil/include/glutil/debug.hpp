@@ -14,8 +14,6 @@ namespace glutil::debug {
 
 void init();
 
-void dumpGLState();
-
 void checkGLError(const std::string& msg = {});
 
 } // namespace glutil::debug
