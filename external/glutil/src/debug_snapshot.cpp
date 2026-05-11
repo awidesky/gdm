@@ -1,56 +1,18 @@
-﻿#include <glad/gl.h>
-#include <GLFW/glfw3.h>
+﻿#include <glutil/gl.hpp>
+#include <glutil/glToString.hpp>
+
 #include <glutil/glutil.hpp>
-#include <iostream>
 #include <glutil/debug_snapshot.hpp>
+
+#include <iostream>
 #include <map>
-#include "config.hpp"
-
-const char* glTypeToString(GLint type) {
-    switch (type) {
-        case GL_FLOAT: return "GL_FLOAT";
-        case GL_UNSIGNED_BYTE: return "GL_UNSIGNED_BYTE";
-        case GL_UNSIGNED_SHORT: return "GL_UNSIGNED_SHORT";
-        case GL_UNSIGNED_INT: return "GL_UNSIGNED_INT";
-        case GL_INT: return "GL_INT";
-        case GL_SHORT: return "GL_SHORT";
-        case GL_BYTE: return "GL_BYTE";
-        default: return "UNKNOWN";
-    }
-}
-
-const char* glTextureFormatToString(GLint fmt) {
-    switch (fmt) {
-        case GL_RGB8: return "GL_RGB8";
-        case GL_RGBA8: return "GL_RGBA8";
-        case GL_R8: return "GL_R8";
-        case GL_RG8: return "GL_RG8";
-        case GL_RGB16F: return "GL_RGB16F";
-        case GL_RGBA16F: return "GL_RGBA16F";
-        case GL_RGB32F: return "GL_RGB32F";
-        case GL_RGBA32F: return "GL_RGBA32F";
-
-        case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
-        case GL_DEPTH_COMPONENT16: return "GL_DEPTH_COMPONENT16";
-        case GL_DEPTH_COMPONENT24: return "GL_DEPTH_COMPONENT24";
-        case GL_DEPTH_COMPONENT32F: return "GL_DEPTH_COMPONENT32F";
-        case GL_DEPTH_STENCIL: return "GL_DEPTH_STENCIL";
-
-        case GL_COMPRESSED_RGB_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGB_S3TC_DXT1";
-        case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT1";
-        case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT3";
-        case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT5";
-
-        default: return "UNKNOWN";
-    }
-}
 
 void glutil::debug::snapshot() 
 {
     // Check Frame Buffer
     const GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     LOG_ERROR() << "[OpenGL state dump]";
-    LOG_ERROR() << "  Framebuffer status: " << glutil::debug::glErrorToString(fbStatus);
+    LOG_ERROR() << "  Framebuffer status: " << glutil::glErrorToString(fbStatus) << '(' << fbStatus << ')';
 
     // Check Shader progame Link
     GLint bound = 0;

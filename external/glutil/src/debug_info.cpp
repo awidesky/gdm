@@ -1,18 +1,5 @@
 #include <glutil/debug_info.hpp>
-
-#ifdef GDM_HAS_GLEW
-#include <GL/glew.h>
-#endif
-
-#ifdef GDM_HAS_GLAD
-#include <glad/gl.h>
-#endif
-
-#ifdef GDM_HAS_GLFW
-#include <GLFW/glfw3.h>
-#elif defined(GDM_HAS_FREEGLUT)
-#include <GL/freeglut.h>
-#endif
+#include <glutil/gl.hpp>
 
 #ifdef GDM_HAS_GLM
 #include <glm/glm.hpp>
