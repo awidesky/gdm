@@ -90,6 +90,8 @@ struct InputState {
     bool left=false, right=false, up=false, down=false;
 } g_input;
 
+static bool g_makeGLError = false;
+
 struct Cube {
     glm::vec3 position, rotation, velocity;
     glm::mat4 model;
@@ -528,6 +530,11 @@ int main(int argc, char** argv) {
         glBindVertexArray(planeVao);
         glDrawArrays(GL_TRIANGLES, 0, sizeof(kPlaneVertices) / sizeof(kPlaneVertices[0]));
 
+        if (g_makeGLError) {
+            //TODO : better error. ex) pollute vertex/shader data? something we can figure out via snapshot.
+            glBindTexture(9999, 9999);
+            g_makeGLError = false;
+        }
 
         const auto renderEnd = std::chrono::steady_clock::now();
 
@@ -813,6 +820,8 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
         case GLFW_KEY_RIGHT: g_input.right = down; break;
         case GLFW_KEY_UP: g_input.up = down; break;
         case GLFW_KEY_DOWN: g_input.down = down; break;
+
+        case GLFW_KEY_V: g_makeGLError = action == GLFW_RELEASE; break;
         default: break;
     }
 }
