@@ -11,20 +11,28 @@
 
 void glutil::debug::snapshot()  {
 
-    // TODO : 
+    // TODO : 아래에 대한 TODO를 수행해야 함. 한번에 모든 걸 하려고 하지 말고, 하나하나 건당 정확하게 해결 후 각각을 확인받은 후에 커밋할 것.
+    // 
+    // 
     // 1. static thread_local bool insideSnapshot = false;등 이용해서 recursion 방지
     // 2. stacktrace처럼 builder함수를 이용한 객체로 다시 구조화. 필요한 정보만 골라서 출력할 수 있도록
-    // 예시 :
-    //    glutil::debug::snapshot{} //snapshot 타입 객체 생성
-    //          .shader(false) // 셰이더 관련 내용 출력할까?
-    //          .ebo(false) // EBO 관련 내용 출력할까?
-    //          .vbo(true) // VBO id나 크기 출력할까?
-    //          .vboAttribute(false) // VBO attribute 데이터 출력할까? (glGetBufferSubData호출하므로 시간 오래 걸릴 수 있음)
+    //   예시:
+    // snapshot{true} //snapshot 타입 객체 생성, 생성자는 bool printAll = true, 모든 스냅샷 항목을 defualt로 true로 놓는가? 라는 의미
+    //          .shaderStatus(false) // 셰이더 관련 내용 출력할까?
+    //          .textureInfo(false) // 텍스쳐 관련 내용 출력할까?
+    //          .currntBufferOnly(true) // 현재 바인드된 VAO, VBO, EBO 관련 내용 출력할까? false면 현존하는 모든 VAO 출력(debug.hpp에 모든 VAO나 VBO를 관리하는 레지스트리가 있다고 가정)
+    //          .bufferContent(false) // VBO attribute 및 내부 데이터 출력할까? (glGetBufferSubData호출하므로 시간 오래 걸릴 수 있음)
+    //          .disabledAttribVBO(false) //VERTEX_ATTRIB_ARRAY_ENABLED가 아닌 것, 즉 glDisableVertexAttribArray(0);된 VBO도 출력
     //          .shaderUniform(false) // shader 유니폼 값 출력할까?
-    //          .print(std::cerr); // 주어진 스트림(콘솔, 파일...)으로 출력
+    //          .rendererState(false) // 렌더러 상태(뷰포트, depth-test enbale등등 여부..) 출력할까?
+    //          .boundInfo(false) // 기타 바인딩 정보 출력(GL_ARRAY_BUFFER_BINDING, GL_ELEMENT_ARRAY_BUFFER_BINDING, GL_UNIFORM_BUFFER_BINDING, GL_SHADER_STORAGE_BUFFER_BINDING, GL_PIXEL_PACK_BUFFER_BINDING, GL_PIXEL_UNPACK_BUFFER_BINDING, GL_TEXTURE_BINDING_2D,GL_SAMPLER_BINDING)
+    //          .capture(std::cerr); // 주어진 스트림(콘솔, 파일...)으로 출력
+    // 위와 같은 코드는 예시이며, 추가하거나 삭제하는 것이 필요한 경우 알맞게 처리할 것.
     // 
-    // 그냥 glutil::debug::snapshot{}.print(...)하면 모든 내용 다 출력
-    // 각 함수는 bool값만 바꾸고, print시에 알맞게 출력하도록
+    // 필요한 경우 snapshot.hpp에는 일종의 프리셋처럼 설정된(오류가 났을 때 유용한 스냅샷, 셰이더 디버깅에 유용한 스냅샷, 버퍼 데이터 디버깅에 유용한 스냅샷 등등..) 다양한 객체를 리턴하는 헬퍼 함수가 존재한다
+    // 
+    // 그냥 glutil::debug::snapshot{}.capture(...)하면 모든 내용 다 출력
+    // 각 함수는 bool값만 바꾸고, print시에 실제 스냅샷을 찍고, 현재 snapshot함수처럼 분기하여 알맞게 출력하도록
     // 
     // 3. "=========== VBO Status ========="과 같이 구분선과 공백 출력하여, 잘 보이게 변경
     // 
@@ -32,7 +40,12 @@ void glutil::debug::snapshot()  {
     // 
     // 5. 코드 내부에 있는 TODO도 수행해야 함!
     // 
-    // 6. 함수 실행 중에 gl state를 오염시키지 않도록 주의해야 함. 실행 이후로는 모든 게 원래 상태여야 함.
+    // 6. 함수 실행 중에 gl state를 오염시키지 않도록 주의해야 함. 실행 이후로는 모든 게 원래 상태여야 함.(VAO binding가 바뀌지 않도록)
+    // 7. glGetBufferSubData가 실패하지 않도록 GL_BUFFER_MAPPED확인
+    // 8. Texture Sampler State도 확인 (GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_COMPARE_FUNC 등등)
+    // 
+    //
+
 
     
     // Check Frame Buffer
@@ -130,7 +143,7 @@ void glutil::debug::snapshot()  {
         for (int i = 0; i < maxAttribs; i++) {
             GLint enabled = 0;
             glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
-            if (!enabled)
+            if (!enabled)  //TODO : 디버깅을 위해 disable된 것도 출력하는 옵션 추가(disabledAttribVBO())
                 continue;
 
             GLint vboId = 0, size = 0, type = 0, stride = 0;
@@ -323,6 +336,7 @@ void glutil::debug::snapshot()  {
     
 
     // Check Render State
+    //TODO : 더 많은 Framebuffer 정보(mip level, multisample 여부, internal format) 제공
     LOG << "  [Render State]";
     // Check Viewport
     GLint vp[4];
