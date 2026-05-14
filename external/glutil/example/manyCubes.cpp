@@ -516,6 +516,12 @@ int main(int argc, char** argv) {
             glDrawArrays(GL_TRIANGLES, 0, sizeof(kVertices) / sizeof(kVertices[0]));
         }
 
+        if (g_makeGLError) {
+            //TODO : better error. ex) pollute vertex/shader data? something we can figure out via snapshot.
+            glBindTexture(9999, 9999);
+            g_makeGLError = false;
+        }
+        
         const glm::mat4 planeModel = glm::mat4(1.0f);
 
         glActiveTexture(GL_TEXTURE0);
@@ -529,12 +535,6 @@ int main(int argc, char** argv) {
         }
         glBindVertexArray(planeVao);
         glDrawArrays(GL_TRIANGLES, 0, sizeof(kPlaneVertices) / sizeof(kPlaneVertices[0]));
-
-        if (g_makeGLError) {
-            //TODO : better error. ex) pollute vertex/shader data? something we can figure out via snapshot.
-            glBindTexture(9999, 9999);
-            g_makeGLError = false;
-        }
 
         const auto renderEnd = std::chrono::steady_clock::now();
 
