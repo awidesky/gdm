@@ -13,7 +13,8 @@ struct PathResolveResult {
     std::string message;
 };
 
-std::string getExecutableDirectory();
+std::filesystem::path getExecutableDirectory();
+std::filesystem::path getProjectRootDirectory();
 PathResolveResult pathResolve(const std::filesystem::path& inputPath);
 
 } // namespace glutil

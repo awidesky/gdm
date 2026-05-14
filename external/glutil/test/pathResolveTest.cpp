@@ -58,7 +58,7 @@ int main() {
     printResult("4. Relative path fail", findExistingFile(fs::current_path()) + "asdfasdf.qwer");
 
     // 5. Executable directory
-    printResult("5. Executable directory branch",
+    printResult("5. Executable directory branch success",
 #ifdef _WIN32
         "glutil_pathResolveTest.exe"
 #else
@@ -67,7 +67,7 @@ int main() {
     );
 
     // 6. PROJECT_ROOT
-    printResult("6. PROJECT_ROOT branch", "CMakeLists.txt");
+    printResult("6. PROJECT_ROOT branch success", "CMakeLists.txt");
 
     return 0;
 }
