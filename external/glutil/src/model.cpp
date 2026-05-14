@@ -1,4 +1,4 @@
-﻿#define TINYOBJLOADER_IMPLEMENTATION
+#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
 #include <glutil/path.hpp>
@@ -105,6 +105,7 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path) {
         mesh.indices.reserve(numIdx);
 
         // TODO(4): (position, normal, uv) 인덱스 조합 기준으로 정점 dedup 적용해 정점/인덱스 버퍼 최적화.
+        // TODO(5): attrib.colors도 있는 경우?
         for (size_t i = 0; i < numIdx; ++i) {
             const tinyobj::index_t& idx = shape.mesh.indices[i];
 
