@@ -48,7 +48,16 @@ public:
 GLVersion getOpenGLVersion();
 inline GLVersion parseGLVersion(const char* version) {
     GLVersion ret;
-    assert(std::sscanf(version, "%d.%d", &ret.major, &ret.minor) == 2);
+
+    int count =
+#ifdef _MSC_VER
+    ::sscanf_s
+#else
+    std::sscanf
+#endif
+               (version, "%d.%d", &ret.major, &ret.minor);
+
+    assert(count == 2);
     return ret;
 }
 }
