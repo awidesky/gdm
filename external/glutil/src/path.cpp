@@ -63,7 +63,7 @@ PathResolveResult pathResolve(const std::filesystem::path& inputPath) {
 
     std::ostringstream message;
 
-    auto testPath = [&](const fs::path& candidate, const std::string& description) -> bool {
+    auto testPath = [&](const fs::path& candidate, const std::string& description, bool prefixIsFailed = false) -> bool {
         std::error_code ec;
 
         auto canonical = fs::weakly_canonical(candidate);
@@ -75,13 +75,14 @@ PathResolveResult pathResolve(const std::filesystem::path& inputPath) {
             return true;
         }
 
-        message << "[Warning] Not found in " << description << ": " << canonical.string() << '\n';
+        message << (prefixIsFailed ? "[Error]" : "[Warning]")  << " Not found in " << description << ": " << canonical.string()
+                << '\n';
         return false;
     };
 
     // 1. If absolute, use as-is; just check for existance.
     if (inputPath.is_absolute()) {
-        testPath(inputPath, "Absolute path");
+        testPath(inputPath, "Absolute path", true);
 
         result.message = message.str();
         return result;
@@ -110,6 +111,7 @@ PathResolveResult pathResolve(const std::filesystem::path& inputPath) {
         return result;
     }
 
+    message << "[Error] Path resolving failed!\n";
     result.message = message.str();
     return result;
 }
