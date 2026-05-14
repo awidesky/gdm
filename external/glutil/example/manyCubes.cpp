@@ -248,8 +248,8 @@ int main(int argc, char** argv) {
     GLuint planeTex = 0;
 
     if (fs::exists(diffusePath)) {
-        if (glutil::ImageLoader::isDDS(diffusePath.string().c_str())) {
-            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(diffusePath.string().c_str());
+        if (glutil::ImageLoader::isDDS(diffusePath)) {
+            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(diffusePath);
             if (dds.ok) {
                 diffuseTex = uploadDDS2D(dds);
             } else {
@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
                           << "\n  reason: " << dds.error << std::endl;
             }
         } else {
-            glutil::TextureImage img = glutil::ImageLoader::loadImage(diffusePath.string().c_str());
+            glutil::TextureImage img = glutil::ImageLoader::loadImage(diffusePath);
             if (img.ok) {
                 diffuseTex = uploadStandard2D(img);
             } else {
@@ -270,7 +270,7 @@ int main(int argc, char** argv) {
     }
 
     if (fs::exists(normalPath)) {
-        glutil::TextureImage img = glutil::ImageLoader::loadImage(normalPath.string().c_str());
+        glutil::TextureImage img = glutil::ImageLoader::loadImage(normalPath);
         if (img.ok) {
             normalTex = uploadStandard2D(img);
         } else {
@@ -282,8 +282,8 @@ int main(int argc, char** argv) {
     }
 
     if (fs::exists(specularPath)) {
-        if (glutil::ImageLoader::isDDS(specularPath.string().c_str())) {
-            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(specularPath.string().c_str());
+        if (glutil::ImageLoader::isDDS(specularPath)) {
+            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(specularPath);
             if (dds.ok) {
                 specularTex = uploadDDS2D(dds);
             } else {
@@ -291,7 +291,7 @@ int main(int argc, char** argv) {
                           << "\n  reason: " << dds.error << std::endl;
             }
         } else {
-            glutil::TextureImage img = glutil::ImageLoader::loadImage(specularPath.string().c_str());
+            glutil::TextureImage img = glutil::ImageLoader::loadImage(specularPath);
             if (img.ok) {
                 specularTex = uploadStandard2D(img);
             } else {
@@ -304,7 +304,7 @@ int main(int argc, char** argv) {
     }
     
     if (fs::exists(planePath)) {
-        glutil::TextureImage img = glutil::ImageLoader::loadImage(planePath.string().c_str());
+        glutil::TextureImage img = glutil::ImageLoader::loadImage(planePath);
         if (img.ok) {
             planeTex = uploadStandard2D(img);
         } else {
@@ -644,13 +644,13 @@ static GLuint compileShader(GLenum type, const GLchar* src, GLint len) {
 }
 
 static GLuint createProgramFromFiles(const fs::path& vsPath, const fs::path& fsPath) {
-    glutil::ShaderLoadResult vsSrc = glutil::ShaderLoader::loadFile(vsPath.string().c_str());
+    glutil::ShaderLoadResult vsSrc = glutil::ShaderLoader::loadFile(vsPath);
     if (!vsSrc.ok) {
         std::cerr << "Vertex shader load failed: " << vsPath << "\n  reason: " << vsSrc.error << std::endl;
         return 0;
     }
 
-    glutil::ShaderLoadResult fsSrc = glutil::ShaderLoader::loadFile(fsPath.string().c_str());
+    glutil::ShaderLoadResult fsSrc = glutil::ShaderLoader::loadFile(fsPath);
     if (!fsSrc.ok) {
         std::cerr << "Fragment shader load failed: " << fsPath << "\n  reason: " << fsSrc.error << std::endl;
         return 0;

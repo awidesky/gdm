@@ -90,7 +90,7 @@ int main() {
     const std::filesystem::path ddsPath = textureDir / "uvtemplate.DDS";
     const std::filesystem::path bmpPath = textureDir / "33.bmp";
 
-    glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(ddsPath.string().c_str());
+    glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(ddsPath);
     if (!dds.ok) {
         std::cerr << "DDS load failed: " << ddsPath << "\n  reason: " << dds.error << std::endl;
         glfwDestroyWindow(ctx);
@@ -98,7 +98,7 @@ int main() {
         return 1;
     }
 
-    glutil::TextureImage bmp = glutil::ImageLoader::loadImage(bmpPath.string().c_str());
+    glutil::TextureImage bmp = glutil::ImageLoader::loadImage(bmpPath);
     if (!bmp.ok) {
         std::cerr << "BMP load failed: " << bmpPath << "\n  reason: " << bmp.error << std::endl;
         glfwDestroyWindow(ctx);

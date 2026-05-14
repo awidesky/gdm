@@ -185,7 +185,7 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor) {
         std::cout << "  Loading with ShaderLoader..." << std::endl;
         glutil::ShaderLoader::checkEncoding = true;
         glutil::ShaderLoader::replaceUnknownNonASCII = true;
-        glutil::ShaderLoadResult loadResult = glutil::ShaderLoader::loadFile(shaderPath.string().c_str());
+        glutil::ShaderLoadResult loadResult = glutil::ShaderLoader::loadFile(shaderPath);
 
         if (loadResult.ok) {
             compileAndLink(*loadResult.string(),

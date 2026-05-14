@@ -59,7 +59,7 @@ int main()
 
     const std::filesystem::path objPath = glutil::EXAMPLE_ASSET_DIR / "model" / "cube.obj";
 
-    glutil::ModelData model = glutil::ModelLoader::loadOBJ(objPath.string().c_str());
+    glutil::ModelData model = glutil::ModelLoader::loadOBJ(objPath);
 
     if (!model.warn.empty())
         std::cerr << "Model load warning: " << model.warn << std::endl;
@@ -138,8 +138,8 @@ int main()
         glBindVertexArray(0);
 
         if (!mesh.diffuseTexturePath.empty()) {
-            if (glutil::ImageLoader::isDDS(mesh.diffuseTexturePath.c_str())) {
-                glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(mesh.diffuseTexturePath.c_str());
+            if (glutil::ImageLoader::isDDS(mesh.diffuseTexturePath)) {
+                glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(mesh.diffuseTexturePath);
                 if (dds.ok) {
                     gm.tex = uploadDDS2D(dds);
                     std::cout << "[ModelExample] mesh \"" << mesh.name << "\": DDS texture loaded" << std::endl;
@@ -147,7 +147,7 @@ int main()
                     std::cerr << "[ModelExample] mesh \"" << mesh.name << "\": DDS load failed: " << dds.error << std::endl;
                 }
             } else {
-                glutil::TextureImage img = glutil::ImageLoader::loadImage(mesh.diffuseTexturePath.c_str());
+                glutil::TextureImage img = glutil::ImageLoader::loadImage(mesh.diffuseTexturePath);
                 if (img.ok) {
                     gm.tex = uploadStandard2D(img);
                     std::cout << "[ModelExample] mesh \"" << mesh.name << "\": texture loaded" << std::endl;

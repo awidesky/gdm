@@ -8,6 +8,7 @@
 #include <cstring>
 #include <string>
 #include <utility>
+#include <filesystem>
 
 namespace glutil {
 
@@ -67,7 +68,7 @@ class ShaderLoader {
 public:
     static bool checkEncoding;
     static bool replaceUnknownNonASCII;
-    static ShaderLoadResult loadFile(const char* inputPath);
+    static ShaderLoadResult loadFile(const std::filesystem::path& inputPath);
 };
 
 inline static bool hasNonASCII(const char* data, size_t size) {

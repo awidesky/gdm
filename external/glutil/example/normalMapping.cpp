@@ -264,15 +264,15 @@ int main() {
     // Load diffuse texture
     GLuint diffuseTex = 0;
     if (fs::exists(diffusePath)) {
-        if (glutil::ImageLoader::isDDS(diffusePath.string().c_str())) {
-            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(diffusePath.string().c_str());
+        if (glutil::ImageLoader::isDDS(diffusePath)) {
+            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(diffusePath);
             if (dds.ok) {
                 diffuseTex = uploadDDS2D(dds);
             } else {
                 std::cerr << "Diffuse DDS load failed: " << diffusePath << "\n  reason: " << dds.error << std::endl;
             }
         } else {
-            glutil::TextureImage img = glutil::ImageLoader::loadImage(diffusePath.string().c_str());
+            glutil::TextureImage img = glutil::ImageLoader::loadImage(diffusePath);
             if (img.ok) {
                 diffuseTex = uploadStandard2D(img);
             } else {
@@ -286,7 +286,7 @@ int main() {
     // Load normal texture
     GLuint normalTex = 0;
     if (fs::exists(normalPath)) {
-        glutil::TextureImage img = glutil::ImageLoader::loadImage(normalPath.string().c_str());
+        glutil::TextureImage img = glutil::ImageLoader::loadImage(normalPath);
         if (img.ok) {
             normalTex = uploadStandard2D(img);
         } else {
@@ -299,15 +299,15 @@ int main() {
     // Load specular texture
     GLuint specularTex = 0;
     if (fs::exists(specularPath)) {
-        if (glutil::ImageLoader::isDDS(specularPath.string().c_str())) {
-            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(specularPath.string().c_str());
+        if (glutil::ImageLoader::isDDS(specularPath)) {
+            glutil::TextureDDS dds = glutil::ImageLoader::loadDDS(specularPath);
             if (dds.ok) {
                 specularTex = uploadDDS2D(dds);
             } else {
                 std::cerr << "Specular DDS load failed: " << specularPath << "\n  reason: " << dds.error << std::endl;
             }
         } else {
-            glutil::TextureImage img = glutil::ImageLoader::loadImage(specularPath.string().c_str());
+            glutil::TextureImage img = glutil::ImageLoader::loadImage(specularPath);
             if (img.ok) {
                 specularTex = uploadStandard2D(img);
             } else {
