@@ -89,6 +89,48 @@ snapshot& snapshot::boundInfo(bool v) {
 }
 
 
+void snapshot::captureFramebuffer(std::ostream& out) const {
+    printSeparator(out, "Framebuffer");
+
+    const GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    out << "  Status     : " << glutil::glErrorToString(fbStatus) << " (0x" << std::hex << fbStatus << std::dec
+        << ")\n";
+
+    GLint fbBinding = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbBinding);
+    out << "  Bound FBO  : " << fbBinding << "\n";
+
+    if (fbBinding != 0) {
+        GLint objType = 0;
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                              GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &objType);
+
+        if (objType == GL_TEXTURE) {
+            GLint texId = 0, mipLevel = 0;
+            glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                                  GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &texId);
+            glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                                  GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL, &mipLevel);
+            out << "  Color Att0 : Texture ID=" << texId << "  mip=" << mipLevel << "\n";
+
+        } else if (objType == GL_RENDERBUFFER) {
+            GLint rbId = 0;
+            glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                                  GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &rbId);
+
+            GLint samples = 0, internalFmt = 0, w = 0, h = 0;
+            glBindRenderbuffer(GL_RENDERBUFFER, rbId);
+            glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_SAMPLES, &samples);
+            glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_INTERNAL_FORMAT, &internalFmt);
+            glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &w);
+            glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &h);
+
+            out << "  Color Att0 : Renderbuffer ID=" << rbId << "  " << w << "x" << h << "  Format=0x" << std::hex
+                << internalFmt << std::dec << "  Samples=" << samples << (samples > 0 ? " (MSAA)" : "") << "\n";
+        }
+    }
+}
+
 
 } // namespace glutil::debug
 
