@@ -491,12 +491,9 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
       {GL_TEXTURE_BINDING_1D_ARRAY, GL_TEXTURE_1D_ARRAY, "1D_Array", true, true},
     };
 
-    // "  Unit XX  [   name   ]  " 까지의 길이 계산
-    // "  Unit " = 7, setw(2) = 2, "  [" = 3, setw(14) = 14, "]  " = 3 → 총 29
     const int samplerIndent = 29;
     const std::string indent(samplerIndent, ' ');
 
-    // 타입명 가운데 정렬 헬퍼
     auto centerName = [](const char* name, int width) -> std::string {
         std::string s(name);
         if ((int)s.size() >= width)
@@ -554,6 +551,42 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
         out << "  (no textures bound)\n";
 
     glActiveTexture(savedActiveTexture);
+}
+
+void snapshot::capture(std::ostream& out) const {
+    static thread_local bool insideSnapshot = false;
+    if (insideSnapshot)
+        return;
+    insideSnapshot = true;
+
+    GLStateGuard guard;
+
+    out << "\n========================================================\n";
+    out << "               glutil::debug::snapshot                 \n";
+    out << "========================================================\n";
+
+    if (m_framebufferInfo)
+        captureFramebuffer(out);
+    if (m_shaderStatus)
+        captureShaderStatus(out);
+    if (m_shaderUniform)
+        captureShaderUniforms(out);
+    if (m_textureInfo)
+        captureTextureInfo(out);
+    //if (m_bufferVAOInfo)
+    //    captureBufferVAOInfo(out);
+    //if (m_allVBOInfo)
+    //    captureAllVBOInfo(out);
+    //if (m_rendererState)
+    //    captureRendererState(out);
+    //if (m_boundInfo)
+    //    captureBoundInfo(out);
+
+    out << "\n========================================================\n";
+    out << "                     snapshot end                      \n";
+    out << "========================================================\n\n";
+
+    insideSnapshot = false;
 }
 } // namespace glutil::debug
 

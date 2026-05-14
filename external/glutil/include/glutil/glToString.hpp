@@ -1,4 +1,4 @@
-#ifndef GLUTIL_GLTOSTRING_HPP
+﻿#ifndef GLUTIL_GLTOSTRING_HPP
 #define GLUTIL_GLTOSTRING_HPP
 
 #include <glutil/gl.hpp>
@@ -39,6 +39,27 @@ constexpr inline const char* glTextureFormatToString(GLint fmt) {
         case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT1";
         case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT3";
         case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT5";
+
+        case GL_LINEAR: return "GL_LINEAR";
+        case GL_NEAREST: return "GL_NEAREST";
+        case GL_LINEAR_MIPMAP_LINEAR: return "GL_LINEAR_MIPMAP_LINEAR";
+        case GL_LINEAR_MIPMAP_NEAREST: return "GL_LINEAR_MIPMAP_NEAREST";
+        case GL_NEAREST_MIPMAP_LINEAR: return "GL_NEAREST_MIPMAP_LINEAR";
+        case GL_NEAREST_MIPMAP_NEAREST: return "GL_NEAREST_MIPMAP_NEAREST";
+        case GL_REPEAT: return "GL_REPEAT";
+        case GL_CLAMP_TO_EDGE: return "GL_CLAMP_TO_EDGE";
+        case GL_MIRRORED_REPEAT: return "GL_MIRRORED_REPEAT";
+
+
+        case GL_LEQUAL: return "GL_LEQUAL";
+        case GL_GEQUAL: return "GL_GEQUAL";
+        case GL_LESS: return "GL_LESS";
+        case GL_GREATER: return "GL_GREATER";
+        case GL_EQUAL: return "GL_EQUAL";
+        case GL_NOTEQUAL: return "GL_NOTEQUAL";
+        case GL_ALWAYS: return "GL_ALWAYS";
+        case GL_NEVER: return "GL_NEVER";
+        case GL_NONE: return "GL_NONE";
 
         default: return "UNKNOWN";
     }
