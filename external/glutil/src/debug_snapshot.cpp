@@ -461,6 +461,100 @@ void snapshot::captureShaderUniforms(std::ostream& out) const {
     }
 }
 
+void snapshot::captureTextureInfo(std::ostream& out) const {
+    printSeparator(out, "Texture Info");
+
+    GLint savedActiveTexture = 0;
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActiveTexture);
+
+    GLint maxUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxUnits);
+
+    struct TexType {
+        GLenum binding;
+        GLenum target;
+        const char* name;
+        bool hasSampler;
+        bool hasSize;
+    };
+
+    TexType types[] = {
+      {GL_TEXTURE_BINDING_2D, GL_TEXTURE_2D, "2D", true, true},
+      {GL_TEXTURE_BINDING_CUBE_MAP, GL_TEXTURE_CUBE_MAP, "CubeMap", true, true},
+      {GL_TEXTURE_BINDING_3D, GL_TEXTURE_3D, "3D", true, true},
+      {GL_TEXTURE_BINDING_2D_ARRAY, GL_TEXTURE_2D_ARRAY, "2D_Array", true, true},
+      {GL_TEXTURE_BINDING_2D_MULTISAMPLE, GL_TEXTURE_2D_MULTISAMPLE, "2D_Multisample", false, true},
+      {GL_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_2D_MULTISAMPLE_ARRAY, "2D_MS_Array", false, true},
+      {GL_TEXTURE_BINDING_CUBE_MAP_ARRAY, GL_TEXTURE_CUBE_MAP_ARRAY, "CubeMap_Array", true, true},
+      {GL_TEXTURE_BINDING_RECTANGLE, GL_TEXTURE_RECTANGLE, "Rectangle", false, true},
+      {GL_TEXTURE_BINDING_1D, GL_TEXTURE_1D, "1D", true, true},
+      {GL_TEXTURE_BINDING_1D_ARRAY, GL_TEXTURE_1D_ARRAY, "1D_Array", true, true},
+    };
+
+    // "  Unit XX  [   name   ]  " 까지의 길이 계산
+    // "  Unit " = 7, setw(2) = 2, "  [" = 3, setw(14) = 14, "]  " = 3 → 총 29
+    const int samplerIndent = 29;
+    const std::string indent(samplerIndent, ' ');
+
+    // 타입명 가운데 정렬 헬퍼
+    auto centerName = [](const char* name, int width) -> std::string {
+        std::string s(name);
+        if ((int)s.size() >= width)
+            return s;
+        int total = width - (int)s.size();
+        int left = total / 2;
+        int right = total - left;
+        return std::string(left, ' ') + s + std::string(right, ' ');
+    };
+
+    bool anyBound = false;
+    for (int i = 0; i < maxUnits; i++) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        for (auto& t : types) {
+            GLint texId = 0;
+            glGetIntegerv(t.binding, &texId);
+            if (texId == 0)
+                continue;
+
+            anyBound = true;
+
+            GLint w = 0, h = 0, fmt = 0;
+            if (t.hasSize) {
+                glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_WIDTH, &w);
+                glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_HEIGHT, &h);
+                glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmt);
+            }
+
+            out << "  Unit " << std::setw(2) << i << "  [" << centerName(t.name, 14) << "]"
+                << "  ID=" << std::setw(4) << texId;
+
+            if (t.hasSize)
+                out << "  Size=" << std::setw(4) << w << "x" << std::setw(4) << h
+                    << "  Format=" << glTextureFormatToString(fmt);
+
+            out << "\n";
+
+            if (m_textureIncludeSampler && t.hasSampler) {
+                GLint minFilter = 0, magFilter = 0, wrapS = 0, wrapT = 0, compareFunc = 0;
+                glGetTexParameteriv(t.target, GL_TEXTURE_MIN_FILTER, &minFilter);
+                glGetTexParameteriv(t.target, GL_TEXTURE_MAG_FILTER, &magFilter);
+                glGetTexParameteriv(t.target, GL_TEXTURE_WRAP_S, &wrapS);
+                glGetTexParameteriv(t.target, GL_TEXTURE_WRAP_T, &wrapT);
+                glGetTexParameteriv(t.target, GL_TEXTURE_COMPARE_FUNC, &compareFunc);
+
+                out << indent << "MIN_FILTER=" << glTextureFormatToString(minFilter)
+                    << "  MAG_FILTER=" << glTextureFormatToString(magFilter) << "\n"
+                    << indent << "WRAP_S=" << glTextureFormatToString(wrapS)
+                    << "  WRAP_T=" << glTextureFormatToString(wrapT)
+                    << "  COMPARE_FUNC=" << glTextureFormatToString(compareFunc) << "\n";
+            }
+        }
+    }
+    if (!anyBound)
+        out << "  (no textures bound)\n";
+
+    glActiveTexture(savedActiveTexture);
+}
 } // namespace glutil::debug
 
 //
