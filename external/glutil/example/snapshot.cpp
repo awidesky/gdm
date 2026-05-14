@@ -143,7 +143,7 @@ int main()
     glUniform1f(glGetUniformLocation(shader, "alpha"), 0.8f);
     glUniform1i(glGetUniformLocation(shader, "tex"), 0);
 
-    glutil::debug::snapshot();
+    //glutil::debug::snapshot();
 
 
     while (!glfwWindowShouldClose(window)) {
