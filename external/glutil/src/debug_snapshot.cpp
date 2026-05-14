@@ -44,8 +44,6 @@ snapshot::snapshot(bool printAll)
       m_bufferVAOInfo(printAll), m_bufferIncludeUnbound(false), m_bufferIncludeDisabled(false), m_allVBOInfo(printAll),
       m_bufferIncludeData(false), m_rendererState(printAll), m_framebufferInfo(printAll), m_boundInfo(printAll) {}
 
-
-
 snapshot& snapshot::shaderStatus(bool v) {
     m_shaderStatus = v;
     return *this;
@@ -87,7 +85,6 @@ snapshot& snapshot::boundInfo(bool v) {
     m_boundInfo = v;
     return *this;
 }
-
 
 void snapshot::captureFramebuffer(std::ostream& out) const {
     printSeparator(out, "Framebuffer");
@@ -131,7 +128,6 @@ void snapshot::captureFramebuffer(std::ostream& out) const {
     }
 }
 
-
 void snapshot::captureShaderStatus(std::ostream& out) const {
     printSeparator(out, "Shader Status");
 
@@ -156,6 +152,314 @@ void snapshot::captureShaderStatus(std::ostream& out) const {
     }
 }
 
+void snapshot::captureShaderUniforms(std::ostream& out) const {
+    printSeparator(out, "Shader Uniforms");
+
+    GLint program = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+    if (program == 0) {
+        out << "  No shader program bound\n";
+        return;
+    }
+
+    GLint count = 0, maxLen = 0;
+    glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
+    glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
+
+    out << "  Program ID : " << program << "  Active uniforms : " << count << "\n\n";
+
+    std::vector<char> name(maxLen);
+
+    int maxNameWidth = 0;
+    for (GLint i = 0; i < count; i++) {
+        GLint sz = 0;
+        GLenum tp = 0;
+        glGetActiveUniform(program, i, maxLen, nullptr, &sz, &tp, name.data());
+        maxNameWidth = std::max(maxNameWidth, (int)std::string(name.data()).size());
+    }
+    int maxTypeWidth = 20;
+    int valueIndent = 2 + maxNameWidth + 2 + maxTypeWidth + 6;
+
+    for (GLint i = 0; i < count; i++) {
+        GLint size = 0;
+        GLenum type = 0;
+        glGetActiveUniform(program, i, maxLen, nullptr, &size, &type, name.data());
+
+        GLint loc = glGetUniformLocation(program, name.data());
+        if (loc == -1)
+            continue;
+
+        out << std::fixed << std::setprecision(4);
+        out << "  " << std::left << std::setw(maxNameWidth) << name.data() << "  " << std::setw(maxTypeWidth);
+
+        switch (type) {
+            // ── float  ──
+            case GL_FLOAT: {
+                GLfloat v;
+                glGetUniformfv(program, loc, &v);
+                out << "float" << " =    " << std::setw(10) << v << "\n";
+                break;
+            }
+            case GL_FLOAT_VEC2: {
+                GLfloat v[2];
+                glGetUniformfv(program, loc, v);
+                out << "vec2" << " =    (" << std::setw(10) << v[0] << ", " << std::setw(10) << v[1] << ")\n";
+                break;
+            }
+            case GL_FLOAT_VEC3: {
+                GLfloat v[3];
+                glGetUniformfv(program, loc, v);
+                out << "vec3" << " =    (" << std::setw(10) << v[0] << ", " << std::setw(10) << v[1] << ", "
+                    << std::setw(10) << v[2] << ")\n";
+                break;
+            }
+            case GL_FLOAT_VEC4: {
+                GLfloat v[4];
+                glGetUniformfv(program, loc, v);
+                out << "vec4" << " =    (" << std::setw(10) << v[0] << ", " << std::setw(10) << v[1] << ", "
+                    << std::setw(10) << v[2] << ", " << std::setw(10) << v[3] << ")\n";
+                break;
+            }
+            // ── square mat  ──
+            case GL_FLOAT_MAT2: {
+                GLfloat v[4];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat2" << " =    ";
+                for (int row = 0; row < 2; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 2; col++)
+                        out << std::setw(10) << v[col * 2 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            case GL_FLOAT_MAT3: {
+                GLfloat v[9];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat3" << " =    ";
+                for (int row = 0; row < 3; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 3; col++)
+                        out << std::setw(10) << v[col * 3 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            case GL_FLOAT_MAT4: {
+                GLfloat v[16];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat4" << " =    ";
+                for (int row = 0; row < 4; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 4; col++)
+                        out << std::setw(10) << v[col * 4 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            // ── non-square mat  ──
+            case GL_FLOAT_MAT2x3: {
+                GLfloat v[6];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat2x3" << " =    ";
+                for (int row = 0; row < 3; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 2; col++)
+                        out << std::setw(10) << v[col * 3 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            case GL_FLOAT_MAT2x4: {
+                GLfloat v[8];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat2x4" << " =    ";
+                for (int row = 0; row < 4; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 2; col++)
+                        out << std::setw(10) << v[col * 4 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            case GL_FLOAT_MAT3x2: {
+                GLfloat v[6];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat3x2" << " =    ";
+                for (int row = 0; row < 2; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 3; col++)
+                        out << std::setw(10) << v[col * 2 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            case GL_FLOAT_MAT3x4: {
+                GLfloat v[12];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat3x4" << " =    ";
+                for (int row = 0; row < 4; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 3; col++)
+                        out << std::setw(10) << v[col * 4 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            case GL_FLOAT_MAT4x2: {
+                GLfloat v[8];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat4x2" << " =    ";
+                for (int row = 0; row < 2; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 4; col++)
+                        out << std::setw(10) << v[col * 2 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            case GL_FLOAT_MAT4x3: {
+                GLfloat v[12];
+                glGetUniformfv(program, loc, v);
+                std::string indent(valueIndent, ' ');
+                out << "mat4x3" << " =    ";
+                for (int row = 0; row < 3; row++) {
+                    if (row != 0)
+                        out << indent;
+                    out << "[ ";
+                    for (int col = 0; col < 4; col++)
+                        out << std::setw(10) << v[col * 3 + row] << " ";
+                    out << "]\n";
+                }
+                break;
+            }
+            // ── int  ──
+            case GL_INT: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "int" << " =    " << v << "\n";
+                break;
+            }
+            case GL_INT_VEC2: {
+                GLint v[2];
+                glGetUniformiv(program, loc, v);
+                out << "ivec2" << " =    (" << std::setw(8) << v[0] << ", " << std::setw(8) << v[1] << ")\n";
+                break;
+            }
+            case GL_INT_VEC3: {
+                GLint v[3];
+                glGetUniformiv(program, loc, v);
+                out << "ivec3" << " =    (" << std::setw(8) << v[0] << ", " << std::setw(8) << v[1] << ", "
+                    << std::setw(8) << v[2] << ")\n";
+                break;
+            }
+            case GL_INT_VEC4: {
+                GLint v[4];
+                glGetUniformiv(program, loc, v);
+                out << "ivec4" << " =    (" << std::setw(8) << v[0] << ", " << std::setw(8) << v[1] << ", "
+                    << std::setw(8) << v[2] << ", " << std::setw(8) << v[3] << ")\n";
+                break;
+            }
+            // ── uint  ──
+            case GL_UNSIGNED_INT: {
+                GLuint v;
+                glGetUniformuiv(program, loc, &v);
+                out << "uint" << " =    " << v << "\n";
+                break;
+            }
+            case GL_UNSIGNED_INT_VEC2: {
+                GLuint v[2];
+                glGetUniformuiv(program, loc, v);
+                out << "uvec2" << " =    (" << std::setw(8) << v[0] << ", " << std::setw(8) << v[1] << ")\n";
+                break;
+            }
+            case GL_UNSIGNED_INT_VEC3: {
+                GLuint v[3];
+                glGetUniformuiv(program, loc, v);
+                out << "uvec3" << " =    (" << std::setw(8) << v[0] << ", " << std::setw(8) << v[1] << ", "
+                    << std::setw(8) << v[2] << ")\n";
+                break;
+            }
+            case GL_UNSIGNED_INT_VEC4: {
+                GLuint v[4];
+                glGetUniformuiv(program, loc, v);
+                out << "uvec4" << " =    (" << std::setw(8) << v[0] << ", " << std::setw(8) << v[1] << ", "
+                    << std::setw(8) << v[2] << ", " << std::setw(8) << v[3] << ")\n";
+                break;
+            }
+            // ── bool  ──
+            case GL_BOOL: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "bool" << " =    " << (v ? "true" : "false") << "\n";
+                break;
+            }
+            case GL_BOOL_VEC2: {
+                GLint v[2];
+                glGetUniformiv(program, loc, v);
+                out << "bvec2" << " =    (" << (v[0] ? "true" : "false") << ", " << (v[1] ? "true" : "false") << ")\n";
+                break;
+            }
+            case GL_BOOL_VEC3: {
+                GLint v[3];
+                glGetUniformiv(program, loc, v);
+                out << "bvec3" << " =    (" << (v[0] ? "true" : "false") << ", " << (v[1] ? "true" : "false") << ", "
+                    << (v[2] ? "true" : "false") << ")\n";
+                break;
+            }
+            case GL_BOOL_VEC4: {
+                GLint v[4];
+                glGetUniformiv(program, loc, v);
+                out << "bvec4" << " =    (" << (v[0] ? "true" : "false") << ", " << (v[1] ? "true" : "false") << ", "
+                    << (v[2] ? "true" : "false") << ", " << (v[3] ? "true" : "false") << ")\n";
+                break;
+            }
+            // ── sampler  ──
+            case GL_SAMPLER_2D:                   { GLint v; glGetUniformiv(program, loc, &v); out << "sampler2D"            << " =    unit " << v << "\n"; break; }
+            case GL_SAMPLER_3D:                   { GLint v; glGetUniformiv(program, loc, &v); out << "sampler3D"            << " =    unit " << v << "\n"; break; }
+            case GL_SAMPLER_CUBE:                 { GLint v; glGetUniformiv(program, loc, &v); out << "samplerCube"          << " =    unit " << v << "\n"; break; }
+            case GL_SAMPLER_2D_SHADOW:            { GLint v; glGetUniformiv(program, loc, &v); out << "sampler2DShadow"      << " =    unit " << v << "\n"; break; }
+            case GL_SAMPLER_2D_ARRAY:             { GLint v; glGetUniformiv(program, loc, &v); out << "sampler2DArray"       << " =    unit " << v << "\n"; break; }
+            case GL_SAMPLER_2D_ARRAY_SHADOW:      { GLint v; glGetUniformiv(program, loc, &v); out << "sampler2DArrayShadow" << " =    unit " << v << "\n"; break; }
+            case GL_SAMPLER_CUBE_SHADOW:          { GLint v; glGetUniformiv(program, loc, &v); out << "samplerCubeShadow"    << " =    unit " << v << "\n"; break; }
+            case GL_INT_SAMPLER_2D:               { GLint v; glGetUniformiv(program, loc, &v); out << "isampler2D"           << " =    unit " << v << "\n"; break; }
+            case GL_INT_SAMPLER_3D:               { GLint v; glGetUniformiv(program, loc, &v); out << "isampler3D"           << " =    unit " << v << "\n"; break; }
+            case GL_INT_SAMPLER_CUBE:             { GLint v; glGetUniformiv(program, loc, &v); out << "isamplerCube"         << " =    unit " << v << "\n"; break; }
+            case GL_UNSIGNED_INT_SAMPLER_2D:      { GLint v; glGetUniformiv(program, loc, &v); out << "usampler2D"           << " =    unit " << v << "\n"; break; }
+            case GL_UNSIGNED_INT_SAMPLER_3D:      { GLint v; glGetUniformiv(program, loc, &v); out << "usampler3D"           << " =    unit " << v << "\n"; break; }
+            case GL_UNSIGNED_INT_SAMPLER_CUBE:    { GLint v; glGetUniformiv(program, loc, &v); out << "usamplerCube"         << " =    unit " << v << "\n"; break; }
+
+
+            // TODO : image  (GL_IMAGE_2D ) - NEED ??
+            // TODO : GL_UNSIGNED_INT_ATOMIC_COUNTER - NEED ??
+            default: out << "unknown" << " =    0x" << std::hex << type << std::dec << "\n"; break;
+        }
+    }
+}
 
 } // namespace glutil::debug
 
