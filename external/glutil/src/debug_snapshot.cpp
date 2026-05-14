@@ -132,6 +132,31 @@ void snapshot::captureFramebuffer(std::ostream& out) const {
 }
 
 
+void snapshot::captureShaderStatus(std::ostream& out) const {
+    printSeparator(out, "Shader Status");
+
+    GLint program = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+    if (program == 0) {
+        out << "  No shader program bound\n";
+        return;
+    }
+
+    GLint linkStatus = 0, infoLogLen = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLen);
+
+    out << "  Program ID  : " << program << "\n";
+    out << "  Link Status : " << (linkStatus == GL_TRUE ? "OK" : "FAIL") << "\n";
+
+    if (infoLogLen > 0) {
+        std::string log(infoLogLen, '\0');
+        glGetProgramInfoLog(program, infoLogLen, nullptr, log.data());
+        out << "  InfoLog     :\n" << log << "\n";
+    }
+}
+
+
 } // namespace glutil::debug
 
 //
