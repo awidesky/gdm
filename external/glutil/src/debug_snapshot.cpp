@@ -103,12 +103,14 @@ void snapshot::captureFramebuffer(std::ostream& out) const {
                                               GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &objType);
 
         if (objType == GL_TEXTURE) {
-            GLint texId = 0, mipLevel = 0;
+            GLint texId = 0, mipLevel = 0, internalFmt = 0;
             glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                                   GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &texId);
             glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                                   GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL, &mipLevel);
-            out << "  Color Att0 : Texture ID=" << texId << "  mip=" << mipLevel << "\n";
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, mipLevel, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
+            out << "  Color Att0 : Texture ID=" << texId << "  mip=" << mipLevel
+                << "  Format=" << glTextureFormatToString(internalFmt) << "\n";
 
         } else if (objType == GL_RENDERBUFFER) {
             GLint rbId = 0;
@@ -526,7 +528,7 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
                 << "  ID=" << std::setw(4) << texId;
 
             if (t.hasSize)
-                out << "  Size=" << std::setw(4) << w << "x" << std::setw(4) << h
+                out << "  Size=" << w << "x"  << h
                     << "  Format=" << glTextureFormatToString(fmt);
 
             out << "\n";
