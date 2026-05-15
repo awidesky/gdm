@@ -15,7 +15,7 @@
 namespace glutil::debug {
 
 static void printSeparator(std::ostream& out, const char* title) {
-    out << "\n============================== " << title << " ==============================\n";
+    out << "\n============================== " << title << " ==============================\n\n";
 }
 
 static void printSubSeparator(std::ostream& out, const std::string& title) {
@@ -754,7 +754,28 @@ void snapshot::captureRendererState(std::ostream& out) const {
     out << "  Blend Src    : " << glTextureFormatToString(blendSrc) << "\n";
     out << "  Blend Dst    : " << glTextureFormatToString(blendDst) << "\n";
 }
+void snapshot::captureBoundInfo(std::ostream& out) const {
+    printSeparator(out, "Bound Info");
 
+    auto printBinding = [&](const char* name, GLenum pname) {
+        GLint v = 0;
+        glGetIntegerv(pname, &v);
+        out << "  " << std::left << std::setw(40) << name << " : " << v << "\n";
+    };
+
+    printBinding("GL_VERTEX_ARRAY_BINDING", GL_VERTEX_ARRAY_BINDING);
+    printBinding("GL_ARRAY_BUFFER_BINDING", GL_ARRAY_BUFFER_BINDING);
+    printBinding("GL_ELEMENT_ARRAY_BUFFER_BINDING", GL_ELEMENT_ARRAY_BUFFER_BINDING);
+    printBinding("GL_UNIFORM_BUFFER_BINDING", GL_UNIFORM_BUFFER_BINDING);
+    printBinding("GL_SHADER_STORAGE_BUFFER_BINDING", GL_SHADER_STORAGE_BUFFER_BINDING);
+    printBinding("GL_PIXEL_PACK_BUFFER_BINDING", GL_PIXEL_PACK_BUFFER_BINDING);
+    printBinding("GL_PIXEL_UNPACK_BUFFER_BINDING", GL_PIXEL_UNPACK_BUFFER_BINDING);
+    printBinding("GL_TEXTURE_BINDING_2D", GL_TEXTURE_BINDING_2D);
+    printBinding("GL_SAMPLER_BINDING", GL_SAMPLER_BINDING);
+    printBinding("GL_CURRENT_PROGRAM", GL_CURRENT_PROGRAM);
+    printBinding("GL_RENDERBUFFER_BINDING", GL_RENDERBUFFER_BINDING);
+    printBinding("GL_FRAMEBUFFER_BINDING", GL_FRAMEBUFFER_BINDING);
+}
 
 void snapshot::capture(std::ostream& out) const {
     static thread_local bool insideSnapshot = false;
@@ -782,8 +803,8 @@ void snapshot::capture(std::ostream& out) const {
     //    captureAllVBOInfo(out);
     if (m_rendererState)
         captureRendererState(out);
-    //if (m_boundInfo)
-    //    captureBoundInfo(out);
+    if (m_boundInfo)
+        captureBoundInfo(out);
 
     out << "\n========================================================\n";
     out << "                     snapshot end                      \n";
