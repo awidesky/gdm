@@ -86,6 +86,23 @@ constexpr inline const char* glErrorToString(GLenum err) {
     }
 }
 
+constexpr inline const char* usageToString(GLint usage) {
+    switch (usage) {
+        case GL_STATIC_DRAW: return "GL_STATIC_DRAW";
+        case GL_DYNAMIC_DRAW: return "GL_DYNAMIC_DRAW";
+        case GL_STREAM_DRAW: return "GL_STREAM_DRAW";
+        case GL_STATIC_READ: return "GL_STATIC_READ";
+        case GL_DYNAMIC_READ: return "GL_DYNAMIC_READ";
+        case GL_STREAM_READ: return "GL_STREAM_READ";
+        case GL_STATIC_COPY: return "GL_STATIC_COPY";
+        case GL_DYNAMIC_COPY: return "GL_DYNAMIC_COPY";
+        case GL_STREAM_COPY: return "GL_STREAM_COPY";
+        default: return "UNKNOWN";
+    }
+}
+
+
+
 } // namespace glutil
 
 #endif // GLUTIL_GLTOSTRING_HPP

@@ -553,6 +553,173 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
     glActiveTexture(savedActiveTexture);
 }
 
+void snapshot::captureBufferVAOInfo(std::ostream& out) const {
+    auto glTypeSize = [](GLenum type) -> int {
+        switch (type) {
+            case GL_FLOAT: return sizeof(GLfloat);
+            case GL_DOUBLE: return sizeof(GLdouble);
+            case GL_INT: return sizeof(GLint);
+            case GL_UNSIGNED_INT: return sizeof(GLuint);
+            case GL_SHORT: return sizeof(GLshort);
+            case GL_UNSIGNED_SHORT: return sizeof(GLushort);
+            case GL_BYTE: return sizeof(GLbyte);
+            case GL_UNSIGNED_BYTE: return sizeof(GLubyte);
+            default: return sizeof(GLfloat);
+        }
+    };
+
+    auto formatVertex = [](const unsigned char* ptr, GLenum type, int components) -> std::string {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(4) << std::left << "(";
+        for (int c = 0; c < components; c++) {
+            switch (type) {
+                case GL_FLOAT: oss << std::setw(10) << reinterpret_cast<const GLfloat*>(ptr)[c]; break;
+                case GL_DOUBLE: oss << std::setw(14) << reinterpret_cast<const GLdouble*>(ptr)[c]; break;
+                case GL_INT: oss << std::setw(8) << reinterpret_cast<const GLint*>(ptr)[c]; break;
+                case GL_UNSIGNED_INT: oss << std::setw(8) << reinterpret_cast<const GLuint*>(ptr)[c]; break;
+                case GL_SHORT: oss << std::setw(6) << reinterpret_cast<const GLshort*>(ptr)[c]; break;
+                case GL_UNSIGNED_SHORT: oss << std::setw(6) << reinterpret_cast<const GLushort*>(ptr)[c]; break;
+                case GL_BYTE: oss << std::setw(4) << static_cast<int>(reinterpret_cast<const GLbyte*>(ptr)[c]); break;
+                case GL_UNSIGNED_BYTE:
+                    oss << std::setw(4) << static_cast<int>(reinterpret_cast<const GLubyte*>(ptr)[c]);
+                    break;
+                default: oss << "?"; break;
+            }
+            if (c < components - 1)
+                oss << ", ";
+        }
+        oss << ")";
+        return oss.str();
+    };
+
+    printSeparator(out, "Buffer VAO Info");
+
+    GLint savedArrayBuffer = 0;
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &savedArrayBuffer);
+
+    if (m_bufferIncludeUnbound)
+    {
+        // TODO : Print VAOs Not Bound
+    } 
+    else 
+    {
+        GLint vao = 0;
+        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
+        if (vao == 0) {
+            out << "  No VAO bound\n";
+            glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
+            return;
+        }
+
+        out << "  VAO ID : " << vao << "\n";
+
+        GLint maxAttribs = 0;
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
+
+        GLint prevVboId = -1;
+        GLint curBufSize = 0;
+
+        for (int i = 0; i < maxAttribs; i++) {
+            GLint enabled = 0;
+            glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
+            if (!enabled && !m_bufferIncludeDisabled)
+                continue;
+
+            GLint vboId = 0, size = 0, stride = 0;
+            GLenum type = 0;
+            void* offset = nullptr;
+            glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &vboId);
+            glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_SIZE, &size);
+            glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_TYPE, (GLint*)&type);
+            glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &stride);
+            glGetVertexAttribPointerv(i, GL_VERTEX_ATTRIB_ARRAY_POINTER, &offset);
+            uintptr_t off = reinterpret_cast<uintptr_t>(offset);
+
+            if (vboId != prevVboId) {
+                glBindBuffer(GL_ARRAY_BUFFER, vboId);
+
+                GLint newUsage = 0;
+                glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &curBufSize);
+                glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &newUsage);
+
+                printSubSeparator(out, "VBO ID=" + std::to_string(vboId));
+                out << "    Size  : " << curBufSize << " bytes\n";
+                out << "    Usage : " << usageToString(newUsage) << "\n";
+
+                prevVboId = vboId;
+            }
+
+            out << "\n    attrib[" << i << "]" << (enabled ? " [ON] " : " [OFF]") << "  size=" << size
+                << "  type=" << glTypeToString(type) << "  stride=" << std::setw(4) << stride << "  offset=" << off
+                << "\n";
+
+            if (m_bufferIncludeData) {
+                GLint mapped = 0;
+                glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
+                if (!mapped) {
+                    std::vector<unsigned char> data(curBufSize);
+                    glGetBufferSubData(GL_ARRAY_BUFFER, 0, curBufSize, data.data());
+
+                    int typeSize = glTypeSize(type);
+                    int actualStride = stride == 0 ? size * typeSize : stride;
+                    int numVerts = actualStride > 0 ? curBufSize / actualStride : 0;
+                    int printNum = std::min(numVerts, 10);
+
+                    for (int v = 0; v < printNum; v++) {
+                        const unsigned char* ptr = data.data() + v * actualStride + off;
+                        out << "      vertex[" << v << "] : " << formatVertex(ptr, type, size) << "\n";
+                    }
+                    if (numVerts > 10)
+                        out << "      ... (" << numVerts - 10 << " more)\n";
+                } else {
+                    out << "      (buffer is mapped, skipping data read)\n";
+                }
+            }
+        }
+
+        // EBO
+        GLint ebo = 0;
+        glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &ebo);
+        if (ebo != 0) {
+            printSubSeparator(out, "EBO ID=" + std::to_string(ebo));
+
+            GLint eboSize = 0, eboUsage = 0;
+            glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &eboSize);
+            glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_USAGE, &eboUsage);
+
+            out << "    Size  : " << eboSize << " bytes\n";
+            out << "    Usage : " << usageToString(eboUsage) << "\n";
+
+            if (m_bufferIncludeData) {
+                GLint mapped = 0;
+                glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
+                if (!mapped) {
+                    // TODO : 레지스트리로 실제 타입 관리 시 개선 예정. 현재 GL_UNSIGNED_INT 기본값
+                    std::vector<GLuint> indices(eboSize / sizeof(GLuint));
+                    glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, eboSize, indices.data());
+
+                    int printNum = std::min((int)indices.size(), 30);
+                    out << "    indices : ";
+                    for (int i = 0; i < printNum; i++) {
+                        out  << indices[i];
+                        if (i < printNum - 1)
+                            out << ", ";
+                    }
+                    if ((int)indices.size() > 30)
+                        out << " ... (" << indices.size() - 30 << " more)";
+                    out << "\n";
+                } else {
+                    out << "    (buffer is mapped, skipping data read)\n";
+                }
+            }
+        } else {
+            out << "\n  EBO : (none)\n";
+        }
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
+}
+
 void snapshot::capture(std::ostream& out) const {
     static thread_local bool insideSnapshot = false;
     if (insideSnapshot)
@@ -573,8 +740,8 @@ void snapshot::capture(std::ostream& out) const {
         captureShaderUniforms(out);
     if (m_textureInfo)
         captureTextureInfo(out);
-    //if (m_bufferVAOInfo)
-    //    captureBufferVAOInfo(out);
+    if (m_bufferVAOInfo)
+        captureBufferVAOInfo(out);
     //if (m_allVBOInfo)
     //    captureAllVBOInfo(out);
     //if (m_rendererState)
