@@ -694,7 +694,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                 GLint mapped = 0;
                 glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
                 if (!mapped) {
-                    // TODO : 레지스트리로 실제 타입 관리 시 개선 예정. 현재 GL_UNSIGNED_INT 기본값
+                    // TODO : GLEnum getEBOType(GLuint eboID) 
                     std::vector<GLuint> indices(eboSize / sizeof(GLuint));
                     glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, eboSize, indices.data());
 
@@ -720,6 +720,42 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
     glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
 }
 
+void snapshot::captureRendererState(std::ostream& out) const {
+    printSeparator(out, "Renderer State");
+
+    // Viewport
+    GLint vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+    out << "  Viewport     : x=" << vp[0] << " y=" << vp[1] << " w=" << vp[2] << " h=" << vp[3] << "\n";
+
+    // enable/disable 상태
+    out << "  Depth Test   : " << (glIsEnabled(GL_DEPTH_TEST) ? "ON" : "OFF") << "\n";
+    out << "  Blend        : " << (glIsEnabled(GL_BLEND) ? "ON" : "OFF") << "\n";
+    out << "  Cull Face    : " << (glIsEnabled(GL_CULL_FACE) ? "ON" : "OFF");
+
+    if (glIsEnabled(GL_CULL_FACE)) {
+        GLint cullMode = 0;
+        glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
+        out << "   " << glTextureFormatToString(cullMode);
+    }
+    out << "\n";
+
+    out << "  Scissor Test : " << (glIsEnabled(GL_SCISSOR_TEST) ? "ON" : "OFF") << "\n";
+    out << "  Stencil Test : " << (glIsEnabled(GL_STENCIL_TEST) ? "ON" : "OFF") << "\n";
+
+    // 세부 설정
+    GLint depthFunc = 0;
+    glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
+    out << "  Depth Func   : " << glTextureFormatToString(depthFunc) << "\n";
+
+    GLint blendSrc = 0, blendDst = 0;
+    glGetIntegerv(GL_BLEND_SRC_ALPHA, &blendSrc);
+    glGetIntegerv(GL_BLEND_DST_ALPHA, &blendDst);
+    out << "  Blend Src    : " << glTextureFormatToString(blendSrc) << "\n";
+    out << "  Blend Dst    : " << glTextureFormatToString(blendDst) << "\n";
+}
+
+
 void snapshot::capture(std::ostream& out) const {
     static thread_local bool insideSnapshot = false;
     if (insideSnapshot)
@@ -744,8 +780,8 @@ void snapshot::capture(std::ostream& out) const {
         captureBufferVAOInfo(out);
     //if (m_allVBOInfo)
     //    captureAllVBOInfo(out);
-    //if (m_rendererState)
-    //    captureRendererState(out);
+    if (m_rendererState)
+        captureRendererState(out);
     //if (m_boundInfo)
     //    captureBoundInfo(out);
 

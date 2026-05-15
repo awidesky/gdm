@@ -50,7 +50,6 @@ constexpr inline const char* glTextureFormatToString(GLint fmt) {
         case GL_CLAMP_TO_EDGE: return "GL_CLAMP_TO_EDGE";
         case GL_MIRRORED_REPEAT: return "GL_MIRRORED_REPEAT";
 
-
         case GL_LEQUAL: return "GL_LEQUAL";
         case GL_GEQUAL: return "GL_GEQUAL";
         case GL_LESS: return "GL_LESS";
@@ -59,7 +58,21 @@ constexpr inline const char* glTextureFormatToString(GLint fmt) {
         case GL_NOTEQUAL: return "GL_NOTEQUAL";
         case GL_ALWAYS: return "GL_ALWAYS";
         case GL_NEVER: return "GL_NEVER";
-        case GL_NONE: return "GL_NONE";
+
+        case GL_ZERO: return "GL_ZERO";
+        case GL_ONE: return "GL_ONE";
+        case GL_SRC_ALPHA: return "GL_SRC_ALPHA";
+        case GL_ONE_MINUS_SRC_ALPHA: return "GL_ONE_MINUS_SRC_ALPHA";
+        case GL_DST_ALPHA: return "GL_DST_ALPHA";
+        case GL_ONE_MINUS_DST_ALPHA: return "GL_ONE_MINUS_DST_ALPHA";
+        case GL_SRC_COLOR: return "GL_SRC_COLOR";
+        case GL_ONE_MINUS_SRC_COLOR: return "GL_ONE_MINUS_SRC_COLOR";
+        case GL_DST_COLOR: return "GL_DST_COLOR";
+        case GL_ONE_MINUS_DST_COLOR: return "GL_ONE_MINUS_DST_COLOR";
+        case GL_BACK: return "GL_BACK";
+        case GL_FRONT: return "GL_FRONT";
+        case GL_FRONT_AND_BACK: return "GL_FRONT_AND_BACK";
+
 
         default: return "UNKNOWN";
     }
