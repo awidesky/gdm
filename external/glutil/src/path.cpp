@@ -18,7 +18,7 @@ namespace glutil {
 
 namespace fs = std::filesystem;
 
-std::string getExecutableDirectory() {
+std::filesystem::path getExecutableDirectory() {
 #ifdef _WIN32
     char buffer[MAX_PATH];
     DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
@@ -27,7 +27,7 @@ std::string getExecutableDirectory() {
         return {};
     }
 
-    return fs::path(buffer).parent_path().string();
+    return fs::path(buffer).parent_path();
 
 #elif __APPLE__
     char buffer[1024];
@@ -37,7 +37,7 @@ std::string getExecutableDirectory() {
         return {};
     }
 
-    return fs::canonical(buffer).parent_path().string();
+    return fs::canonical(buffer).parent_path();
 
 #elif __linux__
     char buffer[1024];
@@ -48,7 +48,7 @@ std::string getExecutableDirectory() {
     }
 
     buffer[length] = '\0';
-    return fs::path(buffer).parent_path().string();
+    return fs::path(buffer).parent_path();
 
 #else
 #  error "Unknown OS in getExecutableDirectory()!"
@@ -56,44 +56,48 @@ std::string getExecutableDirectory() {
 #endif
 }
 
+std::filesystem::path getProjectRootDirectory() { return PROJECT_ROOT; }
+
 PathResolveResult pathResolve(const std::filesystem::path& inputPath) {
     PathResolveResult result;
 
     std::ostringstream message;
 
-    auto testPath = [&](const fs::path& candidate, const std::string& description) -> bool {
+    auto testPath = [&](const fs::path& candidate, const std::string& description, bool prefixIsFailed = false) -> bool {
         std::error_code ec;
 
-        if (fs::exists(candidate, ec)) {
+        auto canonical = fs::weakly_canonical(candidate);
+        if (fs::exists(canonical, ec)) {
             result.success = true;
-            result.resolvedPath = fs::weakly_canonical(candidate).string();
+            result.resolvedPath = canonical.string();
 
-            message << "[Path Resolved] " << description << " : " << result.resolvedPath << '\n';
+            message << "[FOUND] " << description << ": " << result.resolvedPath << '\n';
             return true;
         }
 
-        message << "[Warning] Path not found (" << description << ") : " << candidate.string() << '\n';
+        message << (prefixIsFailed ? "[Error]" : "[Warning]")  << " Not found in " << description << ": " << canonical.string()
+                << '\n';
         return false;
     };
 
     // 1. If absolute, use as-is; just check for existance.
     if (inputPath.is_absolute()) {
-        testPath(inputPath, "Absolute path");
+        testPath(inputPath, "Absolute path", true);
 
         result.message = message.str();
         return result;
     }
 
     // 2-1. Working directory base(same as fs::absolute(p))
-    if (testPath(fs::current_path() / inputPath, "Working directory ")) {
+    if (testPath(fs::current_path() / inputPath, "Working dir")) {
         result.message = message.str();
         return result;
     }
 
     // 2-2. Executable directory base
-    std::string exeDir = getExecutableDirectory();
+    auto exeDir = getExecutableDirectory();
     if (!exeDir.empty()) {
-        if (testPath(fs::path(exeDir) / inputPath, "Executable directory")) {
+        if (testPath(exeDir / inputPath, "Executable dir")) {
             result.message = message.str();
             return result;
         }
@@ -102,11 +106,12 @@ PathResolveResult pathResolve(const std::filesystem::path& inputPath) {
     }
 
     // 2-3. PROJECT_ROOT base
-    if (testPath(fs::path(PROJECT_ROOT) / inputPath, "PROJECT_ROOT")) {
+    if (testPath(getProjectRootDirectory() / inputPath, "Project root dir")) {
         result.message = message.str();
         return result;
     }
 
+    message << "[Error] Path resolving failed!\n";
     result.message = message.str();
     return result;
 }

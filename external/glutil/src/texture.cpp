@@ -21,13 +21,14 @@ namespace glutil {
 
 namespace fs = std::filesystem;
 
-bool ImageLoader::isDDS(const char* path) {
-    if (!path) return false;
+bool ImageLoader::isDDS(const std::filesystem::path& path) {
+    const PathResolveResult pr = pathResolve(path);
+    if (!pr.success) {
+        LOG_ERROR() << "[ImageLoader::isDDS] Path resolution failed: " + pr.message;;
+        return false;
+    }
 
-    PathResolveResult pr = pathResolve(path);
-    std::string targetPath = pr.success ? pr.resolvedPath : path;
-
-    std::ifstream file(targetPath, std::ios::binary);
+    std::ifstream file(pr.resolvedPath, std::ios::binary);
     if (file.is_open()) {
         char magic[4] = {0};
         if (file.read(magic, 4)) {
@@ -35,12 +36,12 @@ bool ImageLoader::isDDS(const char* path) {
         }
     }
 
-    std::string ext = fs::path(targetPath).extension().string();
+    std::string ext = fs::path(pr.resolvedPath).extension().string();
     std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
     return ext == ".dds";
 }
 
-TextureImage ImageLoader::loadImage(const char* path, bool flipV) {
+TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flipV) {
     TextureImage result;
 
     // [PathResolve]
@@ -254,15 +255,9 @@ static void flipCompressedMipVertical(unsigned char* mipData, GLsizei width, GLs
     std::memcpy(mipData, flipped.data(), flipped.size());
 }
 
-TextureDDS ImageLoader::loadDDS(const char* path, bool flipV) {
+TextureDDS ImageLoader::loadDDS(const std::filesystem::path& path, bool flipV) {
     TextureDDS result;
-
-    if (!path) {
-        result.error = "path is nullptr";
-        return result;
-    }
-
-    PathResolveResult pr = pathResolve(path);
+    const PathResolveResult pr = pathResolve(path);
     if (!pr.success) {
         result.error = "Path resolution failed: " + pr.message;
         LOG_ERROR() << "[TextureDDS] " << result.error;

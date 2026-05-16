@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
 
 namespace glutil {
 
@@ -34,7 +35,7 @@ struct ModelData {
 
 class ModelLoader {
 public:
-    static ModelData loadOBJ(const char* path);
+    static ModelData loadOBJ(const std::filesystem::path& path);
 };
 
 } // namespace glutil

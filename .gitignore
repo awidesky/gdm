@@ -579,4 +579,4 @@ FodyWeavers.xsd
 
 # GLUtil is internal library
 !external/glutil/
-!external/glutil/test/model/*.obj
+!external/glutil/example/model/*.obj

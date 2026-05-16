@@ -83,28 +83,27 @@ static GLchar* utf32_to_ascii(const GLchar* data, size_t size, bool littleEndian
 bool ShaderLoader::checkEncoding = true;
 bool ShaderLoader::replaceUnknownNonASCII = true;
 
-ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
+ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) {
     ShaderLoadResult result;
 
-    if (inputPath == nullptr) {
-        result.error = "inputPath is nullptr";
+    const PathResolveResult pr = pathResolve(inputPath);
+    if (!pr.success) {
+        result.error = "Input path resolve failed: " + pr.message;
         LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
-
-    std::string resolvedPath = pathResolve(inputPath).resolvedPath;
 
     std::error_code ec;
-    const auto fileSize = fs::file_size(resolvedPath, ec);
+    const auto fileSize = fs::file_size(pr.resolvedPath, ec);
     if (ec) {
-        result.error = "failed to get file size(" + ec.message() + "): " + resolvedPath;
+        result.error = "failed to get file size(" + ec.message() + "): " + pr.resolvedPath;
         LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
 
-    std::ifstream file(resolvedPath, std::ios::binary);
+    std::ifstream file(pr.resolvedPath, std::ios::binary);
     if (!file.is_open()) {
-        result.error = "failed to open file: " + resolvedPath;
+        result.error = "failed to open file: " + pr.resolvedPath;
         LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
@@ -112,7 +111,7 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
     GLchar* buffer = new GLchar[static_cast<size_t>(fileSize) + 1];
     if (!file.read(buffer, static_cast<std::streamsize>(fileSize))) {
         delete[] buffer;
-        result.error = "failed to read file: " + resolvedPath;
+        result.error = "failed to read file: " + pr.resolvedPath;
         LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
@@ -123,7 +122,7 @@ ShaderLoadResult ShaderLoader::loadFile(const char* inputPath) {
     size_t convertedSize = static_cast<size_t>(fileSize);
 
     if (checkEncoding) {
-        LOG_INFO() << "Checking text encoding of file: " << resolvedPath;
+        LOG_INFO() << "Checking text encoding of file: " << pr.resolvedPath;
         if (fileSize >= 3 &&
                 static_cast<unsigned char>(buffer[0]) == 0xEF &&
                 static_cast<unsigned char>(buffer[1]) == 0xBB &&

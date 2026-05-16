@@ -18,14 +18,8 @@ template <size_t Stride> static float safeGet(const std::vector<float>& arr, int
     return (base < arr.size()) ? arr[base] : 0.0f;
 }
 
-ModelData ModelLoader::loadOBJ(const char* path) {
+ModelData ModelLoader::loadOBJ(const std::filesystem::path& path) {
     ModelData result;
-
-    if (!path || path[0] == '\0') {
-        result.error = "loadOBJ: path is empty";
-        LOG_ERROR() << "[Model] " << result.error;
-        return result;
-    }
 
     const PathResolveResult pathResult = pathResolve(path);
     if (!pathResult.success) {

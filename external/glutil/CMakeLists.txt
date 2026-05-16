@@ -33,6 +33,9 @@ target_sources(glutil
       include/glutil/texture.hpp
       include/glutil/model.hpp
       
+      include/glutil/gl.hpp
+      include/glutil/glToString.hpp
+      
       include/glutil/debug.hpp
       include/glutil/debug_callback.hpp
       include/glutil/debug_stacktrace.hpp

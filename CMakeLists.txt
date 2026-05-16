@@ -442,6 +442,13 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
                 math(EXPR _gdm_strip_export_count "${_gdm_strip_export_count} + 1")
                 continue()
             endif()
+
+            # Strip: GLhandleARB must be void * in apple, unsigned int in else.
+            # but glew.h does not do that.
+            if(line MATCHES "^[ \t]*typedef[ \t]+unsigned[ \t]+int[ \t]+GLhandleARB[ \t]*;")
+                continue()
+            endif()
+
             string(APPEND _gdm_fake_glew_h_text "${line}\n")
         endforeach()
         string(APPEND _gdm_fake_glew_h_text [=[

@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <cstddef>
+#include <filesystem>
 
 namespace glutil {
 
@@ -121,9 +122,9 @@ private:
 
 class ImageLoader {
 public:
-    static bool isDDS(const char* path);
-    static TextureImage loadImage(const char* path, bool flipV = true);
-    static TextureDDS loadDDS(const char* path, bool flipV = true);
+    static bool isDDS(const std::filesystem::path& path);
+    static TextureImage loadImage(const std::filesystem::path& path, bool flipV = true);
+    static TextureDDS loadDDS(const std::filesystem::path& path, bool flipV = true);
 };
 
 } // namespace glutil

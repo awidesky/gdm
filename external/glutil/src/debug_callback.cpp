@@ -2,29 +2,46 @@
 #include <glutil/logging.hpp>
 
 #include <sstream>
+#include <string>
 
 namespace glutil::debug {
-namespace {
+namespace callbacks {
 
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
-static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
-    (void)ret; (void)apiproc; (void)len_args;
-
-    const GLenum err = glad_glGetError();
-    if (err != GL_NO_ERROR) {
-        std::stringstream ss;
-        ss << "[GL Error] " << glErrorToString(err) << " in function " << name;
-        printStackTrace(ss.str());
-    }
-}
-
 static void noopPreCallback(const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)name; (void)apiproc; (void)len_args;
 }
 static void noopPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)name; (void)apiproc; (void)len_args;
 }
+static void checkGLErrorOnlyPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
+    (void)ret; (void)apiproc; (void)len_args;
+    const GLenum err = glad_glGetError();
+    if (err != GL_NO_ERROR) {
+        std::stringstream ss;
+        ss << "[GL Error] " << glErrorToString(err) << '(' << err << ')' << " in function " << name;
+        printStackTrace(ss.str());
+        LOG_ERROR() << '\n';
+    }
+}
+
+static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
+    (void)ret; (void)apiproc; (void)len_args;
+
+    gladSetGLPostCallback(checkGLErrorOnlyPostCallback);
+    
+    const GLenum err = glad_glGetError();
+    if (err != GL_NO_ERROR) {
+        LOG_ERROR() << "[GL Error] " << glErrorToString(err) << '(' << err << ')';
+        printStackTrace(std::string("In function ") + name);
+        snapshot();
+        LOG_ERROR() << "---- End of \"" << glErrorToString(err) << '(' << err << ')' << " in function " << name << "\"\n\n";
+    }
+
+    gladSetGLPostCallback(checkGLErrorPostCallback);
+}
 #endif
+} // namespace callbacks
 
 #if defined(GDM_HAS_GLEW) || defined(GDM_HAS_GLAD)
 static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
@@ -74,13 +91,12 @@ static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum s
 }
 #endif
 
-} // namespace
 
 static void initGladCallbacks(bool openglDebugExtension) {
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
     LOG_INFO() << "Using GLAD post callback for OpenGL error checking."; //TODO : remove
-    gladSetGLPreCallback(noopPreCallback);
-    gladSetGLPostCallback(checkGLErrorPostCallback);
+    gladSetGLPreCallback(callbacks::noopPreCallback);
+    gladSetGLPostCallback(callbacks::checkGLErrorPostCallback);
 #else
     LOG_INFO() << "GLAD post callback support is not available in this build.";
 #endif
@@ -132,7 +148,7 @@ static bool initOpenGLDebugExtension() {
         #elif defined(GDM_HAS_GLEW)
             << "GLEW_KHR_debug=" << GLEW_KHR_debug << ", GLEW_VERSION_4_3=" << GLEW_VERSION_4_3
         #endif
-            << "glutil::debug::hasGLExtension(\"GL_KHR_debug\")=" << glutil::debug::hasGLExtension("GL_KHR_debug");
+            << ", GL_EXTENSION \"GL_KHR_debug\"=" << glutil::debug::hasGLExtension("GL_KHR_debug");
         return false;
     }
 #endif //  defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
