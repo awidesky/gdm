@@ -241,4 +241,22 @@ if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM
   set_target_properties(glutil_snapshotExample PROPERTIES
         FOLDER "GLUTIL_Examples"
   )
+
+ add_executable(glutil_trackerExample)
+  target_sources(glutil_trackerExample
+        PRIVATE example/tracker.cpp
+  )
+  target_include_directories(glutil_trackerExample
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_trackerExample PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_trackerExample PRIVATE cxx_std_17)
+  target_compile_options(glutil_trackerExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_trackerExample PROPERTIES
+        FOLDER "GLUTIL_Examples"
+  )
+
 endif()

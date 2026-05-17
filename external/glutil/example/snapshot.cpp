@@ -127,7 +127,7 @@ int main()
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
-
+  
 
     // Make texture 2 , vao, vbo
     GLuint tex1 = makeDummyTexture(0, 1, 1, 255, 0, 0);
