@@ -41,6 +41,7 @@ target_sources(glutil
       include/glutil/debug_stacktrace.hpp
       include/glutil/debug_info.hpp
       include/glutil/debug_snapshot.hpp
+      include/glutil/debug_tracker.hpp
 )
 
 target_sources(glutil
