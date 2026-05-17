@@ -2,6 +2,7 @@
 #include <glutil/gl.hpp>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace glutil::debug {
 
@@ -40,20 +41,15 @@ private:
 
 // "VAO", "Texture", "Shader", "Program", "FBO",
 
-struct ObjectInfo {
-    std::string type; 
-};
-
 class GLObjectRegistry {
 public:
-    void create(const std::string& type, GLuint id) { objects[type][id] = {type}; }
+    void create(const std::string& type, GLuint id) { objects[type].insert(id); }
     void destroy(const std::string& type, GLuint id) { objects[type].erase(id); }
-    const std::unordered_map<std::string, std::unordered_map<GLuint, ObjectInfo>>& getAll() const { return objects; }
+    const std::unordered_map<std::string, std::unordered_set<GLuint>>& getAll() const { return objects; }
 
 private:
-    std::unordered_map<std::string, std::unordered_map<GLuint, ObjectInfo>> objects;
+    std::unordered_map<std::string, std::unordered_set<GLuint>> objects;
 };
-
 
 class GLStateTracker {
 public:
