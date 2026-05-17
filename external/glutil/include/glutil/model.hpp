@@ -16,6 +16,7 @@ struct MeshData {
     std::string name;
     std::string diffuseTexturePath;
 
+    // TODO : add separeate vertex types for better dedup
     std::vector<VertexPNT> vertices;
     std::vector<unsigned int> indices;
 
@@ -35,7 +36,7 @@ struct ModelData {
 
 class ModelLoader {
 public:
-    static ModelData loadOBJ(const std::filesystem::path& path);
+    static ModelData loadOBJ(const std::filesystem::path& path, bool deduplicate = false);
 };
 
 } // namespace glutil
