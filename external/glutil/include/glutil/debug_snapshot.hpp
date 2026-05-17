@@ -8,6 +8,7 @@
 
 namespace glutil::debug {
 
+// TODO : snapshot --> Snapshot
 class snapshot {
 public:
     explicit snapshot(bool printAll = true);
@@ -15,6 +16,8 @@ public:
     snapshot& shaderStatus(bool v);
     snapshot& shaderUniform(bool v);
     snapshot& textureInfo(bool v, bool includeSampler = false);
+    // TODO : change order to bool v, bool includeData = false, bool includeUnbound = false, bool includeDisabled = false)
+    // make includeData second, because that option is enabled frequently.
     snapshot& bufferVAOInfo(bool v, bool includeUnbound = false, bool includeDisabled = false,
                             bool includeData = false);
     snapshot& allVBOInfo(bool v, bool includeData = false);
