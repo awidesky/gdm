@@ -31,7 +31,7 @@ public:
             return nullptr;
         return &it->second;
     }
-    const std::unordered_map<GLuint, BufferInfo>& getAll() const { return buffers_; }
+    const std::unordered_map<GLuint, BufferInfo>& getAll() const { return buffers; }
 
 private:
     std::unordered_map<GLuint, BufferInfo> buffers;
@@ -46,18 +46,12 @@ struct ObjectInfo {
 
 class GLObjectRegistry {
 public:
-    void create(const std::string& type, GLuint id) { objects[id] = {type}; }
-    void destroy(GLuint id) { objects.erase(id); }
-    ObjectInfo* get(GLuint id) {
-        auto it = objects.find(id);
-        if (it == objects.end())
-            return nullptr;
-        return &it->second;
-    }
-    const std::unordered_map<GLuint, ObjectInfo>& getAll() const { return objects; }
+    void create(const std::string& type, GLuint id) { objects[type][id] = {type}; }
+    void destroy(const std::string& type, GLuint id) { objects[type].erase(id); }
+    const std::unordered_map<std::string, std::unordered_map<GLuint, ObjectInfo>>& getAll() const { return objects; }
 
 private:
-    std::unordered_map<GLuint, ObjectInfo> objects;
+    std::unordered_map<std::string, std::unordered_map<GLuint, ObjectInfo>> objects;
 };
 
 
