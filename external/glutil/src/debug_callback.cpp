@@ -37,11 +37,11 @@ static void trackGLCall(void* ret, const char* name, int len_args, va_list args)
         GLuint* ids = va_arg(args, GLuint*);;
 
         std::string type;
-        if (fname == "glGenVertexArrays")
+        if (fname == "glGenVertexArrays" || fname == "glCreateVertexArrays")
             type = "VAO";
         else if (fname == "glGenTextures")
             type = "Texture";
-        else if (fname == "glGenFramebuffers")
+        else if (fname == "glGenFramebuffers" || fname == "glCreateFramebuffers")
             type = "FBO";
 
         for (GLsizei i = 0; i < count; i++) {
@@ -74,15 +74,31 @@ static void trackGLCall(void* ret, const char* name, int len_args, va_list args)
         for (GLsizei i = 0; i < count; i++)
             tracker.buffers.destroy(ids[i]);
     } 
-    else if (fname == "glDeleteVertexArrays" || fname == "glDeleteTextures" || fname == "glDeleteFramebuffers") {
+    else if (fname == "glDeleteVertexArrays") {
         GLsizei count = va_arg(args, GLsizei);
         const GLuint* ids = va_arg(args, const GLuint*);
         for (GLsizei i = 0; i < count; i++)
-            tracker.objects.destroy(ids[i]);
+            tracker.objects.destroy("VAO", ids[i]);
     } 
-    else if (fname == "glDeleteShader" || fname == "glDeleteProgram") {
+    else if (fname == "glDeleteTextures") {
+        GLsizei count = va_arg(args, GLsizei);
+        const GLuint* ids = va_arg(args, const GLuint*);
+        for (GLsizei i = 0; i < count; i++)
+            tracker.objects.destroy("Texture", ids[i]);
+    } 
+    else if (fname == "glDeleteFramebuffers") {
+        GLsizei count = va_arg(args, GLsizei);
+        const GLuint* ids = va_arg(args, const GLuint*);
+        for (GLsizei i = 0; i < count; i++)
+            tracker.objects.destroy("FBO", ids[i]);
+    } 
+    else if (fname == "glDeleteShader") {
         GLuint id = va_arg(args, GLuint);
-        tracker.objects.destroy(id);
+        tracker.objects.destroy("Shader", id);
+    } 
+    else if (fname == "glDeleteProgram") {
+        GLuint id = va_arg(args, GLuint);
+        tracker.objects.destroy("Program", id);
     }
 
     // ── Update Current Bind ──
@@ -115,7 +131,6 @@ static void trackGLCall(void* ret, const char* name, int len_args, va_list args)
         va_arg(args, GLenum);               // mode ignore
         va_arg(args, GLsizei);              // count ignore
         GLenum type = va_arg(args, GLenum); // GL_UNSIGNED_SHORT, GL_UNSIGNED_INT...
-
         GLuint id = tracker.boundElementArrayBuffer;
         if (auto* info = tracker.buffers.get(id)) {
             info->dataType = type;
@@ -129,7 +144,11 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
 
     gladSetGLPostCallback(checkGLErrorOnlyPostCallback);
     
-    trackGLCall(ret,  name, len_args);
+    va_list args;
+    va_start(args, len_args);
+    trackGLCall(ret, name, len_args, args);
+    va_end(args);
+
 
     const GLenum err = glad_glGetError();
     if (err != GL_NO_ERROR) {

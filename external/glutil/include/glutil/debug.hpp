@@ -1,11 +1,11 @@
-#ifndef GLUTIL_DEBUG_HPP
+﻿#ifndef GLUTIL_DEBUG_HPP
 #define GLUTIL_DEBUG_HPP
 
 #include <glutil/debug_callback.hpp>
 #include <glutil/debug_stacktrace.hpp>
 #include <glutil/debug_info.hpp>
 #include <glutil/debug_snapshot.hpp>
-
+#include <glutil/debug_tracker.hpp>
 #include <glutil/glToString.hpp>
 
 #include <string>
