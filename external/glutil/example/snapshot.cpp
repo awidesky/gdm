@@ -145,7 +145,10 @@ int main()
     glUniform1i(glGetUniformLocation(shader, "tex"), 0);
 
     //glutil::debug::snapshot();
-    glutil::debug::snapshot{}.bufferVAOInfo(true,true,true,true).capture(std::cerr);
+    //glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true);
+    glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true).printPerCall(true);
+    ss.capture();
+    ss.capture();
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
