@@ -1,8 +1,9 @@
-#include <glutil/debug.hpp>
+﻿#include <glutil/debug.hpp>
 #include <glutil/logging.hpp>
 
 #include <sstream>
 #include <string>
+#include <stdarg.h>
 
 namespace glutil::debug {
 namespace callbacks {
@@ -25,11 +26,130 @@ static void checkGLErrorOnlyPostCallback(void* ret, const char* name, GLADapipro
     }
 }
 
+static void trackGLCall(void* ret, const char* name, int len_args, va_list args) {
+    auto& tracker = GLStateTracker::instance();
+    std::string fname(name);
+
+
+    // ── Create ──
+    if (fname == "glGenBuffers" || fname == "glCreateBuffers" || fname == "glGenVertexArrays" ||fname == "glCreateVertexArrays" || fname == "glGenTextures" || fname == "glGenFramebuffers" || fname == "glCreateFramebuffers") {
+        GLsizei count = va_arg(args, GLsizei);
+        GLuint* ids = va_arg(args, GLuint*);;
+
+        std::string type;
+        if (fname == "glGenVertexArrays" || fname == "glCreateVertexArrays")
+            type = "VAO";
+        else if (fname == "glGenTextures")
+            type = "Texture";
+        else if (fname == "glGenFramebuffers" || fname == "glCreateFramebuffers")
+            type = "FBO";
+
+        for (GLsizei i = 0; i < count; i++) {
+            if (fname == "glGenBuffers")
+                tracker.buffers.create(ids[i]);
+            else
+                tracker.objects.create(type, ids[i]);
+        }
+    } 
+    else if (fname == "glCreateShader") {
+        GLuint id = *static_cast<GLuint*>(ret);
+        tracker.objects.create("Shader", id);
+    } 
+    else if (fname == "glCreateProgram") {
+        GLuint id = *static_cast<GLuint*>(ret);
+        tracker.objects.create("Program", id);
+    } 
+    else if (fname == "glCreateTextures") {
+        va_arg(args, GLenum);
+        GLsizei count = va_arg(args, GLsizei);
+        GLuint* ids = va_arg(args, GLuint*);
+        for (GLsizei i = 0; i < count; i++)
+            tracker.objects.create("Texture", ids[i]);
+    }
+
+    // ── Delete ──
+    else if (fname == "glDeleteBuffers") {
+        GLsizei count = va_arg(args, GLsizei);
+        const GLuint* ids = va_arg(args, const GLuint*);
+        for (GLsizei i = 0; i < count; i++)
+            tracker.buffers.destroy(ids[i]);
+    } 
+    else if (fname == "glDeleteVertexArrays") {
+        GLsizei count = va_arg(args, GLsizei);
+        const GLuint* ids = va_arg(args, const GLuint*);
+        for (GLsizei i = 0; i < count; i++)
+            tracker.objects.destroy("VAO", ids[i]);
+    } 
+    else if (fname == "glDeleteTextures") {
+        GLsizei count = va_arg(args, GLsizei);
+        const GLuint* ids = va_arg(args, const GLuint*);
+        for (GLsizei i = 0; i < count; i++)
+            tracker.objects.destroy("Texture", ids[i]);
+    } 
+    else if (fname == "glDeleteFramebuffers") {
+        GLsizei count = va_arg(args, GLsizei);
+        const GLuint* ids = va_arg(args, const GLuint*);
+        for (GLsizei i = 0; i < count; i++)
+            tracker.objects.destroy("FBO", ids[i]);
+    } 
+    else if (fname == "glDeleteShader") {
+        GLuint id = va_arg(args, GLuint);
+        tracker.objects.destroy("Shader", id);
+    } 
+    else if (fname == "glDeleteProgram") {
+        GLuint id = va_arg(args, GLuint);
+        tracker.objects.destroy("Program", id);
+    }
+
+    // ── Update Current Bind ──
+    else if (fname == "glBindBuffer") {
+        GLenum target = va_arg(args, GLenum);
+        GLuint id = va_arg(args, GLuint);
+        if (target == GL_ARRAY_BUFFER)
+            tracker.boundArrayBuffer = id;
+        else if (target == GL_ELEMENT_ARRAY_BUFFER)
+            tracker.boundElementArrayBuffer = id;
+    } 
+    else if (fname == "glBindVertexArray") {
+        GLuint id = va_arg(args, GLuint);
+        tracker.boundVAO = id;
+    }
+
+    // ── Update BufferInfo MetaData ──
+    else if (fname == "glBufferData") {
+        GLenum target = va_arg(args, GLenum);
+        GLsizeiptr size = va_arg(args, GLsizeiptr);
+
+        GLuint id = (target == GL_ARRAY_BUFFER) ? tracker.boundArrayBuffer : tracker.boundElementArrayBuffer;
+
+        if (auto* info = tracker.buffers.get(id)) {
+            info->role = (target == GL_ARRAY_BUFFER) ? BufferRole::VBO : BufferRole::EBO;
+            info->size = size;
+        }
+    } 
+    else if (fname == "glDrawElements") {
+        va_arg(args, GLenum);               // mode ignore
+        va_arg(args, GLsizei);              // count ignore
+        GLenum type = va_arg(args, GLenum); // GL_UNSIGNED_SHORT, GL_UNSIGNED_INT...
+        GLuint id = tracker.boundElementArrayBuffer;
+        if (auto* info = tracker.buffers.get(id)) {
+            info->dataType = type;
+        }
+    }
+}
+
+
 static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)apiproc; (void)len_args;
 
     gladSetGLPostCallback(checkGLErrorOnlyPostCallback);
     
+    va_list args;
+    va_start(args, len_args);
+    trackGLCall(ret, name, len_args, args);
+    va_end(args);
+
+
     const GLenum err = glad_glGetError();
     if (err != GL_NO_ERROR) {
         LOG_ERROR() << "[GL Error] " << glErrorToString(err) << '(' << err << ')';
