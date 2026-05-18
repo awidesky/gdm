@@ -21,6 +21,7 @@ public:
     snapshot& rendererState(bool v);
     snapshot& framebufferInfo(bool v);
     snapshot& boundInfo(bool v);
+    snapshot& printPerCall(bool v);
 
     void capture(std::ostream& out = std::cerr) const;
 
@@ -46,6 +47,8 @@ private:
     bool m_rendererState;
     bool m_framebufferInfo;
     bool m_boundInfo;
+    bool m_Once = false;
+    mutable bool m_flag = false;
 };
 
 snapshot snapshotOnError();

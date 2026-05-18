@@ -42,7 +42,7 @@ struct GLStateGuard {
 snapshot::snapshot(bool printAll)
     : m_shaderStatus(printAll), m_shaderUniform(printAll), m_textureInfo(printAll), m_textureIncludeSampler(printAll),
       m_bufferVAOInfo(printAll), m_bufferIncludeUnbound(false), m_bufferIncludeDisabled(false), m_allVBOInfo(printAll),
-      m_bufferIncludeData(false), m_rendererState(printAll), m_framebufferInfo(printAll), m_boundInfo(printAll) {}
+      m_bufferIncludeData(false), m_rendererState(printAll), m_framebufferInfo(printAll), m_boundInfo(printAll), m_Once(true), m_flag(false) {}
 
 snapshot& snapshot::shaderStatus(bool v) {
     m_shaderStatus = v;
@@ -83,6 +83,11 @@ snapshot& snapshot::framebufferInfo(bool v) {
 }
 snapshot& snapshot::boundInfo(bool v) {
     m_boundInfo = v;
+    return *this;
+}
+
+snapshot& snapshot::printPerCall(bool v) { 
+    m_Once = !v;
     return *this;
 }
 
@@ -814,6 +819,12 @@ void snapshot::captureBoundInfo(std::ostream& out) const {
 }
 
 void snapshot::capture(std::ostream& out) const {
+
+    if (m_flag && m_Once)
+        return;
+
+    m_flag = true;
+
     static thread_local bool insideSnapshot = false;
     if (insideSnapshot)
         return;
