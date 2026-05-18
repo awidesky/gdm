@@ -21,9 +21,13 @@ int main() {
 
     // ── 리소스 생성 ──
     GLuint VAO, VBO, EBO;
+    GLuint VAO2, VBO2, EBO2;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
+    glGenVertexArrays(1, &VAO2);
+    glGenBuffers(1, &VBO2);
+    glGenBuffers(1, &EBO2);
 
     float vertices[] = {0.f, 0.5f, 0.f, -0.5f, -0.5f, 0.f, 0.5f, -0.5f, 0.f};
     unsigned int indices[] = {0, 1, 2};
