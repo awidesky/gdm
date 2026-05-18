@@ -25,6 +25,11 @@ int main() {
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
 
+    GLuint VAO2, VBO2, EBO2;
+    glGenVertexArrays(1, &VAO2);
+    glGenBuffers(1, &VBO2);
+    glGenBuffers(1, &EBO2);
+
     float vertices[] = {0.f, 0.5f, 0.f, -0.5f, -0.5f, 0.f, 0.5f, -0.5f, 0.f};
     unsigned int indices[] = {0, 1, 2};
 
@@ -61,7 +66,6 @@ int main() {
     glAttachShader(program, frag);
     glLinkProgram(program);
 
-    // 렌더 루프 한 번
     glUseProgram(program);
     glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
@@ -69,11 +73,8 @@ int main() {
     glEnableVertexAttribArray(0);
 
 
-
-    // ── tracker 상태 확인 ──
     auto& tracker = glutil::debug::GLStateTracker::instance();
 
-    // buffers 확인
     for (auto& [id, info] : tracker.buffers.getAll()) {
         printf("Buffer id=%u role=%s size=%lld dataType=0x%X\n", id,
                info.role == glutil::debug::BufferRole::VBO   ? "VBO"
@@ -82,16 +83,13 @@ int main() {
                (long long)info.size, info.dataType);
     }
 
-    // objects 확인
     for (auto& [name, ids] : tracker.objects.getAll()) {
         for (auto id : ids) {
             printf("Object id=%u type=%s\n", id, name.c_str());
         }
     }
 
-    // ── 누수 테스트: VBO는 일부러 delete 안 함 ──
     glDeleteVertexArrays(1, &VAO);
-    // glDeleteBuffers(1, &VBO);  ← 누수
     glDeleteBuffers(1, &EBO);
 
 
