@@ -1,4 +1,4 @@
-﻿#include <glutil/gl.hpp>
+#include <glutil/gl.hpp>
 #include <glutil/glToString.hpp>
 
 #include <glutil/debug_snapshot.hpp>
@@ -845,22 +845,6 @@ void snapshot::capture(std::ostream& out) const {
     out << "========================================================\n\n";
 
     insideSnapshot = false;
-}
-
-
-//TODO : use this fucntion to get max length of vertex data, and put it in setw
-static double getValueAsType(const unsigned char* ptr, GLenum type, int index) {
-    switch (type) {
-        case GL_FLOAT: return static_cast<double>(reinterpret_cast<const GLfloat*>(ptr)[index]);
-        case GL_DOUBLE: return reinterpret_cast<const GLdouble*>(ptr)[index];
-        case GL_INT: return static_cast<double>(reinterpret_cast<const GLint*>(ptr)[index]);
-        case GL_UNSIGNED_INT: return static_cast<double>(reinterpret_cast<const GLuint*>(ptr)[index]);
-        case GL_SHORT: return static_cast<double>(reinterpret_cast<const GLshort*>(ptr)[index]);
-        case GL_UNSIGNED_SHORT: return static_cast<double>(reinterpret_cast<const GLushort*>(ptr)[index]);
-        case GL_BYTE: return static_cast<double>(reinterpret_cast<const GLbyte*>(ptr)[index]);
-        case GL_UNSIGNED_BYTE: return static_cast<double>(reinterpret_cast<const GLubyte*>(ptr)[index]);
-        default: return 0.0; // unknown type fallback
-    }
 }
 } // namespace glutil::debug
 
