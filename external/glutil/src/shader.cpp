@@ -88,7 +88,7 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
 
     const PathResolveResult pr = pathResolve(inputPath);
     if (!pr.success) {
-        result.error = "Input path resolve failed: " + pr.message;
+        result.error = "Input path resolve failed:\n" + pr.message;
         LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }

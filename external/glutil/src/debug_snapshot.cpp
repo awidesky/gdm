@@ -1,4 +1,4 @@
-﻿#include <glutil/gl.hpp>
+#include <glutil/gl.hpp>
 #include <glutil/glToString.hpp>
 
 #include <glutil/debug_snapshot.hpp>
@@ -59,7 +59,7 @@ snapshot& snapshot::textureInfo(bool v, bool includeSampler) {
     return *this;
 }
 
-snapshot& snapshot::bufferVAOInfo(bool v, bool includeUnbound, bool includeDisabled, bool includeData) {
+snapshot& snapshot::bufferVAOInfo(bool v, bool includeData, bool includeDisabled, bool includeUnbound) {
     m_bufferVAOInfo = v;
     m_bufferIncludeUnbound = includeUnbound;
     m_bufferIncludeDisabled = includeDisabled;
@@ -561,27 +561,13 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
 }
 
 void snapshot::captureBufferVAOInfo(std::ostream& out) const {
-    auto glTypeSize = [](GLenum type) -> int {
-        switch (type) {
-            case GL_FLOAT: return sizeof(GLfloat);
-            case GL_DOUBLE: return sizeof(GLdouble);
-            case GL_INT: return sizeof(GLint);
-            case GL_UNSIGNED_INT: return sizeof(GLuint);
-            case GL_SHORT: return sizeof(GLshort);
-            case GL_UNSIGNED_SHORT: return sizeof(GLushort);
-            case GL_BYTE: return sizeof(GLbyte);
-            case GL_UNSIGNED_BYTE: return sizeof(GLubyte);
-            default: return sizeof(GLfloat);
-        }
-    };
-
     auto formatVertex = [](const unsigned char* ptr, GLenum type, int components) -> std::string {
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(4) << std::left << "(";
         for (int c = 0; c < components; c++) {
             switch (type) {
-                case GL_FLOAT: oss << std::setw(10) << reinterpret_cast<const GLfloat*>(ptr)[c]; break;
-                case GL_DOUBLE: oss << std::setw(14) << reinterpret_cast<const GLdouble*>(ptr)[c]; break;
+                case GL_FLOAT: oss << std::setw(8) << reinterpret_cast<const GLfloat*>(ptr)[c]; break;
+                case GL_DOUBLE: oss << std::setw(10) << reinterpret_cast<const GLdouble*>(ptr)[c]; break;
                 case GL_INT: oss << std::setw(8) << reinterpret_cast<const GLint*>(ptr)[c]; break;
                 case GL_UNSIGNED_INT: oss << std::setw(8) << reinterpret_cast<const GLuint*>(ptr)[c]; break;
                 case GL_SHORT: oss << std::setw(6) << reinterpret_cast<const GLshort*>(ptr)[c]; break;
@@ -722,6 +708,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                     }
 
                     // indexType에 따라 올바른 크기로 읽기
+                    // 가능한 것은 GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, or GL_UNSIGNED_INT.
                     GLsizei elemSize = (indexType == GL_UNSIGNED_INT)     ? sizeof(GLuint)
                                        : (indexType == GL_UNSIGNED_SHORT) ? sizeof(GLushort)
                                                                           : sizeof(GLubyte);
