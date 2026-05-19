@@ -12,6 +12,18 @@
 
 namespace glutil::debug {
 
+struct GL_KHR_DebugSupport {
+	const void* glDebugMessageCallbackPtr;
+	const bool isLoaded;
+	const bool compiledIn;
+
+	explicit operator bool() const {
+		return compiledIn && glDebugMessageCallbackPtr != nullptr && isLoaded;
+	}
+};
+
+GL_KHR_DebugSupport isGL_KHR_debugSupported();
+
 void init();
 
 void checkGLError(const std::string& msg = {});

@@ -49,6 +49,37 @@ bool hasGLExtension(const char* extName) {
     return extensions.find(extName) != extensions.end();
 }
 
+GL_KHR_DebugSupport isGL_KHR_debugSupported() {
+#if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
+        const void* funcptr = (void*)
+                #if defined(GDM_HAS_GLAD)
+                    glad_glDebugMessageCallback;
+                #elif defined(GDM_HAS_GLEW)
+                    __glewDebugMessageCallback;
+                #else
+                    glDebugMessageCallback;
+                #endif
+        const bool hasCapability = (
+                #if defined(GDM_HAS_GLEW_GLAD)
+                    (GLEW_KHR_debug || GLEW_VERSION_4_3 || GLAD_GL_KHR_debug || GLAD_GL_VERSION_4_3)
+                #elif defined(GDM_HAS_GLAD)
+                    #if defined(GL_KHR_debug)
+                        GLAD_GL_KHR_debug ||
+                    #endif
+                        GLAD_GL_VERSION_4_3
+                #elif defined(GDM_HAS_GLEW)
+                    (GLEW_KHR_debug || GLEW_VERSION_4_3)
+                #else
+                    false
+                #endif
+                ) || glutil::debug::hasGLExtension("GL_KHR_debug");
+
+        return GL_KHR_DebugSupport{funcptr, hasCapability, true};
+#else
+        return GL_KHR_DebugSupport{nullptr, false, false};
+#endif
+}
+
 
 void checkGLError(const std::string& msg) {
     const GLenum err = getGlError();
