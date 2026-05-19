@@ -164,7 +164,7 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    auto snapshot = glutil::debug::snapshot(false).bufferVAOInfo(true, false, false, true);
+    auto snapshot = glutil::debug::snapshot(false).bufferVAOInfo(true, true);
 
     while (glfwGetKey(ctx, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
            glfwWindowShouldClose(ctx) == 0)
@@ -244,6 +244,8 @@ GLFWwindow* initGLFWAndContext()
         glfwTerminate();
         return nullptr;
     }
+
+    glutil::debug::init();
 
     glfwSetInputMode(ret, GLFW_STICKY_KEYS, GL_TRUE);
     return ret;

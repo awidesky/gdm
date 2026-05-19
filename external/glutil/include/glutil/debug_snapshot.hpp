@@ -25,13 +25,11 @@ public:
 
     /// @brief Set whether to output VAO/VBO/EBO information
     /// @param v true to enable output
+    /// @param includeData true to output raw vertex/index data (may be slow)
     /// @param includeUnbound true to also output VAOs not currently bound 
     /// @param includeDisabled true to also output attribs not enabled 
-    /// @param includeData true to output raw vertex/index data (may be slow)
-    // TODO : change order to bool v, bool includeData = false, bool includeUnbound = false, bool includeDisabled = false)
-    // make includeData second, because that option is enabled frequently.
-    snapshot& bufferVAOInfo(bool v, bool includeUnbound = false, bool includeDisabled = false,
-                            bool includeData = false);
+    snapshot& bufferVAOInfo(bool v, bool includeData = false, bool includeDisabled = false,
+                            bool includeUnbound = false);
 
     /// @brief Set whether to output all VBO info regardless of VAO association
     /// @param includeData true to output raw buffer data (may be slow)
