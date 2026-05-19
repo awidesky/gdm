@@ -28,6 +28,9 @@ static void checkGLErrorOnlyPostCallback(void* ret, const char* name, GLADapipro
 
 static void trackGLCall(void* ret, const char* name, int len_args, va_list args) {
     auto& tracker = GLStateTracker::instance();
+    // TODO : const char* name은 glad에서 "glGenBuffers"와 같이 literal로 들어오기 때문에, 
+    //        string으로 만들어 비교하지 않고 그냥 포인터 동등으로 비교해도 정상 동작할 것임. 
+    //        오버헤드가 더 적으니 그걸로 바꿔보는 건? 지금처럼 if-else에 or 조건 반복이면 switch로 바꾸는 것도 좋을 것 같음
     std::string fname(name);
 
 
