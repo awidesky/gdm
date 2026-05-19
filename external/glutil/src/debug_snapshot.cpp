@@ -722,6 +722,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                     }
 
                     // indexType에 따라 올바른 크기로 읽기
+                    // 가능한 것은 GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, or GL_UNSIGNED_INT.
                     GLsizei elemSize = (indexType == GL_UNSIGNED_INT)     ? sizeof(GLuint)
                                        : (indexType == GL_UNSIGNED_SHORT) ? sizeof(GLushort)
                                                                           : sizeof(GLubyte);
