@@ -42,7 +42,8 @@ struct GLStateGuard {
 snapshot::snapshot(bool printAll)
     : m_shaderStatus(printAll), m_shaderUniform(printAll), m_textureInfo(printAll), m_textureIncludeSampler(printAll),
       m_bufferVAOInfo(printAll), m_bufferIncludeUnbound(false), m_bufferIncludeDisabled(false), m_allVBOInfo(printAll),
-      m_bufferIncludeData(false), m_rendererState(printAll), m_framebufferInfo(printAll), m_boundInfo(printAll), m_Once(true), m_flag(false) {}
+      m_bufferIncludeData(false), m_rendererState(printAll), m_framebufferInfo(printAll), m_boundInfo(printAll),
+      m_Once(true), m_flag(false) {}
 
 snapshot& snapshot::shaderStatus(bool v) {
     m_shaderStatus = v;
@@ -85,7 +86,7 @@ snapshot& snapshot::boundInfo(bool v) {
     return *this;
 }
 
-snapshot& snapshot::printPerCall(bool v) { 
+snapshot& snapshot::printPerCall(bool v) {
     m_Once = !v;
     return *this;
 }
@@ -445,20 +446,84 @@ void snapshot::captureShaderUniforms(std::ostream& out) const {
                 break;
             }
             // ── sampler  ──
-            case GL_SAMPLER_2D:                   { GLint v; glGetUniformiv(program, loc, &v); out << "sampler2D"            << " =    unit " << v << "\n"; break; }
-            case GL_SAMPLER_3D:                   { GLint v; glGetUniformiv(program, loc, &v); out << "sampler3D"            << " =    unit " << v << "\n"; break; }
-            case GL_SAMPLER_CUBE:                 { GLint v; glGetUniformiv(program, loc, &v); out << "samplerCube"          << " =    unit " << v << "\n"; break; }
-            case GL_SAMPLER_2D_SHADOW:            { GLint v; glGetUniformiv(program, loc, &v); out << "sampler2DShadow"      << " =    unit " << v << "\n"; break; }
-            case GL_SAMPLER_2D_ARRAY:             { GLint v; glGetUniformiv(program, loc, &v); out << "sampler2DArray"       << " =    unit " << v << "\n"; break; }
-            case GL_SAMPLER_2D_ARRAY_SHADOW:      { GLint v; glGetUniformiv(program, loc, &v); out << "sampler2DArrayShadow" << " =    unit " << v << "\n"; break; }
-            case GL_SAMPLER_CUBE_SHADOW:          { GLint v; glGetUniformiv(program, loc, &v); out << "samplerCubeShadow"    << " =    unit " << v << "\n"; break; }
-            case GL_INT_SAMPLER_2D:               { GLint v; glGetUniformiv(program, loc, &v); out << "isampler2D"           << " =    unit " << v << "\n"; break; }
-            case GL_INT_SAMPLER_3D:               { GLint v; glGetUniformiv(program, loc, &v); out << "isampler3D"           << " =    unit " << v << "\n"; break; }
-            case GL_INT_SAMPLER_CUBE:             { GLint v; glGetUniformiv(program, loc, &v); out << "isamplerCube"         << " =    unit " << v << "\n"; break; }
-            case GL_UNSIGNED_INT_SAMPLER_2D:      { GLint v; glGetUniformiv(program, loc, &v); out << "usampler2D"           << " =    unit " << v << "\n"; break; }
-            case GL_UNSIGNED_INT_SAMPLER_3D:      { GLint v; glGetUniformiv(program, loc, &v); out << "usampler3D"           << " =    unit " << v << "\n"; break; }
-            case GL_UNSIGNED_INT_SAMPLER_CUBE:    { GLint v; glGetUniformiv(program, loc, &v); out << "usamplerCube"         << " =    unit " << v << "\n"; break; }
-
+            case GL_SAMPLER_2D: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "sampler2D" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_SAMPLER_3D: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "sampler3D" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_SAMPLER_CUBE: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "samplerCube" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_SAMPLER_2D_SHADOW: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "sampler2DShadow" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_SAMPLER_2D_ARRAY: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "sampler2DArray" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_SAMPLER_2D_ARRAY_SHADOW: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "sampler2DArrayShadow" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_SAMPLER_CUBE_SHADOW: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "samplerCubeShadow" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_INT_SAMPLER_2D: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "isampler2D" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_INT_SAMPLER_3D: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "isampler3D" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_INT_SAMPLER_CUBE: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "isamplerCube" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_UNSIGNED_INT_SAMPLER_2D: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "usampler2D" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_UNSIGNED_INT_SAMPLER_3D: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "usampler3D" << " =    unit " << v << "\n";
+                break;
+            }
+            case GL_UNSIGNED_INT_SAMPLER_CUBE: {
+                GLint v;
+                glGetUniformiv(program, loc, &v);
+                out << "usamplerCube" << " =    unit " << v << "\n";
+                break;
+            }
 
             // TODO : image  (GL_IMAGE_2D ) - NEED ??
             // TODO : GL_UNSIGNED_INT_ATOMIC_COUNTER - NEED ??
@@ -532,8 +597,7 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
                 << "  ID=" << std::setw(4) << texId;
 
             if (t.hasSize)
-                out << "  Size=" << w << "x"  << h
-                    << "  Format=" << glTextureFormatToString(fmt);
+                out << "  Size=" << w << "x" << h << "  Format=" << glTextureFormatToString(fmt);
 
             out << "\n";
 
@@ -745,7 +809,6 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
         glBindVertexArray(savedVAO);
         glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
     }
-
 }
 void snapshot::captureAllVBOInfo(std::ostream& out) const {
 
@@ -756,8 +819,7 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
     bool bHasVBO = false;
 
     const std::unordered_map<GLuint, BufferInfo> buffers = tracker.buffers.getAll();
-    for (const auto& buffer : buffers)
-    {
+    for (const auto& buffer : buffers) {
         if (buffer.second.role != BufferRole::VBO)
             continue;
 
@@ -772,28 +834,21 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
         out << "  VBO ID=" << id << "  Size=" << size << " bytes"
             << "  Usage=" << usageToString(usage) << "  ";
 
-        if (m_bufferIncludeData) {
-            GLint mapped = 0;
-            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
-            if (!mapped) {
-                std::vector<unsigned char> data(size);
-                glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
+        GLint mapped = 0;
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
+        if (!mapped) {
+            std::vector<unsigned char> data(size);
+            glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
 
-                if (buffer.second.associatedVaos.empty())
-                {
-                    out << "Not Bound to VAO";
+            if (buffer.second.associatedVaos.empty()) {
+                out << "Not Bound to VAO";
+            } else {
+                out << "Bound VAO ID : ";
+                for (auto& vao : buffer.second.associatedVaos) {
+                    out << vao << ' ';
                 }
-                else
-                {
-                    out << "Bound VAO ID : ";
-                    for (auto& vao : buffer.second.associatedVaos) 
-                    {
-                        out << vao << ' ';
-                    }
-                }
-                out << '\n';
-               
             }
+            out << '\n';
         }
     }
     if (!bHasVBO)
@@ -899,7 +954,6 @@ void snapshot::capture(std::ostream& out) const {
     insideSnapshot = false;
 }
 } // namespace glutil::debug
-
 
 //    // TODO : 아래에 대한 TODO를 수행해야 함. 한번에 모든 걸 하려고 하지 말고, 하나하나 건당 정확하게 해결 후 각각을
 //    확인받은 후에 커밋할 것.
