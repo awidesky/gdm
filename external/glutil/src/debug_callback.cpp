@@ -36,6 +36,7 @@ enum class GLFunctions {
     DeleteBuffers, DeleteVertexArrays, DeleteTextures,
     DeleteFramebuffers, DeleteShader, DeleteProgram,
     BindBuffer, BindVertexArray, BufferData, DrawElements,
+    VertexAttribPointer, VertexAttribIPointer, VertexAttribLPointer,
 
     Unknown
 };
@@ -60,6 +61,9 @@ static GLFunctions classifyGLFunctions(std::string_view fname) {
     if (fname == "glBindVertexArray") return GLFunctions::BindVertexArray;
     if (fname == "glBufferData") return GLFunctions::BufferData;
     if (fname == "glDrawElements") return GLFunctions::DrawElements;
+    if (fname == "glVertexAttribPointer") return GLFunctions::VertexAttribPointer;
+    if (fname == "glVertexAttribIPointer") return GLFunctions::VertexAttribIPointer;
+    if (fname == "glVertexAttribLPointer") return GLFunctions::VertexAttribLPointer;
     return GLFunctions::Unknown;
 }
 #pragma warning(push)
@@ -220,6 +224,18 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             break;
         }
 
+        case GLFunctions::VertexAttribPointer:
+        case GLFunctions::VertexAttribIPointer:
+        case GLFunctions::VertexAttribLPointer:
+        {
+            GLuint currentVao = tracker.boundVAO;
+            GLuint currentVbo = tracker.boundArrayBuffer;
+            if (currentVao != 0 && currentVbo != 0) {
+                if (auto* vboInfo = tracker.buffers.get(currentVbo)) {
+                    vboInfo->associatedVaos.insert(currentVao);
+                }
+            }
+        }
         case GLFunctions::Unknown:
         default: break;
     }
