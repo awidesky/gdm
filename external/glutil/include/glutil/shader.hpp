@@ -64,11 +64,30 @@ private:
     }
 };
 
+struct GLShader {
+    bool ok = false;
+    std::string error;
+
+    GLuint id = 0;
+    GLenum type = 0;
+};
+
+struct GLProgram {
+    bool ok = false;
+    std::string error;
+
+    GLuint id = 0;
+};
+
 class ShaderLoader {
 public:
     static bool checkEncoding;
     static bool replaceUnknownNonASCII;
     static ShaderLoadResult loadFile(const std::filesystem::path& inputPath);
+
+    static GLShader loadShaderToGL(GLenum type, const std::filesystem::path& inputPath);
+    static GLProgram loadProgramToGL(const std::filesystem::path& vertexPath,
+                                     const std::filesystem::path& fragmentPath);
 };
 
 inline static bool hasNonASCII(const char* data, size_t size) {

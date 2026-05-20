@@ -8,6 +8,7 @@
 #include <glutil/glutil.hpp>
 #include <glutil/logging.hpp>
 #include <glutil/texture.hpp>
+#include <glutil/debug.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -93,16 +94,16 @@ TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flip
     const int rowBytes = w * c;
     GLint unpackAlignment = 0;
     glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
-    if ((rowBytes % 4) != 0 && unpackAlignment != 1) {
+    if ((unpackAlignment > 0) && (rowBytes % unpackAlignment) != 0) {
         LOG_WARNING() << "[TextureImage] Potential GL_UNPACK_ALIGNMENT issue detected.";
         LOG_WARNING() << "[TextureImage] Texture row size is not 4-byte aligned: " << rowBytes << " bytes per row"
                       << " (width=" << w << ", channels=" << c << ")";
+        LOG_WARNING() << "[TextureImage] Current GL_UNPACK_ALIGNMENT = " << unpackAlignment;
         LOG_WARNING() << "[TextureImage] If texture appears diagonally skewed or torn,";
         LOG_WARNING() << "[TextureImage] ensure GL_UNPACK_ALIGNMENT is set to 1 before glTexImage2D:";
         LOG_WARNING() << "[TextureImage]     glBindTexture(GL_TEXTURE_2D, texID);";
         LOG_WARNING() << "[TextureImage]     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);";
         LOG_WARNING() << "[TextureImage]     glTexImage2D(...);";
-        LOG_WARNING() << "[TextureImage] Current GL_UNPACK_ALIGNMENT = " << unpackAlignment;
     }
 
     // stbi_load internally uses malloc.
@@ -342,6 +343,82 @@ TextureDDS ImageLoader::loadDDS(const std::filesystem::path& path, bool flipV) {
     LOG_INFO() << "[TextureDDS]                 (" << tc.width << "x" << tc.height
                << ", mips=" << tc.num_mips << ", flipV=" << flipV << ")";
     return result;
+}
+
+GLTexture2D ImageLoader::loadImageToGL(const std::filesystem::path& path, bool flipV) {
+    GLTexture2D out;
+
+    TextureImage image = loadImage(path, flipV);
+    if (!image.ok) {
+        out.error = image.error;
+        return out;
+    }
+
+    GLint unpackAlignment = 0;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+    int channels = 0;
+    switch (image.format()) {
+        case GL_RED: channels = 1; break;
+        case GL_RGB: channels = 3; break;
+        case GL_RGBA: channels = 4; break;
+        default: break;
+    }
+    const int rowBytes = image.width() * channels;
+    const bool needsTightAlignment = (channels > 0) && (unpackAlignment > 0) && ((rowBytes % unpackAlignment) != 0);
+    if (needsTightAlignment) {
+        LOG_WARNING() << "[TextureImage] Temporarily setting GL_UNPACK_ALIGNMENT to 1 for this upload.";
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    }
+
+    glGenTextures(1, &out.id);
+    glBindTexture(GL_TEXTURE_2D, out.id);
+    glTexImage2D(GL_TEXTURE_2D, 0, image.internalFormat(), image.width(), image.height(),
+                 0, image.format(), GL_UNSIGNED_BYTE, image.data());
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    if (needsTightAlignment) {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, unpackAlignment);
+    }
+
+    const std::string label = "Texture2D:" + path.filename().string();
+    glutil::debug::labelGLobject(GL_TEXTURE, out.id, label);
+
+    out.w = image.width();
+    out.h = image.height();
+    out.format = image.format();
+    out.ok = true;
+    return out;
+}
+
+GLTexture2D ImageLoader::loadDDSToGL(const std::filesystem::path& path, bool flipV) {
+    GLTexture2D out;
+
+    TextureDDS dds = loadDDS(path, flipV);
+    if (!dds.ok) {
+        out.error = dds.error;
+        return out;
+    }
+
+    glGenTextures(1, &out.id);
+    glBindTexture(GL_TEXTURE_2D, out.id);
+
+    const GLenum internalFmt = dds.format();
+    const auto& mips = dds.mips();
+    for (size_t level = 0; level < mips.size(); ++level) {
+        const MipLevel& mip = mips[level];
+        glCompressedTexImage2D(GL_TEXTURE_2D, static_cast<GLint>(level), internalFmt,
+                               mip.width, mip.height, 0, mip.size,
+                               dds.data() + mip.offset);
+    }
+
+    const std::string label = "TextureDDS:" + path.filename().string();
+    glutil::debug::labelGLobject(GL_TEXTURE, out.id, label);
+
+    out.w = dds.width();
+    out.h = dds.height();
+    out.format = internalFmt;
+    out.ok = true;
+    return out;
 }
 
 } // namespace glutil

@@ -120,11 +120,24 @@ private:
     }
 };
 
+struct GLTexture2D {
+    bool ok = false;
+    std::string error;
+
+    GLuint id = 0;
+    GLsizei w = 0;
+    GLsizei h = 0;
+    GLenum format = 0;
+};
+
 class ImageLoader {
 public:
     static bool isDDS(const std::filesystem::path& path);
     static TextureImage loadImage(const std::filesystem::path& path, bool flipV = true);
     static TextureDDS loadDDS(const std::filesystem::path& path, bool flipV = true);
+
+    static GLTexture2D loadImageToGL(const std::filesystem::path& path, bool flipV = true);
+    static GLTexture2D loadDDSToGL(const std::filesystem::path& path, bool flipV = true);
 };
 
 } // namespace glutil

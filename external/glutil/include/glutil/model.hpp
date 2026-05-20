@@ -1,6 +1,7 @@
 ﻿#ifndef GLUTIL_MODEL_HPP
 #define GLUTIL_MODEL_HPP
 
+#include <glutil/gl.hpp>
 #include <glutil/math.hpp>
 
 #include <string>
@@ -16,7 +17,6 @@ struct MeshData {
     std::string name;
     std::string diffuseTexturePath;
 
-    // TODO : add separeate vertex types for better dedup
     std::vector<VertexPNT> vertices;
     std::vector<unsigned int> indices;
 
@@ -34,9 +34,29 @@ struct ModelData {
     std::vector<MeshData> meshes;
 };
 
+struct GLMeshData {
+    bool ok = false;
+    std::string error;
+
+    std::string name;
+    GLuint vao = 0;
+    GLuint vbo = 0;
+    GLuint ebo = 0;
+    GLsizei indexCount = 0;
+};
+
+struct GLModelData {
+    bool ok = false;
+    std::string error;
+    std::string warn;
+
+    std::vector<GLMeshData> meshes;
+};
+
 class ModelLoader {
 public:
     static ModelData loadOBJ(const std::filesystem::path& path, bool deduplicate = false);
+    static GLModelData loadOBJtoGL(const std::filesystem::path& path, bool deduplicate = true);
 };
 
 } // namespace glutil

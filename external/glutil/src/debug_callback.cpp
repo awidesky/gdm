@@ -326,13 +326,14 @@ static void initGladCallbacks(bool openglDebugExtension) {
 }
 
 static bool initOpenGLDebugExtension() {
-        const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
-        if (!support.compiledIn) {
-                LOG_INFO() << "OpenGL debug output not available at compile time (GL_VERSION_4_3 or GL_KHR_debug not defined).";
-                return false;
-        }
-
-        if (support) {
+    const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
+    if (!support.compiledIn) {
+            LOG_INFO() << "OpenGL debug output not available at compile time (GL_VERSION_4_3 or GL_KHR_debug not defined).";
+            return false;
+    }
+// this guard is needed in case the glDebugMessageCallback does not exist.
+#if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
+    if (support) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(debugMessageCallback, nullptr);
@@ -356,6 +357,7 @@ static bool initOpenGLDebugExtension() {
             << ", GL_EXTENSION \"GL_KHR_debug\"=" << glutil::debug::hasGLExtension("GL_KHR_debug");
         return false;
     }
+#endif
 }
 
 void initDebugCallbacks() {

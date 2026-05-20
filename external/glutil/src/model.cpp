@@ -4,6 +4,7 @@
 #include <glutil/path.hpp>
 #include <glutil/model.hpp>
 #include <glutil/logging.hpp>
+#include <glutil/debug.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -182,6 +183,75 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path, bool deduplica
                << ", indices=" << totalIndices << ", texturedMeshes=" << texturedMeshCount
                << ", unnamedMeshes=" << unnamedMeshCount << ", warnings=" << warnLineCount << ")";
 
+    return result;
+}
+
+static GLMeshData uploadMeshToGL(const MeshData& mesh, std::string baseName) {
+    GLMeshData gm;
+    gm.name = mesh.name;
+    gm.indexCount = static_cast<GLsizei>(mesh.indexCount());
+
+    glGenVertexArrays(1, &gm.vao);
+    glBindVertexArray(gm.vao);
+
+    glGenBuffers(1, &gm.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(mesh.vertexCount() * sizeof(VertexPNT)),
+                 mesh.vertexData(),
+                 GL_STATIC_DRAW);
+
+    glGenBuffers(1, &gm.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gm.ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(mesh.indexCount() * sizeof(unsigned int)),
+                 mesh.indexData(),
+                 GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(VertexPNT),
+                          (void*)offsetof(VertexPNT, x));
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(VertexPNT),
+                          (void*)offsetof(VertexPNT, nx));
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(VertexPNT),
+                          (void*)offsetof(VertexPNT, u));
+
+    glBindVertexArray(0);
+
+    glutil::debug::labelGLobject(GL_VERTEX_ARRAY, gm.vao, "VAO:" + baseName);
+    glutil::debug::labelGLobject(GL_BUFFER, gm.vbo, "VBO:" + baseName);
+    glutil::debug::labelGLobject(GL_BUFFER, gm.ebo, "EBO:" + baseName);
+
+    gm.ok = true;
+    return gm;
+}
+
+GLModelData ModelLoader::loadOBJtoGL(const std::filesystem::path& path, bool deduplicate) {
+    GLModelData result;
+
+    const ModelData cpuModel = loadOBJ(path, deduplicate);
+    result.warn = cpuModel.warn;
+    if (!cpuModel.ok) {
+        result.error = cpuModel.error;
+        return result;
+    }
+
+    result.meshes.reserve(cpuModel.meshes.size());
+    int i = 0;
+    for (const MeshData& mesh : cpuModel.meshes) {
+        result.meshes.push_back(uploadMeshToGL(mesh, path.filename().string() + "(" + 
+                (mesh.name.empty() ? ("mesh #" + std::to_string(i)) : mesh.name) + ")"));
+        i++;
+    }
+
+    result.ok = true;
     return result;
 }
 

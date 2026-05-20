@@ -80,6 +80,37 @@ GL_KHR_DebugSupport isGL_KHR_debugSupported() {
 #endif
 }
 
+void labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
+    const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
+    if (!support) return;
+
+#if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
+    glObjectLabel(identifier, name, static_cast<GLsizei>(label.size()), label.c_str());
+#endif
+}
+
+std::string getGLobjectLable(GLenum identifier, GLuint name) {
+    const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
+    if (!support) {
+        return {};
+    }
+
+#if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
+    GLsizei length = 0;
+    glGetObjectLabel(identifier, name, 0, &length, nullptr);
+    if (length <= 0) return {};
+
+    std::string label(static_cast<size_t>(length), '\0');
+    glGetObjectLabel(identifier, name, length, &length, label.data());
+    if (length < static_cast<GLsizei>(label.size())) {
+        label.resize(static_cast<size_t>(length));
+    }
+    return label;
+#else
+    return {};
+#endif
+}
+
 
 void checkGLError(const std::string& msg) {
     const GLenum err = getGlError();
