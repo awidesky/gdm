@@ -1,4 +1,4 @@
-#include <glutil/gl.hpp>
+﻿#include <glutil/gl.hpp>
 #include <glutil/glToString.hpp>
 
 #include <glutil/debug_snapshot.hpp>
@@ -67,9 +67,8 @@ snapshot& snapshot::bufferVAOInfo(bool v, bool includeData, bool includeDisabled
     return *this;
 }
 
-snapshot& snapshot::allVBOInfo(bool v, bool includeData) {
+snapshot& snapshot::allVBOInfo(bool v) {
     m_allVBOInfo = v;
-    m_bufferIncludeData = includeData;
     return *this;
 }
 
@@ -742,11 +741,64 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
         } else {
             out << "\n  EBO : (none)\n";
         }
-
         // 원래 바인딩 상태로 복구
         glBindVertexArray(savedVAO);
         glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
     }
+
+}
+void snapshot::captureAllVBOInfo(std::ostream& out) const {
+
+    printSeparator(out, "All VBO Info");
+    auto& tracker = GLStateTracker::instance();
+    GLint savedArrayBuffer = 0;
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &savedArrayBuffer);
+    bool bHasVBO = false;
+
+    const std::unordered_map<GLuint, BufferInfo> buffers = tracker.buffers.getAll();
+    for (const auto& buffer : buffers)
+    {
+        if (buffer.second.role != BufferRole::VBO)
+            continue;
+
+        bHasVBO = true;
+        GLuint id = buffer.first;
+        glBindBuffer(GL_ARRAY_BUFFER, id);
+
+        GLint size = 0, usage = 0;
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &usage);
+
+        out << "  VBO ID=" << id << "  Size=" << size << " bytes"
+            << "  Usage=" << usageToString(usage) << "  ";
+
+        if (m_bufferIncludeData) {
+            GLint mapped = 0;
+            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
+            if (!mapped) {
+                std::vector<unsigned char> data(size);
+                glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
+
+                if (buffer.second.associatedVaos.empty())
+                {
+                    out << "Not Bound to VAO";
+                }
+                else
+                {
+                    out << "Bound VAO ID : ";
+                    for (auto& vao : buffer.second.associatedVaos) 
+                    {
+                        out << vao << ' ';
+                    }
+                }
+                out << '\n';
+               
+            }
+        }
+    }
+    if (!bHasVBO)
+        out << "  (no VBOs tracked)\n";
+    glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
 }
 void snapshot::captureRendererState(std::ostream& out) const {
     printSeparator(out, "Renderer State");
@@ -833,8 +885,8 @@ void snapshot::capture(std::ostream& out) const {
         captureTextureInfo(out);
     if (m_bufferVAOInfo)
         captureBufferVAOInfo(out);
-    //if (m_allVBOInfo)
-    //    captureAllVBOInfo(out);
+    if (m_allVBOInfo)
+        captureAllVBOInfo(out);
     if (m_rendererState)
         captureRendererState(out);
     if (m_boundInfo)
