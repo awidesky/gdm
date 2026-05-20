@@ -33,7 +33,7 @@ public:
 
     /// @brief Set whether to output all VBO info regardless of VAO association
     /// @param includeData true to output raw buffer data (may be slow)
-    snapshot& allVBOInfo(bool v, bool includeData = false);
+    snapshot& allVBOInfo(bool v);
 
     /// @brief Set whether to output renderer state (viewport, depth test, blend, cull face, etc.)
     snapshot& rendererState(bool v);
