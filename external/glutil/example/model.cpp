@@ -59,7 +59,7 @@ int main()
 
     const std::filesystem::path objPath = glutil::EXAMPLE_ASSET_DIR / "model" / "cube.obj";
 
-    glutil::ModelData model = glutil::ModelLoader::loadOBJ(objPath);
+    glutil::ModelData model = glutil::ModelLoader::loadOBJ(objPath, true);
 
     if (!model.warn.empty())
         std::cerr << "Model load warning: " << model.warn << std::endl;
@@ -164,6 +164,8 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
+    auto snapshot = glutil::debug::snapshot(false).bufferVAOInfo(true, true);
+
     while (glfwGetKey(ctx, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
            glfwWindowShouldClose(ctx) == 0)
     {
@@ -195,6 +197,8 @@ int main()
             glBindVertexArray(gm.vao);
             glDrawElements(GL_TRIANGLES, gm.indexCount, GL_UNSIGNED_INT, nullptr);
         }
+
+        snapshot.capture();
 
         glfwSwapBuffers(ctx);
     }
@@ -240,6 +244,8 @@ GLFWwindow* initGLFWAndContext()
         glfwTerminate();
         return nullptr;
     }
+
+    glutil::debug::init();
 
     glfwSetInputMode(ret, GLFW_STICKY_KEYS, GL_TRUE);
     return ret;

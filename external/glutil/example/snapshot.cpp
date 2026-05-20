@@ -127,14 +127,15 @@ int main()
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
-  
+    glutil::debug::initDebugCallbacks(); 
 
     // Make texture 2 , vao, vbo
     GLuint tex1 = makeDummyTexture(0, 1, 1, 255, 0, 0);
     GLuint tex2 = makeDummyTexture(1, 2, 2, 0, 255, 0);
     GLuint vao, vbo,ebo;
+    GLuint vao2, vbo2, ebo2;
     makeTestVAO(vao, vbo,ebo);
-
+    makeTestVAO(vao2, vbo2, ebo2);
     GLuint shader = makeTestShader();
     glUseProgram(shader);
     glm::mat4 model = glm::mat4(1.0f);
@@ -144,7 +145,10 @@ int main()
     glUniform1i(glGetUniformLocation(shader, "tex"), 0);
 
     //glutil::debug::snapshot();
-    glutil::debug::snapshot{}.bufferVAOInfo(true,false,false,true).capture(std::cerr);
+    //glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true);
+    glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true).printPerCall(true);
+    ss.capture();
+    ss.capture();
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);

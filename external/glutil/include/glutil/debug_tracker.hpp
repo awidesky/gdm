@@ -20,6 +20,7 @@ struct BufferInfo {
     BufferRole role = BufferRole::Unknown;
     GLenum dataType = 0; 
     GLsizeiptr size = 0; 
+    std::unordered_set<GLuint> associatedVaos;
 };
 
 class BufferRegistry {
