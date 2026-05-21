@@ -774,7 +774,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
         glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &ebo);
         if (ebo != 0) {
             printSubSeparator(out, "EBO ID=" + std::to_string(ebo));
-            appendObjectLabel(out, GL_BUFFER, ebo);
+            appendObjectLabel(out, GL_BUFFER, ebo, "  ");
 
             GLint eboSize = 0, eboUsage = 0;
             glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &eboSize);
