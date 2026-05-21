@@ -5,7 +5,7 @@
 #include <iostream>
 #include "config.hpp"
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) { glViewport(0, 0, width, height); }
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) { (void)window; glViewport(0, 0, width, height); }
 
 GLuint makeDummyTexture(int unit, int w, int h, unsigned char r, unsigned char g, unsigned char b) {
     GLuint tex;

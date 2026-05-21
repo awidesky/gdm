@@ -98,8 +98,6 @@ int main()
     gpuMeshes.reserve(model.meshes.size());
 
     for (const glutil::MeshData& mesh : model.meshes) {
-
-
         GpuMesh gm;
         gm.indexCount = static_cast<GLsizei>(mesh.indexCount());
 
@@ -156,9 +154,7 @@ int main()
                 }
             }
         }
-
         gpuMeshes.push_back(gm);
-
     }
 
     glEnable(GL_DEPTH_TEST);
