@@ -28,8 +28,8 @@ public:
     /// @param includeData true to output raw vertex/index data (may be slow)
     /// @param includeUnbound true to also output VAOs not currently bound 
     /// @param includeDisabled true to also output attribs not enabled 
-    snapshot& bufferVAOInfo(bool v, bool includeData = false, bool includeDisabled = false,
-                            bool includeUnbound = false);
+    snapshot& bufferVAOInfo(bool v, bool includeData = false, bool includeUnbound = false,
+                            bool includeDisabled = false);
 
     /// @brief Set whether to output all VBO info regardless of VAO association
     /// @param includeData true to output raw buffer data (may be slow)

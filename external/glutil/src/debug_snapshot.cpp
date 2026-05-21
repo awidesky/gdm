@@ -72,7 +72,7 @@ snapshot& snapshot::textureInfo(bool v, bool includeSampler) {
     return *this;
 }
 
-snapshot& snapshot::bufferVAOInfo(bool v, bool includeData, bool includeDisabled, bool includeUnbound) {
+snapshot& snapshot::bufferVAOInfo(bool v, bool includeData, bool includeUnbound, bool includeDisabled) {
     m_bufferVAOInfo = v;
     m_bufferIncludeUnbound = includeUnbound;
     m_bufferIncludeDisabled = includeDisabled;
