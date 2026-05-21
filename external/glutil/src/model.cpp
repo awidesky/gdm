@@ -225,9 +225,9 @@ static GLMeshData uploadMeshToGL(const MeshData& mesh, std::string baseName) {
 
     glBindVertexArray(0);
 
-    glutil::debug::labelGLobject(GL_VERTEX_ARRAY, gm.vao, "VAO:" + baseName);
-    glutil::debug::labelGLobject(GL_BUFFER, gm.vbo, "VBO:" + baseName);
-    glutil::debug::labelGLobject(GL_BUFFER, gm.ebo, "EBO:" + baseName);
+    glutil::debug::labelGLobject(GL_VERTEX_ARRAY, gm.vao, "VAO" + baseName);
+    glutil::debug::labelGLobject(GL_BUFFER, gm.vbo, "VBO" + baseName);
+    glutil::debug::labelGLobject(GL_BUFFER, gm.ebo, "EBO" + baseName);
 
     gm.ok = true;
     return gm;
@@ -246,8 +246,9 @@ GLModelData ModelLoader::loadOBJtoGL(const std::filesystem::path& path, bool ded
     result.meshes.reserve(cpuModel.meshes.size());
     int i = 0;
     for (const MeshData& mesh : cpuModel.meshes) {
-        result.meshes.push_back(uploadMeshToGL(mesh, path.filename().string() + "(" + 
-                (mesh.name.empty() ? ("mesh #" + std::to_string(i)) : mesh.name) + ")"));
+        result.meshes.push_back(
+          uploadMeshToGL(mesh, ("(path=" +  path.filename().string() + ", object=" + 
+                (mesh.name.empty() ? ("mesh #" + std::to_string(i)) : mesh.name) + ")")));
         i++;
     }
 

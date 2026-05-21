@@ -23,15 +23,15 @@ static void printSubSeparator(std::ostream& out, const std::string& title) {
     out << "\n  ---------- " << title << " ----------\n";
 }
 
-static void appendObjectLabel(std::ostream& out, GLenum identifier, GLuint name) {
+static void appendObjectLabel(std::ostream& out, GLenum identifier, GLuint name, std::string prefix = ", ", std::string suffix = "") {
     const std::string label = glutil::debug::getGLobjectLable(identifier, name);
     if (!label.empty()) {
-        out << "  Label=" << label;
+        out << prefix << "Label : \"" << label << '\"' << suffix;
     }
 }
 /** Many query functions like glGet* returns the name in GLint, not GLuint*/
-static void appendObjectLabel(std::ostream& out, GLenum identifier, GLint name) {
-    appendObjectLabel(out, identifier, static_cast<GLuint>(name));
+static void appendObjectLabel(std::ostream& out, GLenum identifier, GLint name, std::string prefix = ", ", std::string suffix = "") {
+    appendObjectLabel(out, identifier, static_cast<GLuint>(name), prefix, suffix);
 }
 
 struct GLStateGuard {
@@ -734,9 +734,9 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                 glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &newUsage);
 
                 printSubSeparator(out, "VBO ID=" + std::to_string(vboId));
-                appendObjectLabel(out, GL_BUFFER, vboId);
-                out << "    Size  : " << curBufSize << " bytes\n";
-                out << "    Usage : " << usageToString(newUsage) << "\n";
+                appendObjectLabel(out, GL_BUFFER, vboId, "  ");
+                out << "    Size  : " << curBufSize << " bytes"
+                    << "    Usage : " << usageToString(newUsage) << "\n";
 
                 prevVboId = vboId;
             }
@@ -856,12 +856,15 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
         glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
         glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &usage);
 
-        out << "  VBO ID=" << id << "  Size=" << size << " bytes"
-            << "  Usage=" << usageToString(usage) << "  ";
+        out << "  VBO ID=" << id  << "  Size=" << size << " bytes"
+            << "  Usage=" << usageToString(usage);
+
+        appendObjectLabel(out, GL_BUFFER, id, "  ");
 
         GLint mapped = 0;
         glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
         if (!mapped) {
+            out << "\n    ";
             std::vector<unsigned char> data(size);
             glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
 
@@ -871,9 +874,9 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
                 out << "Bound VAO ID : ";
                 for (auto& vao : buffer.second.associatedVaos) {
                     out << vao << ' ';
+                    appendObjectLabel(out, GL_VERTEX_ARRAY, vao, ", ", "\n");
                 }
             }
-            out << '\n';
         }
     }
     if (!bHasVBO)
@@ -921,7 +924,7 @@ void snapshot::captureBoundInfo(std::ostream& out) const {
         GLint v = 0;
         glGetIntegerv(pname, &v);
         out << "  " << std::left << std::setw(35) << name << " : " << v;
-        if (identifier != 0 && v > 0) appendObjectLabel(out, identifier, v);
+        if (identifier != 0 && v > 0) appendObjectLabel(out, identifier, v, ", ");
         out << "\n";
     };
 

@@ -100,6 +100,7 @@ std::string getGLobjectLable(GLenum identifier, GLuint name) {
     glGetObjectLabel(identifier, name, 0, &length, nullptr);
     if (length <= 0) return {};
 
+    length++;
     std::string label(static_cast<size_t>(length), '\0');
     glGetObjectLabel(identifier, name, length, &length, label.data());
     if (length < static_cast<GLsizei>(label.size())) {

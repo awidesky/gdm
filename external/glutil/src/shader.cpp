@@ -263,8 +263,8 @@ GLProgram ShaderLoader::loadProgramToGL(const std::filesystem::path& vertexPath,
     frag.reset();
 
     glutil::debug::labelGLobject(GL_PROGRAM, program,
-                                 "Program (vertex shader:" + vertexPath.filename().string()
-                                 + ", fragment shader:" + fragmentPath.filename().string() + ")");
+                                 "Program(vs:" + vertexPath.filename().string()
+                                 + ", fs:" + fragmentPath.filename().string() + ")");
 
     out.id = program;
     out.ok = true;
