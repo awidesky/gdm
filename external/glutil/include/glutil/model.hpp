@@ -110,6 +110,8 @@ struct GLModelData {
     GLModelData& operator=(const GLModelData&) = delete;
     GLModelData(GLModelData&&) noexcept = default;
     GLModelData& operator=(GLModelData&&) noexcept = default;
+
+    void reset() noexcept { meshes.clear(); }
 };
 
 class ModelLoader {
