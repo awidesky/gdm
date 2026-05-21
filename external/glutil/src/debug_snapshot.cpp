@@ -3,6 +3,7 @@
 
 #include <glutil/debug_snapshot.hpp>
 #include <glutil/glutil.hpp>
+#include <glutil/debug.hpp>
 
 #include <iomanip>
 #include <map>
@@ -20,6 +21,17 @@ static void printSeparator(std::ostream& out, const char* title) {
 
 static void printSubSeparator(std::ostream& out, const std::string& title) {
     out << "\n  ---------- " << title << " ----------\n";
+}
+
+static void appendObjectLabel(std::ostream& out, GLenum identifier, GLuint name) {
+    const std::string label = glutil::debug::getGLobjectLable(identifier, name);
+    if (!label.empty()) {
+        out << "  Label=" << label;
+    }
+}
+/** Many query functions like glGet* returns the name in GLint, not GLuint*/
+static void appendObjectLabel(std::ostream& out, GLenum identifier, GLint name) {
+    appendObjectLabel(out, identifier, static_cast<GLuint>(name));
 }
 
 struct GLStateGuard {
@@ -114,7 +126,9 @@ void snapshot::captureFramebuffer(std::ostream& out) const {
             glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                                   GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL, &mipLevel);
             glGetTexLevelParameteriv(GL_TEXTURE_2D, mipLevel, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
-            out << "  Color Att0 : Texture ID=" << texId << "  mip=" << mipLevel
+            out << "  Color Att0 : Texture ID=" << texId;
+            appendObjectLabel(out, GL_TEXTURE, texId);
+            out << "  mip=" << mipLevel
                 << "  Format=" << glTextureFormatToString(internalFmt) << "\n";
 
         } else if (objType == GL_RENDERBUFFER) {
@@ -129,7 +143,9 @@ void snapshot::captureFramebuffer(std::ostream& out) const {
             glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &w);
             glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &h);
 
-            out << "  Color Att0 : Renderbuffer ID=" << rbId << "  " << w << "x" << h << "  Format=0x" << std::hex
+            out << "  Color Att0 : Renderbuffer ID=" << rbId;
+            appendObjectLabel(out, GL_RENDERBUFFER, rbId);
+            out << "  " << w << "x" << h << "  Format=0x" << std::hex
                 << internalFmt << std::dec << "  Samples=" << samples << (samples > 0 ? " (MSAA)" : "") << "\n";
         }
     }
@@ -149,7 +165,9 @@ void snapshot::captureShaderStatus(std::ostream& out) const {
     glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLen);
 
-    out << "  Program ID  : " << program << "\n";
+    out << "  Program ID  : " << program;
+    appendObjectLabel(out, GL_PROGRAM, program);
+    out << "\n";
     out << "  Link Status : " << (linkStatus == GL_TRUE ? "OK" : "FAIL") << "\n";
 
     if (infoLogLen > 0) {
@@ -173,7 +191,9 @@ void snapshot::captureShaderUniforms(std::ostream& out) const {
     glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
     glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
 
-    out << "  Program ID : " << program << "  Active uniforms : " << count << "\n\n";
+    out << "  Program ID : " << program;
+    appendObjectLabel(out, GL_PROGRAM, program);
+    out << "  Active uniforms : " << count << "\n\n";
 
     std::vector<char> name(maxLen);
 
@@ -593,8 +613,9 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
                 glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmt);
             }
 
-            out << "  Unit " << std::setw(2) << i << "  [" << centerName(t.name, 14) << "]"
+            out << "  Unit " << std::setw(2) << i << "  [" << centerName(t.name, std::strlen(t.name) + 2) << "]"
                 << "  ID=" << std::setw(4) << texId;
+            appendObjectLabel(out, t.target, texId);
 
             if (t.hasSize)
                 out << "  Size=" << w << "x" << h << "  Format=" << glTextureFormatToString(fmt);
@@ -675,7 +696,9 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
 
         glBindVertexArray(vaoId);
 
-        out << "\n  VAO ID : " << vaoId << (isBound ? "  [BOUND]" : "  [UNBOUND]") << "\n";
+        out << "\n  VAO ID : " << vaoId;
+        appendObjectLabel(out, GL_VERTEX_ARRAY, vaoId);
+        out << (isBound ? "  [BOUND]" : "  [UNBOUND]") << "\n";
 
         GLint maxAttribs = 0;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
@@ -711,6 +734,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                 glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &newUsage);
 
                 printSubSeparator(out, "VBO ID=" + std::to_string(vboId));
+                appendObjectLabel(out, GL_BUFFER, vboId);
                 out << "    Size  : " << curBufSize << " bytes\n";
                 out << "    Usage : " << usageToString(newUsage) << "\n";
 
@@ -750,6 +774,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
         glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &ebo);
         if (ebo != 0) {
             printSubSeparator(out, "EBO ID=" + std::to_string(ebo));
+            appendObjectLabel(out, GL_BUFFER, ebo);
 
             GLint eboSize = 0, eboUsage = 0;
             glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &eboSize);
@@ -892,24 +917,39 @@ void snapshot::captureRendererState(std::ostream& out) const {
 void snapshot::captureBoundInfo(std::ostream& out) const {
     printSeparator(out, "Bound Info");
 
-    auto printBinding = [&](const char* name, GLenum pname) {
+    auto printBinding = [&](const char* name, GLenum pname, GLenum identifier = 0) {
         GLint v = 0;
         glGetIntegerv(pname, &v);
-        out << "  " << std::left << std::setw(40) << name << " : " << v << "\n";
+        out << "  " << std::left << std::setw(35) << name << " : " << v;
+        if (identifier != 0 && v > 0) appendObjectLabel(out, identifier, v);
+        out << "\n";
     };
 
-    printBinding("GL_VERTEX_ARRAY_BINDING", GL_VERTEX_ARRAY_BINDING);
-    printBinding("GL_ARRAY_BUFFER_BINDING", GL_ARRAY_BUFFER_BINDING);
-    printBinding("GL_ELEMENT_ARRAY_BUFFER_BINDING", GL_ELEMENT_ARRAY_BUFFER_BINDING);
-    printBinding("GL_UNIFORM_BUFFER_BINDING", GL_UNIFORM_BUFFER_BINDING);
-    printBinding("GL_SHADER_STORAGE_BUFFER_BINDING", GL_SHADER_STORAGE_BUFFER_BINDING);
-    printBinding("GL_PIXEL_PACK_BUFFER_BINDING", GL_PIXEL_PACK_BUFFER_BINDING);
-    printBinding("GL_PIXEL_UNPACK_BUFFER_BINDING", GL_PIXEL_UNPACK_BUFFER_BINDING);
-    printBinding("GL_TEXTURE_BINDING_2D", GL_TEXTURE_BINDING_2D);
-    printBinding("GL_SAMPLER_BINDING", GL_SAMPLER_BINDING);
-    printBinding("GL_CURRENT_PROGRAM", GL_CURRENT_PROGRAM);
-    printBinding("GL_RENDERBUFFER_BINDING", GL_RENDERBUFFER_BINDING);
-    printBinding("GL_FRAMEBUFFER_BINDING", GL_FRAMEBUFFER_BINDING);
+    GLVersion version = getOpenGLVersion();
+#ifdef GL_VERTEX_ARRAY_BINDING
+    if (version >= "3.0") printBinding("GL_VERTEX_ARRAY_BINDING", GL_VERTEX_ARRAY_BINDING, GL_VERTEX_ARRAY);
+#endif
+    printBinding("GL_ARRAY_BUFFER_BINDING", GL_ARRAY_BUFFER_BINDING, GL_BUFFER);
+    printBinding("GL_ELEMENT_ARRAY_BUFFER_BINDING", GL_ELEMENT_ARRAY_BUFFER_BINDING, GL_BUFFER);
+#ifdef GL_UNIFORM_BUFFER_BINDING
+    if (version >= "3.1") printBinding("GL_UNIFORM_BUFFER_BINDING", GL_UNIFORM_BUFFER_BINDING, GL_BUFFER);
+#endif
+#ifdef GL_SHADER_STORAGE_BUFFER_BINDING
+    if (version >= "4.3") printBinding("GL_SHADER_STORAGE_BUFFER_BINDING", GL_SHADER_STORAGE_BUFFER_BINDING, GL_BUFFER);
+#endif
+    printBinding("GL_PIXEL_PACK_BUFFER_BINDING", GL_PIXEL_PACK_BUFFER_BINDING, GL_BUFFER);
+    printBinding("GL_PIXEL_UNPACK_BUFFER_BINDING", GL_PIXEL_UNPACK_BUFFER_BINDING, GL_BUFFER);
+    printBinding("GL_TEXTURE_BINDING_2D", GL_TEXTURE_BINDING_2D, GL_TEXTURE);
+#ifdef GL_SAMPLER_BINDING
+    if (version >= "3.3") printBinding("GL_SAMPLER_BINDING", GL_SAMPLER_BINDING, GL_SAMPLER);
+#endif
+    printBinding("GL_CURRENT_PROGRAM", GL_CURRENT_PROGRAM, GL_PROGRAM);
+#ifdef GL_RENDERBUFFER_BINDING
+    if (version >= "3.0") printBinding("GL_RENDERBUFFER_BINDING", GL_RENDERBUFFER_BINDING, GL_RENDERBUFFER);
+#endif
+#ifdef GL_FRAMEBUFFER_BINDING
+    if (version >= "3.0") printBinding("GL_FRAMEBUFFER_BINDING", GL_FRAMEBUFFER_BINDING, GL_FRAMEBUFFER);
+#endif
 }
 
 void snapshot::capture(std::ostream& out) const {

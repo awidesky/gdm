@@ -70,6 +70,42 @@ struct GLShader {
 
     GLuint id = 0;
     GLenum type = 0;
+
+    GLShader() = default;
+    ~GLShader() { reset(); }
+
+    GLShader(const GLShader&) = delete;
+    GLShader& operator=(const GLShader&) = delete;
+
+    GLShader(GLShader&& other) noexcept { moveFrom(std::move(other)); }
+    GLShader& operator=(GLShader&& other) noexcept {
+        if (this != &other) {
+            reset();
+            moveFrom(std::move(other));
+        }
+        return *this;
+    }
+
+    void reset() noexcept {
+        if (id != 0) {
+            glDeleteShader(id);
+            id = 0;
+        }
+        type = 0;
+    }
+
+private:
+    void moveFrom(GLShader&& other) noexcept {
+        ok = other.ok;
+        error = std::move(other.error);
+        id = other.id;
+        type = other.type;
+
+        other.ok = false;
+        other.error.clear();
+        other.id = 0;
+        other.type = 0;
+    }
 };
 
 struct GLProgram {
@@ -77,6 +113,39 @@ struct GLProgram {
     std::string error;
 
     GLuint id = 0;
+
+    GLProgram() = default;
+    ~GLProgram() { reset(); }
+
+    GLProgram(const GLProgram&) = delete;
+    GLProgram& operator=(const GLProgram&) = delete;
+
+    GLProgram(GLProgram&& other) noexcept { moveFrom(std::move(other)); }
+    GLProgram& operator=(GLProgram&& other) noexcept {
+        if (this != &other) {
+            reset();
+            moveFrom(std::move(other));
+        }
+        return *this;
+    }
+
+    void reset() noexcept {
+        if (id != 0) {
+            glDeleteProgram(id);
+            id = 0;
+        }
+    }
+
+private:
+    void moveFrom(GLProgram&& other) noexcept {
+        ok = other.ok;
+        error = std::move(other.error);
+        id = other.id;
+
+        other.ok = false;
+        other.error.clear();
+        other.id = 0;
+    }
 };
 
 class ShaderLoader {

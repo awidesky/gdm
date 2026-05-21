@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstddef>
 #include <filesystem>
+#include <utility>
 
 namespace glutil {
 
@@ -128,6 +129,48 @@ struct GLTexture2D {
     GLsizei w = 0;
     GLsizei h = 0;
     GLenum format = 0;
+
+    GLTexture2D() = default;
+    ~GLTexture2D() { reset(); }
+
+    GLTexture2D(const GLTexture2D&) = delete;
+    GLTexture2D& operator=(const GLTexture2D&) = delete;
+
+    GLTexture2D(GLTexture2D&& other) noexcept { moveFrom(std::move(other)); }
+    GLTexture2D& operator=(GLTexture2D&& other) noexcept {
+        if (this != &other) {
+            reset();
+            moveFrom(std::move(other));
+        }
+        return *this;
+    }
+
+    void reset() noexcept {
+        if (id != 0) {
+            glDeleteTextures(1, &id);
+            id = 0;
+        }
+        w = 0;
+        h = 0;
+        format = 0;
+    }
+
+private:
+    void moveFrom(GLTexture2D&& other) noexcept {
+        ok = other.ok;
+        error = std::move(other.error);
+        id = other.id;
+        w = other.w;
+        h = other.h;
+        format = other.format;
+
+        other.ok = false;
+        other.error.clear();
+        other.id = 0;
+        other.w = 0;
+        other.h = 0;
+        other.format = 0;
+    }
 };
 
 class ImageLoader {

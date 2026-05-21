@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <utility>
 
 namespace glutil {
 
@@ -43,6 +44,56 @@ struct GLMeshData {
     GLuint vbo = 0;
     GLuint ebo = 0;
     GLsizei indexCount = 0;
+
+    GLMeshData() = default;
+    ~GLMeshData() { reset(); }
+
+    GLMeshData(const GLMeshData&) = delete;
+    GLMeshData& operator=(const GLMeshData&) = delete;
+
+    GLMeshData(GLMeshData&& other) noexcept { moveFrom(std::move(other)); }
+    GLMeshData& operator=(GLMeshData&& other) noexcept {
+        if (this != &other) {
+            reset();
+            moveFrom(std::move(other));
+        }
+        return *this;
+    }
+
+    void reset() noexcept {
+        if (ebo != 0) {
+            glDeleteBuffers(1, &ebo);
+            ebo = 0;
+        }
+        if (vbo != 0) {
+            glDeleteBuffers(1, &vbo);
+            vbo = 0;
+        }
+        if (vao != 0) {
+            glDeleteVertexArrays(1, &vao);
+            vao = 0;
+        }
+        indexCount = 0;
+    }
+
+private:
+    void moveFrom(GLMeshData&& other) noexcept {
+        ok = other.ok;
+        error = std::move(other.error);
+        name = std::move(other.name);
+        vao = other.vao;
+        vbo = other.vbo;
+        ebo = other.ebo;
+        indexCount = other.indexCount;
+
+        other.ok = false;
+        other.error.clear();
+        other.name.clear();
+        other.vao = 0;
+        other.vbo = 0;
+        other.ebo = 0;
+        other.indexCount = 0;
+    }
 };
 
 struct GLModelData {
@@ -51,6 +102,14 @@ struct GLModelData {
     std::string warn;
 
     std::vector<GLMeshData> meshes;
+
+    GLModelData() = default;
+    ~GLModelData() = default;
+
+    GLModelData(const GLModelData&) = delete;
+    GLModelData& operator=(const GLModelData&) = delete;
+    GLModelData(GLModelData&&) noexcept = default;
+    GLModelData& operator=(GLModelData&&) noexcept = default;
 };
 
 class ModelLoader {

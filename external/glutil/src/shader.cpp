@@ -237,7 +237,7 @@ GLProgram ShaderLoader::loadProgramToGL(const std::filesystem::path& vertexPath,
     GLShader frag = loadShaderToGL(GL_FRAGMENT_SHADER, fragmentPath);
     if (!frag.ok) {
         out.error = frag.error;
-        glDeleteShader(vert.id);
+        vert.reset();
         return out;
     }
 
@@ -252,15 +252,15 @@ GLProgram ShaderLoader::loadProgramToGL(const std::filesystem::path& vertexPath,
             ? "Program link failed."
             : linkResult.message;
         glDeleteProgram(program);
-        glDeleteShader(vert.id);
-        glDeleteShader(frag.id);
+        vert.reset();
+        frag.reset();
         return out;
     }
 
     glDetachShader(program, vert.id);
     glDetachShader(program, frag.id);
-    glDeleteShader(vert.id);
-    glDeleteShader(frag.id);
+    vert.reset();
+    frag.reset();
 
     glutil::debug::labelGLobject(GL_PROGRAM, program,
                                  "Program (vertex shader:" + vertexPath.filename().string()
