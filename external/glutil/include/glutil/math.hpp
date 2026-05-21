@@ -21,6 +21,11 @@ struct VertexPC {
     float r, g, b;
 };
 
+struct VertexPT {
+    float x, y, z;
+    float u, v;
+};
+
 struct VertexPNT {
     float x, y, z;
     float nx, ny, nz;
@@ -43,6 +48,11 @@ inline constexpr bool operator==(const VertexPC& a, const VertexPC& b) noexcept 
            a.r == b.r && a.g == b.g && a.b == b.b;
 }
 
+inline constexpr bool operator==(const VertexPT& a, const VertexPT& b) noexcept {
+    return a.x == b.x && a.y == b.y && a.z == b.z &&
+           a.u == b.u && a.v == b.v;
+}
+
 inline constexpr bool operator==(const VertexPNCT& a, const VertexPNCT& b) noexcept {
     return a.x == b.x && a.y == b.y && a.z == b.z &&
            a.nx == b.nx && a.ny == b.ny && a.nz == b.nz &&
@@ -59,6 +69,7 @@ inline constexpr bool operator==(const VertexPNT& a, const VertexPNT& b) noexcep
 // TODO : add extranction in range, using iterator
 inline constexpr vec3 position(const VertexP& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
 inline constexpr vec3 position(const VertexPC& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
+inline constexpr vec3 position(const VertexPT& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
 inline constexpr vec3 position(const VertexPNT& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
 inline constexpr vec3 position(const VertexPNCT& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
 
@@ -68,6 +79,7 @@ inline constexpr vec3 color(const VertexPNCT& vertex) noexcept { return vec3{ver
 inline constexpr vec3 normal(const VertexPNT& vertex) noexcept { return vec3{vertex.nx, vertex.ny, vertex.nz}; }
 inline constexpr vec3 normal(const VertexPNCT& vertex) noexcept { return vec3{vertex.nx, vertex.ny, vertex.nz}; }
 
+inline constexpr vec2 uv(const VertexPT& vertex) noexcept { return vec2{vertex.u, vertex.v}; }
 inline constexpr vec2 uv(const VertexPNT& vertex) noexcept { return vec2{vertex.u, vertex.v}; }
 inline constexpr vec2 uv(const VertexPNCT& vertex) noexcept { return vec2{vertex.u, vertex.v}; }
 

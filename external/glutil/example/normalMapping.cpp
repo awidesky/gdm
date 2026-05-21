@@ -518,8 +518,7 @@ int main() {
 }
 
 // ===== Helper Functions =====
-
-GLFWwindow* initGLFWAndContext() {
+static GLFWwindow* initGLFWAndContext() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return nullptr;
@@ -551,7 +550,7 @@ GLFWwindow* initGLFWAndContext() {
     return ret;
 }
 
-GLuint compileShader(GLenum type, const char* source) {
+static GLuint compileShader(GLenum type, const char* source) {
     const GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
@@ -564,7 +563,7 @@ GLuint compileShader(GLenum type, const char* source) {
     return 0;
 }
 
-GLuint createProgram(const char* vertexSource, const char* fragmentSource) {
+static GLuint createProgram(const char* vertexSource, const char* fragmentSource) {
     const GLuint vs = compileShader(GL_VERTEX_SHADER, vertexSource);
     const GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
     if (vs == 0 || fs == 0) {
