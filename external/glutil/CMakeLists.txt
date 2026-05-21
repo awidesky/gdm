@@ -208,6 +208,23 @@ if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM
         FOLDER "GLUTIL_Examples"
   )
 
+  add_executable(glutil_debugLabelExample)
+  target_sources(glutil_debugLabelExample
+        PRIVATE example/debugLabel.cpp
+  )
+  target_include_directories(glutil_debugLabelExample
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  target_link_libraries(glutil_debugLabelExample PRIVATE
+        glutil
+        gdm::gdm
+  )
+  target_compile_features(glutil_debugLabelExample PRIVATE cxx_std_17)
+  target_compile_options(glutil_debugLabelExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  set_target_properties(glutil_debugLabelExample PROPERTIES
+        FOLDER "GLUTIL_Examples"
+  )
+
   add_executable(glutil_stacktraceExample)
   target_sources(glutil_stacktraceExample
         PRIVATE example/stacktrace.cpp

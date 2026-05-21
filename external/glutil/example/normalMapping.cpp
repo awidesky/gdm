@@ -32,7 +32,6 @@ static GLuint compileShader(GLenum type, const char* source);
 static GLuint createProgram(const char* vertexSource, const char* fragmentSource);
 static GLuint uploadStandard2D(const glutil::TextureImage& image);
 static GLuint uploadDDS2D(const glutil::TextureDDS& dds);
-static glm::mat4 makeMVP(float t, float aspect);
 // Input handling (portable via GLFW callback)
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
@@ -41,72 +40,6 @@ struct InputState {
     bool space=false, shift=false;
     bool left=false, right=false, up=false, down=false;
 } g_input;
-
-// Cube mesh vertex data - grouped by face, whole image per face
-const glutil::VertexPNT kVertices[] = {
-    // Front (+Z)
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    // Back (-Z)
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    // Left (-X)
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    // Right (+X)
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    // Top (+Y)
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    // Bottom (-Y)
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
-};
-
-// Compute vertex normals for a cube mesh
-std::vector<glm::vec3> computeNormals(const glutil::VertexPNT* vertices, size_t vertexCount) {
-    std::vector<glm::vec3> normals(vertexCount, glm::vec3(0.0f));
-    // 36 vertices = 12 triangles
-    for (size_t i = 0; i < vertexCount; i += 3) {
-        glm::vec3 p0 = glutil::position(vertices[i + 0]);
-        glm::vec3 p1 = glutil::position(vertices[i + 1]);
-        glm::vec3 p2 = glutil::position(vertices[i + 2]);
-        
-        glm::vec3 edge1 = p1 - p0;
-        glm::vec3 edge2 = p2 - p0;
-        glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
-        
-        normals[i + 0] = faceNormal;
-        normals[i + 1] = faceNormal;
-        normals[i + 2] = faceNormal;
-    }
-    return normals;
-}
 
 // Compute tangent and bitangent vectors from position and UV data using Lengyel's method
 std::vector<glm::vec3> computeTangents(
@@ -151,110 +84,31 @@ std::vector<glm::vec3> computeBitangents(
     return bitangents;
 }
 
-// Vertex shader: transforms to world space, computes TBN basis in camera space
-const char* kVS = R"(
-#version 330 core
-
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec2 aUV;
-layout(location = 2) in vec3 aNormal;
-layout(location = 3) in vec3 aTangent;
-layout(location = 4) in vec3 aBitangent;
-
-uniform mat4 uMVP;
-uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat3 uNormalMat;  // inverse(transpose(mat3(uModel)))
-uniform vec3 uLightPos;
-
-out vec2 vUV;
-out vec3 vPos_world;
-out vec3 vLightDir_tangent;
-out vec3 vEyeDir_tangent;
-
-void main() {
-    gl_Position = uMVP * vec4(aPos, 1.0);
-    vUV = aUV;
-    
-    // Position in world space
-    vec3 pos_world = (uModel * vec4(aPos, 1.0)).xyz;
-    vPos_world = pos_world;
-    
-    // Transform TBN to world space
-    vec3 normal_world = normalize(uNormalMat * aNormal);
-    vec3 tangent_world = normalize(uNormalMat * aTangent);
-    vec3 bitangent_world = normalize(uNormalMat * aBitangent);
-    
-    // Build TBN matrix (transforms from world to tangent space)
-    mat3 TBN = transpose(mat3(tangent_world, bitangent_world, normal_world));
-    
-    // Light direction in tangent space
-    vec3 lightDir = normalize(uLightPos - pos_world);
-    vLightDir_tangent = TBN * lightDir;
-    
-    // Eye direction in tangent space (camera is at origin in view space)
-    vec3 eyeDir = normalize(-pos_world);  // Approximate: camera far away
-    vEyeDir_tangent = TBN * eyeDir;
-}
-)";
-
-// Fragment shader: samples normal map, applies Phong lighting with specular map
-const char* kFS = R"(
-#version 330 core
-
-in vec2 vUV;
-in vec3 vPos_world;
-in vec3 vLightDir_tangent;
-in vec3 vEyeDir_tangent;
-
-uniform sampler2D uDiffuseTex;
-uniform sampler2D uNormalTex;
-uniform sampler2D uSpecularTex;
-uniform vec3 uLightPos;
-uniform vec3 uViewPos;
-uniform vec3 uLightColor;
-uniform float uLightPower;
-
-out vec4 FragColor;
-
-void main() {
-    // Sample textures
-    vec3 diffuseColor = texture(uDiffuseTex, vUV).rgb;
-    vec3 normalMap = texture(uNormalTex, vUV).rgb;
-    vec3 specularColor = texture(uSpecularTex, vUV).rgb;
-    
-    // Decode normal from map (convert from [0,1] to [-1,1])
-    vec3 normal_tangent = normalize(normalMap * 2.0 - 1.0);
-    
-    // Normalize interpolated directions
-    vec3 lightDir = normalize(vLightDir_tangent);
-    vec3 eyeDir = normalize(vEyeDir_tangent);
-    
-    // Diffuse component (Lambertian)
-    float diffuse = max(dot(normal_tangent, lightDir), 0.0);
-    
-    // Specular component (Blinn-Phong)
-    vec3 halfDir = normalize(lightDir + eyeDir);
-    float specular = pow(max(dot(normal_tangent, halfDir), 0.0), 32.0);
-    
-    // Distance attenuation (approximate)
-    float dist = length(uLightPos - vPos_world);
-    float attenuation = 1.0 / (1.0 + 0.1 * dist + 0.02 * dist * dist);
-    
-    // Combine lighting with light color and power
-    vec3 ambient = 0.1 * diffuseColor * uLightColor;
-    vec3 diffuseLight = diffuseColor * diffuse * attenuation * uLightPower * uLightColor;
-    vec3 specularLight = specularColor * specular * attenuation * uLightPower * uLightColor;
-    
-    FragColor = vec4(ambient + diffuseLight + specularLight, 1.0);
-}
-)";
-
 int main() {
     GLFWwindow* window = initGLFWAndContext();
     if (!window) return 1;
     // register portable input callback
     glfwSetKeyCallback(window, keyCallback);
+
+    const fs::path shaderDir = glutil::EXAMPLE_ASSET_DIR / "shader";
+    const fs::path vsPath = shaderDir / "normalMapping.vert";
+    const fs::path fsPath = shaderDir / "normalMapping.frag";
+
+    const fs::path modelPath = glutil::EXAMPLE_ASSET_DIR / "model" / "cube.obj";
+    const glutil::ModelData model = glutil::ModelLoader::loadOBJ(modelPath, false);
+    if (!model.ok || model.meshes.empty()) {
+        std::cerr << "Model load failed: " << modelPath << "\n  reason: " << model.error << std::endl;
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return 1;
+    }
+    const glutil::MeshData& mesh = model.meshes[0];
+    if (mesh.vertices.empty()) {
+        std::cerr << "Model has no vertices: " << modelPath << std::endl;
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return 1;
+    }
 
     const fs::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
     const fs::path diffusePath = textureDir / "diffuse.DDS";
@@ -326,8 +180,12 @@ int main() {
         return 1;
     }
 
-    // Create shader program
-    const GLuint program = createProgram(kVS, kFS);
+    GLuint program = 0;
+    glutil::ShaderLoadResult vsSrc = glutil::ShaderLoader::loadFile(vsPath);
+    glutil::ShaderLoadResult fsSrc = glutil::ShaderLoader::loadFile(fsPath);
+    if (vsSrc.ok && fsSrc.ok) {
+        program = createProgram(*vsSrc.string(), *fsSrc.string());
+    }
     if (program == 0) {
         glDeleteTextures(1, &diffuseTex);
         glDeleteTextures(1, &normalTex);
@@ -337,16 +195,15 @@ int main() {
         return 1;
     }
 
-    // Compute normals, tangents, bitangents
-    const size_t vertexCount = sizeof(kVertices) / sizeof(kVertices[0]);
-    std::vector<glm::vec3> normals = computeNormals(kVertices, vertexCount);
-    std::vector<glm::vec3> tangents = computeTangents(kVertices, normals);
+    const size_t vertexCount = mesh.vertexCount();
+    std::vector<glm::vec3> normals(vertexCount);
+    for (size_t i = 0; i < vertexCount; ++i) normals[i] = glutil::normal(mesh.vertices[i]);
+    std::vector<glm::vec3> tangents = computeTangents(mesh.vertices.data(), normals);
     std::vector<glm::vec3> bitangents = computeBitangents(normals, tangents);
 
     // Create VAO and VBOs
     GLuint vao = 0;
     GLuint vboVertex = 0;
-    GLuint vboNormal = 0;
     GLuint vboTangent = 0;
     GLuint vboBitangent = 0;
 
@@ -356,20 +213,22 @@ int main() {
     // Position
     glGenBuffers(1, &vboVertex);
     glBindBuffer(GL_ARRAY_BUFFER, vboVertex);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(kVertices), kVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(vertexCount * sizeof(glutil::VertexPNT)),
+                 mesh.vertexData(),
+                 GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
                           reinterpret_cast<void*>(offsetof(glutil::VertexPNT, x)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
-                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, u)));
-
     // Normal
-    glGenBuffers(1, &vboNormal);
-    glBindBuffer(GL_ARRAY_BUFFER, vboNormal);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(normals.size() * sizeof(glm::vec3)), normals.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, nx)));
+
+    // UV
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, u)));
 
     // Tangent
     glGenBuffers(1, &vboTangent);
@@ -497,7 +356,7 @@ int main() {
         if (specularTexLoc >= 0) glUniform1i(specularTexLoc, 2);
 
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexCount));
 
         glfwSwapBuffers(window);
     }
@@ -505,7 +364,6 @@ int main() {
     // Cleanup
     glDeleteBuffers(1, &vboBitangent);
     glDeleteBuffers(1, &vboTangent);
-    glDeleteBuffers(1, &vboNormal);
     glDeleteBuffers(1, &vboVertex);
     glDeleteVertexArrays(1, &vao);
     glDeleteProgram(program);

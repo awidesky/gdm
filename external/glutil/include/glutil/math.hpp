@@ -56,6 +56,7 @@ inline constexpr bool operator==(const VertexPNT& a, const VertexPNT& b) noexcep
            a.u == b.u && a.v == b.v;
 }
 
+// TODO : add extranction in range, using iterator
 inline constexpr vec3 position(const VertexP& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
 inline constexpr vec3 position(const VertexPC& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
 inline constexpr vec3 position(const VertexPNT& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
