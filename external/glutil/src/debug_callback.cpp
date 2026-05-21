@@ -181,7 +181,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             }
             if (auto* info = tracker.buffers.get(id))
                 info->role = (target == GL_ARRAY_BUFFER) ? BufferRole::VBO : BufferRole::EBO;
-            
+
             break;
         }
 
@@ -240,6 +240,35 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
         default: break;
     }
 }
+static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_list args) {
+    GLFunctions func = classifyGLFunctions(name);
+    // debug label auto generate in glCreate/Gen
+    switch (func) {
+        case GLFunctions::CreateShader: {
+            GLuint id = *static_cast<GLuint*>(ret);
+            labelGLobject(GL_SHADER, id, getCalledGLfunctionName());
+            break;
+        }
+        case GLFunctions::CreateProgram: {
+            GLuint id = *static_cast<GLuint*>(ret);
+            labelGLobject(GL_PROGRAM, id, getCalledGLfunctionName());
+            break;
+        }
+        case GLFunctions::GenVertexArrays:
+        case GLFunctions::GenBuffers:
+        case GLFunctions::GenTextures: {
+            GLsizei count = va_arg(args, int);
+            GLuint* ids = va_arg(args, GLuint*);
+            GLenum identifier = (func == GLFunctions::GenVertexArrays) ? GL_VERTEX_ARRAY
+                                : (func == GLFunctions::GenBuffers)    ? GL_BUFFER
+                                                                        : GL_TEXTURE;
+            for (GLsizei i = 0; i < count; i++)
+                labelGLobject(identifier, ids[i], getCalledGLfunctionName());
+            break;
+        }
+        default: break;
+    }    
+}
 #pragma warning(pop)
 
 static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
@@ -250,6 +279,10 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
     va_list args;
     va_start(args, len_args);
     trackGLFunctions(ret, name, len_args, args);
+    va_list args_copy;
+    va_copy(args_copy, args);
+    autoLabelGLObjects(ret, name, len_args, args_copy);
+    va_end(args_copy);
     va_end(args);
 
 

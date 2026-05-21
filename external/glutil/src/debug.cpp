@@ -82,7 +82,8 @@ GL_KHR_DebugSupport isGL_KHR_debugSupported() {
 
 void labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
-    if (!support) return;
+    if (!support || identifier == 0)
+        return;
 
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
     glObjectLabel(identifier, name, static_cast<GLsizei>(label.size()), label.c_str());
