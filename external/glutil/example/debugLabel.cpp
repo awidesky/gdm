@@ -55,6 +55,7 @@ static const glutil::VertexPT kTexturedCubeVertices[] = {
 int main() {
     GLFWwindow* window = initGLFWAndContext();
     if (!window) return 1;
+    glutil::debug::printRuntimeInfo(true);
 
     const fs::path shaderDir = glutil::EXAMPLE_ASSET_DIR / "shader";
     const fs::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
@@ -211,8 +212,8 @@ static GLFWwindow* initGLFWAndContext() {
         return nullptr;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #if defined(__APPLE__)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -221,6 +222,11 @@ static GLFWwindow* initGLFWAndContext() {
     GLFWwindow* window = glfwCreateWindow(1280, 720, "glutil_debugLabelExample", nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window." << std::endl;
+        const char* description = nullptr;
+        int code = glfwGetError(&description);
+        if (code != GLFW_NO_ERROR) {
+            std::cout << "GLFW Error: " << description << "\n";
+        }
         glfwTerminate();
         return nullptr;
     }
