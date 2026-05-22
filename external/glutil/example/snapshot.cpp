@@ -3,6 +3,7 @@
 #include <glutil/glutil.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <filesystem>
 #include "config.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) { glViewport(0, 0, width, height); }
@@ -146,8 +147,9 @@ int main()
 
     //glutil::debug::snapshot();
     //glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true);
+    std::filesystem::path p1("C:/Temp/");
     glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true).printPerCall(true);
-    ss.capture();
+    ss.capture(p1,true);
     ss.capture();
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
