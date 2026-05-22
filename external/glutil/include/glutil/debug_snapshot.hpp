@@ -4,7 +4,7 @@
 #include <string>
 #include <iostream>
 #include <set>
-
+#include <fstream>
 
 namespace glutil::debug {
 
@@ -50,7 +50,7 @@ public:
     snapshot& printPerCall(bool v);
 
     void capture(std::ostream& out = std::cerr) const;
-
+    void capture(const std::filesystem::path& dir, bool dumpVertexData = false) const;
 private:
     void captureFramebuffer(std::ostream& out) const;
     void captureShaderStatus(std::ostream& out) const;
@@ -60,13 +60,15 @@ private:
     void captureAllVBOInfo(std::ostream& out) const;
     void captureRendererState(std::ostream& out) const;
     void captureBoundInfo(std::ostream& out) const;
+    void saveBufferInfoToFile(const std::filesystem::path& dir) const;
+
 
     bool m_shaderStatus;
     bool m_shaderUniform;
     bool m_textureInfo;
     bool m_textureIncludeSampler;
     bool m_bufferVAOInfo;
-    bool m_bufferIncludeUnbound;
+    mutable bool m_bufferIncludeUnbound;
     bool m_bufferIncludeDisabled;
     bool m_allVBOInfo;
     bool m_bufferIncludeData; // bufferVAOInfo, allVBOInfo 공유
