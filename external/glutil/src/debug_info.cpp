@@ -1,4 +1,5 @@
 #include <glutil/debug_info.hpp>
+#include <glutil/logging.hpp>
 #include <glutil/gl.hpp>
 
 #ifdef GDM_HAS_GLM
@@ -205,4 +206,55 @@ GLVersion getOpenGLVersion() {
     else return parseGLVersion(versionStr);
 }
 
+GLVersion availableGLversion() {
+    constexpr GLVersion versions[] = {{4, 6}, {4, 5}, {4, 4}, {4, 3}, {4, 2}, {4, 1}, {4, 0}, {3, 3}, {3, 2},
+                                      {3, 1}, {3, 0}, {2, 1}, {2, 0}, {1, 5}, {1, 4}, {1, 3}, {1, 2}, {1, 1}};
+
+    for (auto version : versions) {
+#if defined(GDM_HAS_GLFW)
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
+
+        // Core profile is supported since OpenGL 3.2
+        if (version >= "3.2")
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+        GLFWwindow* window = glfwCreateWindow(1, 1, "", nullptr, nullptr);
+        if (window) {
+            glfwDestroyWindow(window);
+            glfwDefaultWindowHints();
+            return version;
+        } else {
+            const char* description = nullptr;
+            int code = glfwGetError(&description);
+            if(code != GLFW_VERSION_UNAVAILABLE)
+                std::cerr << "[glutil::availableGLversion] GLFW Error(" << code << "): " << description << std::endl;
+        }
+#elif defined(GDM_HAS_FREEGLUT)
+        glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+        glutInitContextVersion(version.major, version.minor);
+        // Core profile is supported since OpenGL 3.2
+        glutInitContextProfile((version >= "3.2") ? GLUT_CORE_PROFILE) : GLUT_COMPATIBILITY_PROFILE);
+
+#ifdef __APPLE__
+        glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
+#else
+        glutInitContextFlags(0);
+#endif
+        int window = glutCreateWindow("");
+        if (window > 0) {
+            glutDestroyWindow(window);
+            return version;
+        }
+#endif
+    }
+
+    LOG_ERROR() << "No available OpenGL version is found from glfw!";
+    return {};
+}
 } // glutil::debug

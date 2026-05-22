@@ -211,9 +211,9 @@ static GLFWwindow* initGLFWAndContext() {
         std::cerr << "Failed to initialize GLFW." << std::endl;
         return nullptr;
     }
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    auto version = glutil::debug::availableGLversion();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #if defined(__APPLE__)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -221,12 +221,10 @@ static GLFWwindow* initGLFWAndContext() {
 
     GLFWwindow* window = glfwCreateWindow(1280, 720, "glutil_debugLabelExample", nullptr, nullptr);
     if (!window) {
-        std::cerr << "Failed to create GLFW window." << std::endl;
+        std::cerr << "Failed to create GLFW window.\n";
         const char* description = nullptr;
         int code = glfwGetError(&description);
-        if (code != GLFW_NO_ERROR) {
-            std::cout << "GLFW Error: " << description << "\n";
-        }
+        std::cerr << "GLFW Error(" << code << "): " << description << std::endl;
         glfwTerminate();
         return nullptr;
     }

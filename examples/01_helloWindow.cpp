@@ -168,14 +168,23 @@ bool initializeLoader() {
 } // namespace
 
 int main(int argc, char** argv) {
+    int context_version_major = 3;
+    int context_version_minor = 3;
+
 #ifdef GDM_HAS_GLFW
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return 1;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+#ifdef GDM_HAS_GLUTIL
+    auto version = glutil::debug::availableGLversion();
+    context_version_major = version.major;
+    context_version_minor = version.minor;
+#endif
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, context_version_major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, context_version_minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -183,7 +192,10 @@ int main(int argc, char** argv) {
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "GDM Example 1 - Hello Window", nullptr, nullptr);
     if (window == nullptr) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
+        std::cerr << "Failed to create GLFW window.\n";
+        const char* description = nullptr;
+        int code = glfwGetError(&description);
+        std::cerr << "GLFW Error(" << code << "): " << description << std::endl;
         glfwTerminate();
         return 1;
     }
@@ -192,9 +204,14 @@ int main(int argc, char** argv) {
 
 #elif defined(GDM_HAS_FREEGLUT)
     glutInit(&argc, argv);
+#ifdef GDM_HAS_GLUTIL
+    auto version = glutil::debug::availableGLversion();
+    context_version_major = version.major;
+    context_version_minor = version.minor;
+#endif
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
-    glutInitContextVersion(3, 3);
+    glutInitContextVersion(context_version_major, context_version_minor);
 #ifdef GLUT_CORE_PROFILE
     glutInitContextProfile(GLUT_CORE_PROFILE);
 #endif
