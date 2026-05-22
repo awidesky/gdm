@@ -814,6 +814,7 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
 
     printSeparator(out, "All VBO Info");
     auto& tracker = GLStateTracker::instance();
+
     GLint savedArrayBuffer = 0;
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &savedArrayBuffer);
     bool bHasVBO = false;
@@ -912,6 +913,8 @@ void snapshot::captureBoundInfo(std::ostream& out) const {
     printBinding("GL_FRAMEBUFFER_BINDING", GL_FRAMEBUFFER_BINDING);
 }
 
+
+
 void snapshot::capture(std::ostream& out) const {
 
     if (m_flag && m_Once)
@@ -953,6 +956,91 @@ void snapshot::capture(std::ostream& out) const {
 
     insideSnapshot = false;
 }
+
+void snapshot::capture(const std::filesystem::path& dir, bool dumpVertexData) const 
+{
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream filename;
+    filename << std::put_time(std::localtime(&time), "%Y%m%d_%H%M%S") << ".txt";
+
+    std::ofstream f(dir / filename.str());
+    this->capture(f);
+
+    if (dumpVertexData)
+    {
+        static thread_local bool insideSnapshot = false;
+        if (insideSnapshot)
+            return;
+        insideSnapshot = true;
+
+        GLStateGuard guard;
+        saveBufferInfoToFile(dir);
+    }
+}
+
+void snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
+    std::filesystem::create_directories(dir);
+    auto& tracker = GLStateTracker::instance();
+
+    GLint savedVAO = 0, savedArrayBuffer = 0;
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &savedArrayBuffer);
+
+    char label[1024];
+    GLsizei labelLen = 0;
+
+    // ── VBO 파일 저장 ──
+    for (auto& [id, info] : tracker.buffers.getAll()) {
+        if (info.role != BufferRole::VBO)
+            continue;
+
+        glBindBuffer(GL_ARRAY_BUFFER, id);
+
+        GLint size = 0, mapped = 0;
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
+        if (mapped)
+            continue;
+
+        glGetObjectLabel(GL_BUFFER, id, sizeof(label), &labelLen, label);
+
+        std::ofstream f(dir / (std::to_string(id) + ".vbo"));
+        f << "VBO_ID=" << id << "\n";
+        f << "LABEL=" << (labelLen > 0 ? label : "") << "\n";
+
+        std::vector<unsigned char> data(size);
+        glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
+
+        for (int i = 0; i < size; i++) {
+            f << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
+            if (i < size - 1)
+                f << " ";
+        }
+        f << std::dec << "\n";
+    }
+
+    // ── VAO 파일 저장 ──
+    const auto& allObjects = tracker.objects.getAll();
+    auto vaoIt = allObjects.find("VAO");
+    if (vaoIt != allObjects.end()) {
+        for (GLuint vaoId : vaoIt->second) {
+            glBindVertexArray(vaoId);
+
+           bool savedUnbound = m_bufferIncludeUnbound;
+           this->m_bufferIncludeUnbound = false;
+
+            std::ofstream f(dir / (std::to_string(vaoId) + ".vao"));
+            captureBufferVAOInfo(f);
+
+            this->m_bufferIncludeUnbound = savedUnbound;
+        }
+    }
+
+    glBindVertexArray(savedVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
+}
+
 } // namespace glutil::debug
 
 //    // TODO : 아래에 대한 TODO를 수행해야 함. 한번에 모든 걸 하려고 하지 말고, 하나하나 건당 정확하게 해결 후 각각을
