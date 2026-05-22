@@ -72,7 +72,7 @@ if (GDM_GL_LOADER STREQUAL "glad")
         "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
     )
     set(_GDM_GLAD_EXT_DEFAULT_GE43
-        "GL_EXT_texture_compression_s3tc"
+        "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
     )
 
     if (GDM_GLAD_API VERSION_LESS "4.3")
