@@ -554,10 +554,8 @@ void snapshot::captureShaderUniforms(std::ostream& out) const {
 
 void snapshot::captureTextureInfo(std::ostream& out) const {
     printSeparator(out, "Texture Info");
-
     GLint savedActiveTexture = 0;
     glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActiveTexture);
-
     GLint maxUnits = 0;
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxUnits);
 
@@ -595,7 +593,21 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
         return std::string(left, ' ') + s + std::string(right, ' ');
     };
 
+    auto printSamplerInfo = [&](GLenum target) {
+        GLint minFilter = 0, magFilter = 0, wrapS = 0, wrapT = 0, compareFunc = 0;
+        glGetTexParameteriv(target, GL_TEXTURE_MIN_FILTER, &minFilter);
+        glGetTexParameteriv(target, GL_TEXTURE_MAG_FILTER, &magFilter);
+        glGetTexParameteriv(target, GL_TEXTURE_WRAP_S, &wrapS);
+        glGetTexParameteriv(target, GL_TEXTURE_WRAP_T, &wrapT);
+        glGetTexParameteriv(target, GL_TEXTURE_COMPARE_FUNC, &compareFunc);
+        out << indent << "MIN_FILTER=" << glTextureFormatToString(minFilter)
+            << "  MAG_FILTER=" << glTextureFormatToString(magFilter) << "\n"
+            << indent << "WRAP_S=" << glTextureFormatToString(wrapS) << "  WRAP_T=" << glTextureFormatToString(wrapT)
+            << "  COMPARE_FUNC=" << glTextureFormatToString(compareFunc) << "\n";
+    };
+
     bool anyBound = false;
+
     for (int i = 0; i < maxUnits; i++) {
         glActiveTexture(GL_TEXTURE0 + i);
         for (auto& t : types) {
@@ -616,30 +628,70 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
             out << "  Unit " << std::setw(2) << i << "  [" << centerName(t.name, std::strlen(t.name) + 2) << "]"
                 << "  ID=" << std::setw(4) << texId;
             appendObjectLabel(out, t.target, texId);
-
             if (t.hasSize)
                 out << "  Size=" << w << "x" << h << "  Format=" << glTextureFormatToString(fmt);
-
             out << "\n";
 
-            if (m_textureIncludeSampler && t.hasSampler) {
-                GLint minFilter = 0, magFilter = 0, wrapS = 0, wrapT = 0, compareFunc = 0;
-                glGetTexParameteriv(t.target, GL_TEXTURE_MIN_FILTER, &minFilter);
-                glGetTexParameteriv(t.target, GL_TEXTURE_MAG_FILTER, &magFilter);
-                glGetTexParameteriv(t.target, GL_TEXTURE_WRAP_S, &wrapS);
-                glGetTexParameteriv(t.target, GL_TEXTURE_WRAP_T, &wrapT);
-                glGetTexParameteriv(t.target, GL_TEXTURE_COMPARE_FUNC, &compareFunc);
-
-                out << indent << "MIN_FILTER=" << glTextureFormatToString(minFilter)
-                    << "  MAG_FILTER=" << glTextureFormatToString(magFilter) << "\n"
-                    << indent << "WRAP_S=" << glTextureFormatToString(wrapS)
-                    << "  WRAP_T=" << glTextureFormatToString(wrapT)
-                    << "  COMPARE_FUNC=" << glTextureFormatToString(compareFunc) << "\n";
-            }
+            if (m_textureIncludeSampler && t.hasSampler)
+                printSamplerInfo(t.target);
         }
     }
+
+    auto& tracker = GLStateTracker::instance();
+    const auto& allObjects = tracker.objects.getAll();
+    auto texIt = allObjects.find("Texture");
+
+    if (texIt != allObjects.end()) {
+        for (GLuint texId : texIt->second) {
+            bool isBound = false;
+            for (int i = 0; i < maxUnits && !isBound; i++) {
+                glActiveTexture(GL_TEXTURE0 + i);
+                for (auto& t : types) {
+                    GLint bound = 0;
+                    glGetIntegerv(t.binding, &bound);
+                    if (static_cast<GLuint>(bound) == texId) {
+                        isBound = true;
+                        break;
+                    }
+                }
+            }
+            if (isBound)
+                continue;
+
+            GLenum foundTarget = 0;
+            const char* foundName = nullptr;
+            bool hasSampler = false;
+            GLint w = 0, h = 0, fmt = 0;
+
+            for (auto& t : types) {
+                glBindTexture(t.target, texId);
+                glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_WIDTH, &w);
+                if (w > 0) {
+                    foundTarget = t.target;
+                    foundName = t.name;
+                    hasSampler = t.hasSampler;
+                    glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_HEIGHT, &h);
+                    glGetTexLevelParameteriv(t.target, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmt);
+                    break;
+                }
+                glBindTexture(t.target, 0);
+            }
+            if (foundTarget == 0)
+                continue;
+
+            anyBound = true;
+            out << "  [UNBOUND]  [" << centerName(foundName, std::strlen(foundName) + 2) << "]"
+                << "  ID=" << std::setw(4) << texId;
+            appendObjectLabel(out, GL_TEXTURE, texId);
+            out << "  Size=" << w << "x" << h << "  Format=" << glTextureFormatToString(fmt) << "\n";
+
+            if (m_textureIncludeSampler && hasSampler)
+                printSamplerInfo(foundTarget);
+        }
+    }
+
     if (!anyBound)
-        out << "  (no textures bound)\n";
+        out << "  (no textures tracked)\n";
 
     glActiveTexture(savedActiveTexture);
 }
