@@ -80,9 +80,32 @@ GL_KHR_DebugSupport isGL_KHR_debugSupported() {
 #endif
 }
 
+static bool isValidGLobject(GLenum identifier, GLuint name) {
+    switch (identifier) {
+        case GL_BUFFER: return glIsBuffer(name);
+        case GL_TEXTURE: return glIsTexture(name);
+        case GL_VERTEX_ARRAY: return glIsVertexArray(name);
+        case GL_PROGRAM: return glIsProgram(name);
+        case GL_SHADER: return glIsShader(name);
+        case GL_FRAMEBUFFER: return glIsFramebuffer(name);
+        case GL_RENDERBUFFER: return glIsRenderbuffer(name);
+#if defined(GL_SAMPLER)
+        case GL_SAMPLER: return glIsSampler(name);
+#endif
+#if defined(GL_QUERY)
+        case GL_QUERY: return glIsQuery(name);
+#endif
+#if defined(GL_TRANSFORM_FEEDBACK)
+        case GL_TRANSFORM_FEEDBACK: return glIsTransformFeedback(name);
+#endif
+        default:
+        LOG_ERROR() << "Unknown identifier : " << identifier << ", object ID : " << name;
+        return false;
+    }
+}
 void labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
-    if (!support || identifier == 0)
+    if (!support || identifier == 0 || name == 0 || !isValidGLobject(identifier, name))
         return;
 
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
