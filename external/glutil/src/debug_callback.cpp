@@ -181,7 +181,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             }
             if (auto* info = tracker.buffers.get(id))
                 info->role = (target == GL_ARRAY_BUFFER) ? BufferRole::VBO : BufferRole::EBO;
-            
+
             break;
         }
 
@@ -240,6 +240,35 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
         default: break;
     }
 }
+static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_list args) {
+    GLFunctions func = classifyGLFunctions(name);
+    // debug label auto generate in glCreate/Gen
+    switch (func) {
+        case GLFunctions::CreateShader: {
+            GLuint id = *static_cast<GLuint*>(ret);
+            labelGLobject(GL_SHADER, id, getCalledGLfunctionName());
+            break;
+        }
+        case GLFunctions::CreateProgram: {
+            GLuint id = *static_cast<GLuint*>(ret);
+            labelGLobject(GL_PROGRAM, id, getCalledGLfunctionName());
+            break;
+        }
+        case GLFunctions::GenVertexArrays:
+        case GLFunctions::GenBuffers:
+        case GLFunctions::GenTextures: {
+            GLsizei count = va_arg(args, int);
+            GLuint* ids = va_arg(args, GLuint*);
+            GLenum identifier = (func == GLFunctions::GenVertexArrays) ? GL_VERTEX_ARRAY
+                                : (func == GLFunctions::GenBuffers)    ? GL_BUFFER
+                                                                        : GL_TEXTURE;
+            for (GLsizei i = 0; i < count; i++)
+                labelGLobject(identifier, ids[i], getCalledGLfunctionName());
+            break;
+        }
+        default: break;
+    }    
+}
 #pragma warning(pop)
 
 static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
@@ -250,6 +279,10 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
     va_list args;
     va_start(args, len_args);
     trackGLFunctions(ret, name, len_args, args);
+    va_list args_copy;
+    va_copy(args_copy, args);
+    autoLabelGLObjects(ret, name, len_args, args_copy);
+    va_end(args_copy);
     va_end(args);
 
 
@@ -326,31 +359,14 @@ static void initGladCallbacks(bool openglDebugExtension) {
 }
 
 static bool initOpenGLDebugExtension() {
+    const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
+    if (!support.compiledIn) {
+            LOG_INFO() << "OpenGL debug output not available at compile time (GL_VERSION_4_3 or GL_KHR_debug not defined).";
+            return false;
+    }
+// this guard is needed in case the glDebugMessageCallback does not exist.
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
-    const void* funcptr = (void*)
-        #if defined(GDM_HAS_GLAD)
-          glad_glCreateVertexArrays;
-        #elif defined(GDM_HAS_GLEW)
-          __glewDebugMessageCallback;
-        #else
-          glDebugMessageCallback;
-        #endif
-    const bool hasCapability = (
-        #if defined(GDM_HAS_GLEW_GLAD)
-          (GLEW_KHR_debug || GLEW_VERSION_4_3 || GLAD_GL_KHR_debug || GLAD_GL_VERSION_4_3)
-        #elif defined(GDM_HAS_GLAD)
-          #if defined(GL_KHR_debug)
-            GLAD_GL_KHR_debug ||
-          #endif
-            GLAD_GL_VERSION_4_3
-        #elif defined(GDM_HAS_GLEW)
-          (GLEW_KHR_debug || GLEW_VERSION_4_3)
-        #else
-          false
-        #endif
-        ) || glutil::debug::hasGLExtension("GL_KHR_debug");
-
-    if (funcptr != nullptr && hasCapability) {
+    if (support) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(debugMessageCallback, nullptr);
@@ -358,7 +374,7 @@ static bool initOpenGLDebugExtension() {
         return true;
     } else {
         LOG_WARNING() << "OpenGL debug output is available at compile time, but not supported by the current context!";
-        LOG_WARNING() << "glDebugMessageCallback=" << funcptr << ", "
+        LOG_WARNING() << "glDebugMessageCallback=" << support.glDebugMessageCallbackPtr << ", "
         #if defined(GDM_HAS_GLAD) && !defined(GDM_HAS_GLEW_GLAD)
             << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3 << ", GLAD_GL_KHR_debug=" 
             #if defined(GL_KHR_debug)
@@ -374,9 +390,7 @@ static bool initOpenGLDebugExtension() {
             << ", GL_EXTENSION \"GL_KHR_debug\"=" << glutil::debug::hasGLExtension("GL_KHR_debug");
         return false;
     }
-#endif //  defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
-    LOG_INFO() << "OpenGL debug output not available at compile time (GL_VERSION_4_3 or GL_KHR_debug not defined).";
-    return false;
+#endif
 }
 
 void initDebugCallbacks() {

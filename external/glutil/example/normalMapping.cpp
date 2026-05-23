@@ -32,7 +32,6 @@ static GLuint compileShader(GLenum type, const char* source);
 static GLuint createProgram(const char* vertexSource, const char* fragmentSource);
 static GLuint uploadStandard2D(const glutil::TextureImage& image);
 static GLuint uploadDDS2D(const glutil::TextureDDS& dds);
-static glm::mat4 makeMVP(float t, float aspect);
 // Input handling (portable via GLFW callback)
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
@@ -519,15 +518,15 @@ int main() {
 }
 
 // ===== Helper Functions =====
-
-GLFWwindow* initGLFWAndContext() {
+static GLFWwindow* initGLFWAndContext() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return nullptr;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    auto version = glutil::debug::availableGLversion();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -552,7 +551,7 @@ GLFWwindow* initGLFWAndContext() {
     return ret;
 }
 
-GLuint compileShader(GLenum type, const char* source) {
+static GLuint compileShader(GLenum type, const char* source) {
     const GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
     glCompileShader(shader);
@@ -565,7 +564,7 @@ GLuint compileShader(GLenum type, const char* source) {
     return 0;
 }
 
-GLuint createProgram(const char* vertexSource, const char* fragmentSource) {
+static GLuint createProgram(const char* vertexSource, const char* fragmentSource) {
     const GLuint vs = compileShader(GL_VERTEX_SHADER, vertexSource);
     const GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
     if (vs == 0 || fs == 0) {
@@ -592,6 +591,7 @@ GLuint createProgram(const char* vertexSource, const char* fragmentSource) {
 
 // Key callback stores compact input state for portability and decoupled handling
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    (void)window; (void)scancode; (void)mods;
     const bool down = (action == GLFW_PRESS || action == GLFW_REPEAT);
     switch (key) {
         case GLFW_KEY_W: g_input.w = down; break;

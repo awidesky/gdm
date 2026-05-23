@@ -5,6 +5,7 @@
 #include "config.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height){
+    (void)window;
     glViewport(0, 0, width, height);
 }
 
@@ -13,6 +14,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 void postCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
+    (void)ret; (void)apiproc; (void)len_args;
     GLenum err = glad_glGetError();
     if (err == GL_NO_ERROR)
         return;
@@ -24,8 +26,9 @@ void postCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args
 int main() {
 
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    auto version = glutil::debug::availableGLversion();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__

@@ -93,6 +93,26 @@ constexpr inline const char* glTextureFormatToString(GLint fmt) {
     }
 }
 
+constexpr inline const char* glShaderTypeToString(GLenum type) {
+    switch (type) {
+    case GL_VERTEX_SHADER: return "GL_VERTEX_SHADER";
+    case GL_FRAGMENT_SHADER: return "GL_FRAGMENT_SHADER";
+#ifdef GL_GEOMETRY_SHADER
+    case GL_GEOMETRY_SHADER: return "GL_GEOMETRY_SHADER";
+#endif
+#ifdef GL_TESS_CONTROL_SHADER
+    case GL_TESS_CONTROL_SHADER: return "GL_TESS_CONTROL_SHADER";
+#endif
+#ifdef GL_TESS_EVALUATION_SHADER
+    case GL_TESS_EVALUATION_SHADER: return "GL_TESS_EVALUATION_SHADER";
+#endif
+#ifdef GL_COMPUTE_SHADER
+    case GL_COMPUTE_SHADER: return "GL_COMPUTE_SHADER";
+#endif
+    default: return "UNKNOWN_SHADER_TYPE";
+    }
+}
+
 constexpr inline const char* glErrorToString(GLenum err) {
     switch (err) {
         case GL_NO_ERROR: return "GL_NO_ERROR";

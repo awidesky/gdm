@@ -6,7 +6,7 @@
 #include <filesystem>
 #include "config.hpp"
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) { glViewport(0, 0, width, height); }
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) { (void)window; glViewport(0, 0, width, height); }
 
 GLuint makeDummyTexture(int unit, int w, int h, unsigned char r, unsigned char g, unsigned char b) {
     GLuint tex;
@@ -107,8 +107,9 @@ void makeTestVAO(GLuint& vao, GLuint& vbo, GLuint& ebo) {
 int main() 
 { 
 	glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    auto version = glutil::debug::availableGLversion();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__

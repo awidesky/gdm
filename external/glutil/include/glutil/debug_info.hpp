@@ -49,7 +49,7 @@ GLVersion getOpenGLVersion();
 inline GLVersion parseGLVersion(const char* version) {
     GLVersion ret;
 
-    int count =
+    (void)
 #ifdef _MSC_VER
     ::sscanf_s
 #else
@@ -57,8 +57,8 @@ inline GLVersion parseGLVersion(const char* version) {
 #endif
                (version, "%d.%d", &ret.major, &ret.minor);
 
-    assert(count == 2);
     return ret;
 }
+GLVersion availableGLversion();
 }
 #endif // GLUTIL_DEBUG_INFO_HPP
