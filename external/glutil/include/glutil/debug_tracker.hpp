@@ -68,6 +68,34 @@ public:
 
 private:
     GLStateTracker() = default;
+    ~GLStateTracker()
+    {
+        bool hasLeak = false;
+
+        for (auto& [id, info] : buffers.getAll()) {
+            if (!hasLeak) {
+                fprintf(stderr, "\n=== Leak Check ===\n");
+                hasLeak = true;
+            }
+            const char* role = (info.role == BufferRole::VBO)   ? "VBO"
+                               : (info.role == BufferRole::EBO) ? "EBO"
+                                                                : "Unknown";
+            fprintf(stderr, "[LEAK] Buffer id=%u role=%s size=%lld\n", id, role, (long long)info.size);
+        }
+
+        for (auto& [type, ids] : objects.getAll()) {
+            for (auto id : ids) {
+                if (!hasLeak) {
+                    fprintf(stderr, "\n=== Leak Check ===\n");
+                    hasLeak = true;
+                }
+                fprintf(stderr, "[LEAK] Object type=%s id=%u\n", type.c_str(), id);
+            }
+        }
+
+        if (!hasLeak)
+            fprintf(stderr, "\n=== No Leaks Detected ===\n");
+    }
 };
 
 } // namespace glutil::debug
