@@ -50,9 +50,15 @@ int main() {
         return -1;
     }
 
+#ifdef GLAD_OPTION_GL_DEBUG
     gladSetGLPostCallback(postCallback);
+#endif
 
     glBindTexture(GL_TEXTURE_2D, 99999);
+
+#ifndef GLAD_OPTION_GL_DEBUG
+    postCallback(NULL, "glBindTexture", (GLADapiproc) glad_glBindTexture, 2, GL_TEXTURE_2D, 99999);
+#endif
 
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
