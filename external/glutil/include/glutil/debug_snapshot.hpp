@@ -5,6 +5,7 @@
 #include <iostream>
 #include <set>
 #include <fstream>
+#include <filesystem>
 
 namespace glutil::debug {
 
