@@ -103,13 +103,41 @@ static bool isValidGLobject(GLenum identifier, GLuint name) {
         return false;
     }
 }
+
+static GLint getMaxGLobjectLabelLength() {
+    static GLint maxLabelLength = -1;
+#ifdef GL_MAX_LABEL_LENGTH
+    if (maxLabelLength < 0)
+        glGetIntegerv(GL_MAX_LABEL_LENGTH, &maxLabelLength);
+#endif
+    return maxLabelLength;
+}
+
+static std::string makeSafeGLobjectLabel(const std::string& label) {
+    const GLint maxLabelLength = getMaxGLobjectLabelLength();
+    if (maxLabelLength <= 0) return label;
+
+    // Per KHR_debug, GL_MAX_LABEL_LENGTH includes the null terminator.
+    // The maximum number of characters we may store in the label (content) is
+    // therefore maxLabelLength - 1. Ensure we never pass a content length
+    // larger than that to glObjectLabel.
+    const GLint maxContent = maxLabelLength - 1;
+    if (label.size() <= static_cast<size_t>(maxContent)) return label;
+
+    if (maxContent <= 3)
+        return label.substr(0, static_cast<size_t>(std::max<GLint>(0, maxContent)));
+
+    // Reserve room for the ellipsis so the final content length does not exceed maxContent.
+    return label.substr(0, static_cast<size_t>(maxContent - 3)) + "...";
+}
 void labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
     if (!support || identifier == 0 || name == 0 || !isValidGLobject(identifier, name))
         return;
 
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
-    glObjectLabel(identifier, name, static_cast<GLsizei>(label.size()), label.c_str());
+    const std::string safeLabel = makeSafeGLobjectLabel(label);
+    glObjectLabel(identifier, name, static_cast<GLsizei>(safeLabel.size()), safeLabel.c_str());
 #endif
 }
 

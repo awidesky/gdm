@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <stdarg.h>
+#include <vector>
 
 namespace glutil::debug {
 namespace callbacks {
@@ -32,10 +33,11 @@ enum class GLFunctions {
     GenVertexArrays, CreateVertexArrays,
     GenTextures, CreateTextures,
     GenFramebuffers, CreateFramebuffers,
-    CreateShader, CreateProgram,
+    CreateShader, CreateProgram, LinkProgram,
     DeleteBuffers, DeleteVertexArrays, DeleteTextures,
     DeleteFramebuffers, DeleteShader, DeleteProgram,
-    BindBuffer, BindVertexArray, BufferData, DrawElements,
+    BindBuffer, BindVertexArray, BindTexture, 
+    BufferData, DrawElements, TexImage2D, TexImage3D,
     VertexAttribPointer, VertexAttribIPointer, VertexAttribLPointer,
 
     Unknown
@@ -51,6 +53,7 @@ static GLFunctions classifyGLFunctions(std::string_view fname) {
     if (fname == "glCreateFramebuffers") return GLFunctions::CreateFramebuffers;
     if (fname == "glCreateShader") return GLFunctions::CreateShader;
     if (fname == "glCreateProgram") return GLFunctions::CreateProgram;
+    if (fname == "glLinkProgram") return GLFunctions::LinkProgram;
     if (fname == "glDeleteBuffers") return GLFunctions::DeleteBuffers;
     if (fname == "glDeleteVertexArrays") return GLFunctions::DeleteVertexArrays;
     if (fname == "glDeleteTextures") return GLFunctions::DeleteTextures;
@@ -59,12 +62,27 @@ static GLFunctions classifyGLFunctions(std::string_view fname) {
     if (fname == "glDeleteProgram") return GLFunctions::DeleteProgram;
     if (fname == "glBindBuffer") return GLFunctions::BindBuffer;
     if (fname == "glBindVertexArray") return GLFunctions::BindVertexArray;
+    if (fname == "glBindTexture") return GLFunctions::BindTexture;
     if (fname == "glBufferData") return GLFunctions::BufferData;
+    if (fname == "glTexImage2D") return GLFunctions::TexImage2D;
+    if (fname == "glTexImage3D") return GLFunctions::TexImage3D;
     if (fname == "glDrawElements") return GLFunctions::DrawElements;
     if (fname == "glVertexAttribPointer") return GLFunctions::VertexAttribPointer;
     if (fname == "glVertexAttribIPointer") return GLFunctions::VertexAttribIPointer;
     if (fname == "glVertexAttribLPointer") return GLFunctions::VertexAttribLPointer;
     return GLFunctions::Unknown;
+}
+static GLenum normalizeTextureTarget(GLenum target) {
+    switch (target) {
+        // Cube faces are one texture
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: return GL_TEXTURE_CUBE_MAP;
+        default: return target;
+    }
 }
 #pragma warning(push)
 #pragma warning(disable : 6269)
@@ -191,6 +209,13 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             break;
         }
 
+        case GLFunctions::BindTexture: {
+            GLenum target = va_arg(args, GLenum);
+            GLuint id = va_arg(args, GLuint);
+            tracker.boundTextures[normalizeTextureTarget(target)] = id;
+            break;
+        }
+
         // ── Buffer MetaData ──
         case GLFunctions::BufferData: {
             GLenum target = va_arg(args, GLenum);
@@ -241,17 +266,59 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
     }
 }
 static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_list args) {
+    auto& tracker = GLStateTracker::instance();
     GLFunctions func = classifyGLFunctions(name);
+    const std::string codeline = '(' + getCalledGLfunctionName() + ')';
     // debug label auto generate in glCreate/Gen
     switch (func) {
         case GLFunctions::CreateShader: {
+            GLenum type = va_arg(args, GLenum);
             GLuint id = *static_cast<GLuint*>(ret);
-            labelGLobject(GL_SHADER, id, getCalledGLfunctionName());
+            labelGLobject(GL_SHADER, id, std::string(glShaderTypeToShortString(type))
+                 + '#' + std::to_string(id) + ": " + codeline);
             break;
         }
         case GLFunctions::CreateProgram: {
             GLuint id = *static_cast<GLuint*>(ret);
-            labelGLobject(GL_PROGRAM, id, getCalledGLfunctionName());
+            labelGLobject(GL_PROGRAM, id, codeline + '#' + std::to_string(id));
+            break;
+        }
+        case GLFunctions::LinkProgram: {
+            GLuint program = va_arg(args, GLuint);
+            GLint attachedCount = 0;
+            glGetProgramiv(program, GL_ATTACHED_SHADERS, &attachedCount);
+
+            std::vector<GLuint> attachedShaders(attachedCount > 0 ? static_cast<size_t>(attachedCount) : 0u);
+            if (attachedCount > 0) {
+                GLsizei shaderCount = 0;
+                glGetAttachedShaders(program, attachedCount, &shaderCount, attachedShaders.data());
+
+                std::vector<std::string> shaderLabels;
+                shaderLabels.reserve(static_cast<size_t>(shaderCount));
+
+                for (GLsizei i = 0; i < shaderCount; ++i) {
+                    const GLuint shader = attachedShaders[static_cast<size_t>(i)];
+                    GLint shaderType = 0;
+                    glGetShaderiv(shader, GL_SHADER_TYPE, &shaderType);
+
+                    std::string shaderLabel = getGLobjectLable(GL_SHADER, shader);
+                    if (shaderLabel.empty()) {
+                        shaderLabel = std::string(glShaderTypeToShortString(static_cast<GLenum>(shaderType))) + '#' + std::to_string(shader);
+                    }
+                    shaderLabels.push_back(std::move(shaderLabel));
+                }
+
+                std::ostringstream ss;
+                ss << "Program#" << program << "(";
+                for (size_t i = 0; i < shaderLabels.size(); ++i) {
+                    if (i != 0) ss << ", ";
+                    ss << shaderLabels[i];
+                }
+                ss << ')';
+                labelGLobject(GL_PROGRAM, program, ss.str());
+            } else {
+                labelGLobject(GL_PROGRAM, program, "Program(attached=none)");
+            }
             break;
         }
         case GLFunctions::GenVertexArrays:
@@ -263,9 +330,57 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
                                 : (func == GLFunctions::GenBuffers)    ? GL_BUFFER
                                                                         : GL_TEXTURE;
             for (GLsizei i = 0; i < count; i++)
-                labelGLobject(identifier, ids[i], getCalledGLfunctionName());
+                labelGLobject(identifier, ids[i], codeline + '#' + std::to_string(ids[i]));
             break;
         }
+
+        /** Some implementation does not create object before use, so we track glBind* too */
+        case GLFunctions::BindBuffer: {
+            GLenum target = va_arg(args, GLenum);
+            GLuint id = va_arg(args, GLuint);
+            labelGLobject(GL_BUFFER, id, std::string(glBufferTypeToShortString(target)) + '#' + std::to_string(id) + codeline);
+            break;
+        }
+        case GLFunctions::BindVertexArray: {
+            GLuint id = va_arg(args, GLuint);
+            labelGLobject(GL_VERTEX_ARRAY, id, codeline + '#' + std::to_string(id));
+            break;
+        }
+        case GLFunctions::BindTexture: {
+            GLenum target = va_arg(args, GLenum);
+            GLuint id = va_arg(args, GLuint);
+            labelGLobject(GL_TEXTURE, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id) + codeline);
+            break;
+        }
+
+        case GLFunctions::TexImage2D: {
+            GLenum target = va_arg(args, GLenum);
+            va_arg(args, GLint);
+            GLint internalFormat = va_arg(args, GLint);
+            GLsizei width = va_arg(args, int);
+            GLsizei height = va_arg(args, int);
+            GLuint id = tracker.boundTextures[normalizeTextureTarget(target)];
+            std::stringstream ss;
+            ss << glTextureTargetToShortString(target) << '#' << std::to_string(id)
+                << '[' << std::to_string(width) << 'x' << std::to_string(height) << ']';
+            labelGLobject(GL_TEXTURE, id, ss.str());
+            break;
+        }
+        case GLFunctions::TexImage3D: {
+            GLenum target = va_arg(args, GLenum);
+            va_arg(args, GLint);
+            va_arg(args, GLint);
+            GLsizei width = va_arg(args, int);
+            GLsizei height = va_arg(args, int);
+            GLsizei depth = va_arg(args, int);
+            GLuint id = tracker.boundTextures[normalizeTextureTarget(target)];
+            std::stringstream ss;
+            ss << glTextureTargetToShortString(target) << '#' << std::to_string(id)
+                << '[' << std::to_string(width) << 'x' << std::to_string(height) << 'x' << std::to_string(depth) << ']';
+            labelGLobject(GL_TEXTURE, id,ss.str());
+            break;
+        }
+
         default: break;
     }    
 }
@@ -278,9 +393,9 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
     
     va_list args;
     va_start(args, len_args);
-    trackGLFunctions(ret, name, len_args, args);
     va_list args_copy;
     va_copy(args_copy, args);
+    trackGLFunctions(ret, name, len_args, args);
     autoLabelGLObjects(ret, name, len_args, args_copy);
     va_end(args_copy);
     va_end(args);

@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿#ifndef GLUTIL_DEBUG_TRACKER_HPP
+#define GLUTIL_DEBUG_TRACKER_HPP
+
 #include <glutil/gl.hpp>
 #include <string>
 #include <unordered_map>
@@ -65,6 +67,7 @@ public:
     GLuint boundVAO = 0;
     GLuint boundArrayBuffer = 0;
     GLuint boundElementArrayBuffer = 0;
+    std::unordered_map<GLenum, GLuint> boundTextures;
 
 private:
     GLStateTracker() = default;
@@ -99,3 +102,4 @@ private:
 };
 
 } // namespace glutil::debug
+#endif // GLUTIL_DEBUG_TRACKER_HPP

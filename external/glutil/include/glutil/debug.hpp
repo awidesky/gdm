@@ -7,6 +7,7 @@
 #include <glutil/debug_snapshot.hpp>
 #include <glutil/debug_tracker.hpp>
 #include <glutil/glToString.hpp>
+#include <glutil/gl.hpp>
 
 #include <string>
 

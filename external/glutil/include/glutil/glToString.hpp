@@ -92,7 +92,44 @@ constexpr inline const char* glTextureFormatToString(GLint fmt) {
         default: return "UNKNOWN";
     }
 }
+constexpr inline const char* glTextureTargetToShortString(GLenum target) {
+    switch (target){
+        case GL_TEXTURE_1D: return "Texture1D";
+        case GL_TEXTURE_2D: return "Texture2D";
+        case GL_TEXTURE_3D: return "Texture3D";
+        case GL_TEXTURE_CUBE_MAP: return "Texture_cubemap";
+        default: return "UNKNOWN";
+    }
+}
+constexpr inline const char* glTextureTargetToString(GLenum target) {
+    switch (target){
+        case GL_TEXTURE_1D: return "GL_TEXTURE_1D";
+        case GL_TEXTURE_2D: return "GL_TEXTURE_2D";
+        case GL_TEXTURE_3D: return "GL_TEXTURE_3D";
+        case GL_TEXTURE_CUBE_MAP: return "GL_TEXTURE_CUBE_MAP";
+        default: return "UNKNOWN";
+    }
+}
 
+constexpr inline const char* glShaderTypeToShortString(GLenum type) {
+    switch (type) {
+    case GL_VERTEX_SHADER: return "vs";
+    case GL_FRAGMENT_SHADER: return "fv";
+#ifdef GL_GEOMETRY_SHADER
+    case GL_GEOMETRY_SHADER: return "gs";
+#endif
+#ifdef GL_TESS_CONTROL_SHADER
+    case GL_TESS_CONTROL_SHADER: return "tcs";
+#endif
+#ifdef GL_TESS_EVALUATION_SHADER
+    case GL_TESS_EVALUATION_SHADER: return "tes";
+#endif
+#ifdef GL_COMPUTE_SHADER
+    case GL_COMPUTE_SHADER: return "ct";
+#endif
+    default: return "UNKNOWN_SHADER_TYPE";
+    }
+}
 constexpr inline const char* glShaderTypeToString(GLenum type) {
     switch (type) {
     case GL_VERTEX_SHADER: return "GL_VERTEX_SHADER";
@@ -169,6 +206,25 @@ constexpr inline const char* glBufferTypeToString(GLenum target) {
     }
 }
 
+constexpr inline const char* glBufferTypeToShortString(GLenum target) {
+    switch (target) {
+        case GL_ARRAY_BUFFER: return "VBO";
+        case GL_ATOMIC_COUNTER_BUFFER: return "ACB";
+        case GL_COPY_READ_BUFFER: return "CRB";
+        case GL_COPY_WRITE_BUFFER: return "CWB";
+        case GL_DISPATCH_INDIRECT_BUFFER: return "DIB";
+        case GL_DRAW_INDIRECT_BUFFER: return "DrIB";
+        case GL_ELEMENT_ARRAY_BUFFER: return "EBO";
+        case GL_PIXEL_PACK_BUFFER: return "PPB";
+        case GL_PIXEL_UNPACK_BUFFER: return "PUB";
+        case GL_QUERY_BUFFER: return "QB";
+        case GL_SHADER_STORAGE_BUFFER: return "SSBO";
+        case GL_TEXTURE_BUFFER: return "TBO";
+        case GL_TRANSFORM_FEEDBACK_BUFFER: return "TFB";
+        case GL_UNIFORM_BUFFER: return "UBO";
+        default: return "UNKNOWN";
+    }
+}
 } // namespace glutil
 
 #endif // GLUTIL_GLTOSTRING_HPP

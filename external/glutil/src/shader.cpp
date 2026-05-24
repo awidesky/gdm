@@ -217,7 +217,7 @@ GLShader ShaderLoader::loadShaderToGL(GLenum type, const std::filesystem::path& 
         return out;
     }
 
-    glutil::debug::labelGLobject(GL_SHADER, shader, std::string(glutil::glShaderTypeToString(type)) + "(" +
+    glutil::debug::labelGLobject(GL_SHADER, shader, std::string(glutil::glShaderTypeToShortString(type)) + "(" +
                                  inputPath.filename().string() + ")");
     out.id = shader;
     out.ok = true;
@@ -263,7 +263,7 @@ GLProgram ShaderLoader::loadProgramToGL(const std::filesystem::path& vertexPath,
     frag.reset();
 
     glutil::debug::labelGLobject(GL_PROGRAM, program,
-                                 "Program(vs:" + vertexPath.filename().string()
+                                 "Program#" + std::to_string(program) + "(vs:" + vertexPath.filename().string()
                                  + ", fs:" + fragmentPath.filename().string() + ")");
 
     out.id = program;
