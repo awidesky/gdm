@@ -125,6 +125,8 @@ function(use_or_fetch_package)
         endforeach()
 
         if(NOT _pkg_root)
+            file(REMOVE "${_pkg_archive}")
+            file(REMOVE_RECURSE "${_pkg_extract_dir}")
             message(FATAL_ERROR
                 "[${PROJECT_NAME}] ${PKG_NAME}: could not find extracted root directory in ${_pkg_extract_dir}"
             )
@@ -136,6 +138,8 @@ function(use_or_fetch_package)
         file(REMOVE_RECURSE "${_pkg_extract_dir}")
 
         if(NOT EXISTS "${PKG_EXTERNAL_DIR}/CMakeLists.txt")
+            file(REMOVE "${_pkg_archive}")
+             file(REMOVE_RECURSE "${PKG_EXTERNAL_DIR}")
             message(FATAL_ERROR
                 "[${PROJECT_NAME}] ${PKG_NAME}: extracted directory does not contain CMakeLists.txt: ${PKG_EXTERNAL_DIR}"
             )
