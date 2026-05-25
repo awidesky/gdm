@@ -261,11 +261,12 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
                 }
             }
         }
-        case GLFunctions::Unknown:
-        default: break;
     }
 }
+
 static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_list args) {
+    if (disableAutoLabelGLObjects) return;
+
     auto& tracker = GLStateTracker::instance();
     GLFunctions func = classifyGLFunctions(name);
     const std::string codeline = '(' + getCalledGLfunctionName() + ')';
@@ -280,7 +281,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
         }
         case GLFunctions::CreateProgram: {
             GLuint id = *static_cast<GLuint*>(ret);
-            labelGLobject(GL_PROGRAM, id, codeline + '#' + std::to_string(id));
+            labelGLobject(GL_PROGRAM, id, "Program#" + std::to_string(id) + " (" + codeline + ')');
             break;
         }
         case GLFunctions::LinkProgram: {
@@ -343,7 +344,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
         }
         case GLFunctions::BindVertexArray: {
             GLuint id = va_arg(args, GLuint);
-            labelGLobject(GL_VERTEX_ARRAY, id, codeline + '#' + std::to_string(id));
+            labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + '(' + codeline + ')');
             break;
         }
         case GLFunctions::BindTexture: {

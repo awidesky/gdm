@@ -42,12 +42,14 @@ struct GLStateGuard {
         glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &arrayBuffer);
         glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
         glGetIntegerv(GL_RENDERBUFFER_BINDING, &renderbuffer);
+        disableAutoLabelGLObjects = true;
     }
     ~GLStateGuard() {
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer);
         glActiveTexture(activeTexture);
         glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
+        disableAutoLabelGLObjects = false;
     }
 };
 
@@ -795,7 +797,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
             if (vboId == 0)
                 continue;
             out << "\n    attrib[" << i << "]" << "     size=" << size << "  type=" << glTypeToString(type)
-                << "  stride=" << std::setw(4) << stride << "  offset=" << off << "\n";
+                << "  stride=" << stride << "  offset=" << off << "\n";
 
             if (m_bufferIncludeData) {
                 GLint mapped = 0;
@@ -1009,7 +1011,6 @@ void snapshot::captureBoundInfo(std::ostream& out) const {
 }
 
 
-
 void snapshot::capture(std::ostream& out) const {
 
     if (m_flag && m_Once)
@@ -1048,11 +1049,12 @@ void snapshot::capture(std::ostream& out) const {
     out << "\n========================================================\n";
     out << "                     snapshot end                      \n";
     out << "========================================================\n\n";
+    out.flush();
 
     insideSnapshot = false;
 }
 
-void snapshot::capture(const std::filesystem::path& dir, bool dumpVertexData) const 
+void snapshot::capture(const std::filesystem::path& dir, bool dumpVertexData) const
 {
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
