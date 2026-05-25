@@ -184,7 +184,7 @@ if (ver >= "3.0") {
     os << "\n" << "[OpenGL] Extension Count: " << extensionCount << "\n";
 
     #ifdef GL_CONTEXT_FLAG_DEBUG_BIT
-    os << "[OpenGL] Debug context: " << (((contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) != 0) ? "YES" : "NO") << "\n";
+    os << "[OpenGL] Created as Debug context: " << (((contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) != 0) ? "YES" : "NO") << "\n";
     #endif
 }
 #endif
