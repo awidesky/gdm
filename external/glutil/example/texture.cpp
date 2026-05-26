@@ -82,8 +82,8 @@ const glutil::VertexPT kVertices[] = {
 };
 
 int main() {
-    GLFWwindow* ctx;
-    if (!(ctx = initGLFWAndContext()))
+    GLFWwindow* ctx = initGLFWAndContext();
+    if (ctx == nullptr)
         return 1;
 
     const std::filesystem::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
