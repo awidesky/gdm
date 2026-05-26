@@ -5,6 +5,7 @@
 #include <glutil/glutil.hpp>
 #include <glutil/debug.hpp>
 
+#include <algorithm>
 #include <iomanip>
 #include <map>
 #include <sstream>
@@ -21,6 +22,22 @@ static void printSeparator(std::ostream& out, const char* title) {
 
 static void printSubSeparator(std::ostream& out, const std::string& title) {
     out << "\n  ---------- " << title << " ----------\n";
+}
+
+template <class Container>
+static std::vector<GLuint> sortedIds(const Container& ids) {
+    std::vector<GLuint> sorted(ids.begin(), ids.end());
+    std::sort(sorted.begin(), sorted.end());
+    return sorted;
+}
+
+static std::vector<GLuint> sortedBufferIds(const std::unordered_map<GLuint, BufferInfo>& buffers) {
+    std::vector<GLuint> ids;
+    ids.reserve(buffers.size());
+    for (const auto& [id, info] : buffers)
+        ids.push_back(id);
+    std::sort(ids.begin(), ids.end());
+    return ids;
 }
 
 static void appendObjectLabel(std::ostream& out, GLenum identifier, GLuint name, std::string prefix = ", ", std::string suffix = "") {
@@ -644,7 +661,7 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
     auto texIt = allObjects.find("Texture");
 
     if (texIt != allObjects.end()) {
-        for (GLuint texId : texIt->second) {
+        for (GLuint texId : sortedIds(texIt->second)) {
             bool isBound = false;
             for (int i = 0; i < maxUnits && !isBound; i++) {
                 glActiveTexture(GL_TEXTURE0 + i);
@@ -741,7 +758,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
         return;
     }
 
-    for (GLuint vaoId : vaoIt->second) {
+    for (GLuint vaoId : sortedIds(vaoIt->second)) {
 
         bool isBound = (static_cast<GLuint>(savedVAO) == vaoId);
 
@@ -898,13 +915,13 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &savedArrayBuffer);
     bool bHasVBO = false;
 
-    const std::unordered_map<GLuint, BufferInfo> buffers = tracker.buffers.getAll();
-    for (const auto& buffer : buffers) {
-        if (buffer.second.role != BufferRole::VBO)
+    const auto& buffers = tracker.buffers.getAll();
+    for (GLuint id : sortedBufferIds(buffers)) {
+        const auto& buffer = buffers.at(id);
+        if (buffer.role != BufferRole::VBO)
             continue;
 
         bHasVBO = true;
-        GLuint id = buffer.first;
         glBindBuffer(GL_ARRAY_BUFFER, id);
 
         GLint size = 0, usage = 0;
@@ -923,11 +940,11 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
             std::vector<unsigned char> data(size);
             glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
 
-            if (buffer.second.associatedVaos.empty()) {
+            if (buffer.associatedVaos.empty()) {
                 out << "Not Bound to VAO";
             } else {
                 out << "Bound VAO ID : ";
-                for (auto& vao : buffer.second.associatedVaos) {
+                for (auto vao : sortedIds(buffer.associatedVaos)) {
                     out << vao << ' ';
                     appendObjectLabel(out, GL_VERTEX_ARRAY, vao, ", ", "\n");
                 }
