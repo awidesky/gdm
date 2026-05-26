@@ -260,6 +260,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
                     vboInfo->associatedVaos.insert(currentVao);
                 }
             }
+            break;
         }
     }
 }
@@ -276,12 +277,12 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             GLenum type = va_arg(args, GLenum);
             GLuint id = *static_cast<GLuint*>(ret);
             labelGLobject(GL_SHADER, id, std::string(glShaderTypeToShortString(type))
-                 + '#' + std::to_string(id) + ": " + codeline);
+                 + '#' + std::to_string(id) + codeline);
             break;
         }
         case GLFunctions::CreateProgram: {
             GLuint id = *static_cast<GLuint*>(ret);
-            labelGLobject(GL_PROGRAM, id, "Program#" + std::to_string(id) + " (" + codeline + ')');
+            labelGLobject(GL_PROGRAM, id, "Program#" + std::to_string(id) + codeline);
             break;
         }
         case GLFunctions::LinkProgram: {
@@ -325,13 +326,23 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
         case GLFunctions::GenVertexArrays:
         case GLFunctions::GenBuffers:
         case GLFunctions::GenTextures: {
-            GLsizei count = va_arg(args, int);
+            GLsizei count = va_arg(args, GLsizei);
             GLuint* ids = va_arg(args, GLuint*);
-            GLenum identifier = (func == GLFunctions::GenVertexArrays) ? GL_VERTEX_ARRAY
-                                : (func == GLFunctions::GenBuffers)    ? GL_BUFFER
-                                                                        : GL_TEXTURE;
+            GLenum identifier = GL_NONE;
+            std::string shortType = "Obj";
+            if (func == GLFunctions::GenVertexArrays) {
+                identifier = GL_VERTEX_ARRAY;
+                shortType = "VAO";
+            } else if (func == GLFunctions::GenBuffers) {
+                identifier = GL_BUFFER;
+                shortType = "VBO";
+            } else if (func == GLFunctions::GenTextures) {
+                identifier = GL_TEXTURE;
+                shortType = "Tex";
+            }
+
             for (GLsizei i = 0; i < count; i++)
-                labelGLobject(identifier, ids[i], codeline + '#' + std::to_string(ids[i]));
+                labelGLobject(identifier, ids[i], shortType + '#' + std::to_string(ids[i]) + codeline);
             break;
         }
 
@@ -344,7 +355,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
         }
         case GLFunctions::BindVertexArray: {
             GLuint id = va_arg(args, GLuint);
-            labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + '(' + codeline + ')');
+            labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + codeline);
             break;
         }
         case GLFunctions::BindTexture: {
