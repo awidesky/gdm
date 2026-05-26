@@ -141,7 +141,7 @@ void labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
 #endif
 }
 
-std::string getGLobjectLable(GLenum identifier, GLuint name) {
+std::string getGLobjectLabel(GLenum identifier, GLuint name) {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
     if (!support) {
         return {};

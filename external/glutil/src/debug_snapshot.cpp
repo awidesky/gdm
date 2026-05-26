@@ -41,7 +41,7 @@ static std::vector<GLuint> sortedBufferIds(const std::unordered_map<GLuint, Buff
 }
 
 static void appendObjectLabel(std::ostream& out, GLenum identifier, GLuint name, std::string prefix = ", ", std::string suffix = "") {
-    const std::string label = glutil::debug::getGLobjectLable(identifier, name);
+    const std::string label = glutil::debug::getGLobjectLabel(identifier, name);
     if (!label.empty()) {
         out << prefix << "Label : \"" << label << '\"' << suffix;
     }

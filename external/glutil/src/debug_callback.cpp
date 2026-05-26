@@ -303,7 +303,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
                     GLint shaderType = 0;
                     glGetShaderiv(shader, GL_SHADER_TYPE, &shaderType);
 
-                    std::string shaderLabel = getGLobjectLable(GL_SHADER, shader);
+                    std::string shaderLabel = getGLobjectLabel(GL_SHADER, shader);
                     if (shaderLabel.empty()) {
                         shaderLabel = std::string(glShaderTypeToShortString(static_cast<GLenum>(shaderType))) + '#' + std::to_string(shader);
                     }
