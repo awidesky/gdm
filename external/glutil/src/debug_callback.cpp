@@ -335,7 +335,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
                 shortType = "VAO";
             } else if (func == GLFunctions::GenBuffers) {
                 identifier = GL_BUFFER;
-                shortType = "VBO";
+                shortType = "Buffer";
             } else if (func == GLFunctions::GenTextures) {
                 identifier = GL_TEXTURE;
                 shortType = "Tex";
@@ -347,6 +347,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
         }
 
         /** Some implementation does not create object before use, so we track glBind* too */
+        // TODO : bind functions in snapshot removes the original label. why disableAutoLabelGLObjects does not work?
         case GLFunctions::BindBuffer: {
             GLenum target = va_arg(args, GLenum);
             GLuint id = va_arg(args, GLuint);
@@ -373,22 +374,23 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             GLsizei height = va_arg(args, int);
             GLuint id = tracker.boundTextures[normalizeTextureTarget(target)];
             std::stringstream ss;
-            ss << glTextureTargetToShortString(target) << '#' << std::to_string(id)
-                << '[' << std::to_string(width) << 'x' << std::to_string(height) << ']';
+            ss << glTextureTargetToShortString(target) << '#' << std::to_string(id) << '[' << std::to_string(width)
+               << 'x' << std::to_string(height) << ' ' << glTextureInternalFormatToString(internalFormat) << ']';
             labelGLobject(GL_TEXTURE, id, ss.str());
             break;
         }
         case GLFunctions::TexImage3D: {
             GLenum target = va_arg(args, GLenum);
-            va_arg(args, GLint);
-            va_arg(args, GLint);
+            va_arg(args, GLint); // level
+            GLint internalFormat = va_arg(args, GLint);
             GLsizei width = va_arg(args, int);
             GLsizei height = va_arg(args, int);
             GLsizei depth = va_arg(args, int);
             GLuint id = tracker.boundTextures[normalizeTextureTarget(target)];
             std::stringstream ss;
-            ss << glTextureTargetToShortString(target) << '#' << std::to_string(id)
-                << '[' << std::to_string(width) << 'x' << std::to_string(height) << 'x' << std::to_string(depth) << ']';
+            ss << glTextureTargetToShortString(target) << '#' << std::to_string(id) << '[' << std::to_string(width)
+               << 'x' << std::to_string(height) << 'x' << std::to_string(depth) << ' '
+               << glTextureInternalFormatToString(internalFormat) << ']';
             labelGLobject(GL_TEXTURE, id,ss.str());
             break;
         }
