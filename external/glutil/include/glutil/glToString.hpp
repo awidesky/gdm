@@ -220,10 +220,10 @@ constexpr inline const char* glTextureInternalFormatToString(GLenum fmt) {
 }
 constexpr inline const char* glTextureTargetToShortString(GLenum target) {
     switch (target){
-        case GL_TEXTURE_1D: return "Texture1D";
-        case GL_TEXTURE_2D: return "Texture2D";
-        case GL_TEXTURE_3D: return "Texture3D";
-        case GL_TEXTURE_CUBE_MAP: return "Texture_cubemap";
+        case GL_TEXTURE_1D: return "Tex1D";
+        case GL_TEXTURE_2D: return "Tex2D";
+        case GL_TEXTURE_3D: return "Tex3D";
+        case GL_TEXTURE_CUBE_MAP: return "TexCubemap";
         default: return "UNKNOWN";
     }
 }

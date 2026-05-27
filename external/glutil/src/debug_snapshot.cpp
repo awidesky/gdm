@@ -183,7 +183,7 @@ void snapshot::captureShaderStatus(std::ostream& out) const {
     glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLen);
 
-    out << "  Program ID  : " << program;
+    out << "  Program ID : " << program;
     appendObjectLabel(out, GL_PROGRAM, program);
     out << "\n";
     out << "  Link Status : " << (linkStatus == GL_TRUE ? "OK" : "FAIL") << "\n";
@@ -628,6 +628,7 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
 
     for (int i = 0; i < maxUnits; i++) {
         glActiveTexture(GL_TEXTURE0 + i);
+        // TODO : this may be slow. calculate time and if it is, add texture object into tracker(hook bindTexture and createTexture) and use it instead of looping all possible unit numbers.
         for (auto& t : types) {
             GLint texId = 0;
             glGetIntegerv(t.binding, &texId);
@@ -644,11 +645,11 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
             }
 
             out << "  Unit " << std::setw(2) << i << "  [" << centerName(t.name, std::strlen(t.name) + 2) << "]"
-                << "  ID=" << std::setw(4) << texId;
+                << "  ID : " << texId;
             appendObjectLabel(out, t.target, texId);
-            if (t.hasSize)
-                out << "  Size=" << w << "x" << h << "  Format=" << glTextureInternalFormatToString(fmt);
             out << "\n";
+            if (t.hasSize)
+                out << indent << "Size=" << w << "x" << h << "  Format=" << glTextureInternalFormatToString(fmt) << '\n';
 
             if (m_textureIncludeSampler && t.hasSampler)
                 printSamplerInfo(t.target);
@@ -699,9 +700,9 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
 
             anyBound = true;
             out << "  [UNBOUND]  [" << centerName(foundName, std::strlen(foundName) + 2) << "]"
-                << "  ID=" << std::setw(4) << texId;
+                << "  ID : " << texId;
             appendObjectLabel(out, GL_TEXTURE, texId);
-            out << "  Size=" << w << "x" << h << "  Format=" << glTextureInternalFormatToString(fmt) << "\n";
+            out << '\n' << indent << "Size=" << w << "x" << h << "  Format=" << glTextureInternalFormatToString(fmt) << "\n";
 
             if (m_textureIncludeSampler && hasSampler)
                 printSamplerInfo(foundTarget);
@@ -717,7 +718,7 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
 void snapshot::captureBufferVAOInfo(std::ostream& out) const {
     auto formatVertex = [](const unsigned char* ptr, GLenum type, int components) -> std::string {
         std::ostringstream oss;
-        oss << std::fixed << std::setprecision(4) << std::left << "(";
+        oss << std::fixed << std::setprecision(4) << std::right << "(";
         for (int c = 0; c < components; c++) {
             switch (type) {
                 case GL_FLOAT: oss << std::setw(8) << reinterpret_cast<const GLfloat*>(ptr)[c]; break;
@@ -766,7 +767,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
 
         glBindVertexArray(vaoId);
 
-        out << "\n  VAO ID : " << vaoId;
+        out << "\n* VAO ID : " << vaoId;
         appendObjectLabel(out, GL_VERTEX_ARRAY, vaoId);
         out << (isBound ? "  [BOUND]" : "  [UNBOUND]") << "\n";
 
@@ -805,7 +806,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
 
                 printSubSeparator(out, "VBO ID=" + std::to_string(vboId));
                 appendObjectLabel(out, GL_BUFFER, vboId, "  ");
-                out << "    Size  : " << curBufSize << " bytes"
+                out << "\n  Size : " << curBufSize << " bytes"
                     << "    Usage : " << usageToString(newUsage) << "\n";
 
                 prevVboId = vboId;
@@ -850,8 +851,8 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
             glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &eboSize);
             glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_USAGE, &eboUsage);
 
-            out << "    Size  : " << eboSize << " bytes\n";
-            out << "    Usage : " << usageToString(eboUsage) << "\n";
+            out << "\n    Size : " << eboSize << " bytes, ";
+            out << "  Usage : " << usageToString(eboUsage);
 
             if (m_bufferIncludeData) {
                 GLint mapped = 0;
@@ -872,9 +873,10 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                                                                           : sizeof(GLubyte);
 
                     int count = eboSize / elemSize;
+                    // TODO : don't get the whole thing, just print 30 elements
                     int printNum = std::min(count, 30);
 
-                    out << "    Type    : " << glTypeToString(indexType) << "\n";
+                    out << ", Type : " << glTypeToString(indexType) << "\n";
                     out << "    indices : ";
 
                     std::vector<unsigned char> raw(eboSize);
@@ -892,11 +894,11 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                     }
                     if (count > 30)
                         out << " ... (" << count - 30 << " more)";
-                    out << "\n";
                 } else {
-                    out << "    (buffer is mapped, skipping data read)\n";
+                    out << "    (buffer is mapped, skipping data read)";
                 }
             }
+            out << "\n";
         } else {
             out << "\n  EBO : (none)\n";
         }
