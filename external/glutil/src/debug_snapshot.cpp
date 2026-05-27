@@ -6,7 +6,9 @@
 #include <glutil/debug.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <iomanip>
+#include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -119,6 +121,10 @@ snapshot& snapshot::boundInfo(bool v) {
 
 snapshot& snapshot::printPerCall(bool v) {
     m_Once = !v;
+    return *this;
+}
+snapshot& snapshot::enableTiming(bool v) {
+    m_enableTiming = v;
     return *this;
 }
 
@@ -1028,7 +1034,21 @@ void snapshot::captureBoundInfo(std::ostream& out) const {
 #endif
 }
 
-
+class ScopeTimer {
+    const char* m_name;
+    bool m_enable;
+    std::chrono::steady_clock::time_point m_start;
+public:
+    ScopeTimer(const char* name, bool enable) : m_name(name), m_enable(enable) {
+        if (m_enable) m_start = std::chrono::steady_clock::now();
+    }
+    ~ScopeTimer() {
+        if (!m_enable) return;
+        auto end = std::chrono::steady_clock::now();
+        auto ms = std::chrono::duration<double, std::milli>(end - m_start).count();
+        std::cout << "\n[TIMER] " << m_name << ": " << ms << " ms\n";
+    }
+};
 void snapshot::capture(std::ostream& out) const {
 
     if (m_flag && m_Once)
@@ -1042,27 +1062,44 @@ void snapshot::capture(std::ostream& out) const {
     insideSnapshot = true;
 
     GLStateGuard guard;
+    ScopeTimer wholeTime("Entire snapshot took", m_enableTiming);
 
     out << "\n========================================================\n";
     out << "               glutil::debug::snapshot                 \n";
     out << "========================================================\n";
 
-    if (m_framebufferInfo)
+    if (m_framebufferInfo) {
+        ScopeTimer t("FramebufferInfo", m_enableTiming);
         captureFramebuffer(out);
-    if (m_shaderStatus)
+    }
+    if (m_shaderStatus) {
+        ScopeTimer t("ShaderStatus", m_enableTiming);
         captureShaderStatus(out);
-    if (m_shaderUniform)
+    }
+    if (m_shaderUniform) {
+        ScopeTimer t("ShaderUniform", m_enableTiming);
         captureShaderUniforms(out);
-    if (m_textureInfo)
+    }
+    if (m_textureInfo) {
+        ScopeTimer t("TextureInfo", m_enableTiming);
         captureTextureInfo(out);
-    if (m_bufferVAOInfo)
+    }
+    if (m_bufferVAOInfo) {
+        ScopeTimer t("BufferVAOInfo", m_enableTiming);
         captureBufferVAOInfo(out);
-    if (m_allVBOInfo)
+    }
+    if (m_allVBOInfo) {
+        ScopeTimer t("AllVBOInfo", m_enableTiming);
         captureAllVBOInfo(out);
-    if (m_rendererState)
+    }
+    if (m_rendererState) {
+        ScopeTimer t("RendererState", m_enableTiming);
         captureRendererState(out);
-    if (m_boundInfo)
+    }
+    if (m_boundInfo) {
+        ScopeTimer t("BoundInfo", m_enableTiming);
         captureBoundInfo(out);
+    }
 
     out << "\n========================================================\n";
     out << "                     snapshot end                      \n";

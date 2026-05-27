@@ -49,6 +49,10 @@ public:
     /// @brief Set whether to print a snapshot on every tracked GL call (via GLAD post callback)
     /// @param v true to enable per-call snapshot output (warning: extremely verbose)
     snapshot& printPerCall(bool v);
+    
+    /// @brief Set whether to print elapsed time while taking snapshot.
+    /// @param v true to print elapsed time ofsnapshot.
+    snapshot& enableTiming(bool v);
 
     void capture(std::ostream& out = std::cerr) const;
     void capture(const std::filesystem::path& dir, bool dumpVertexData = false) const;
@@ -76,6 +80,7 @@ private:
     bool m_rendererState;
     bool m_framebufferInfo;
     bool m_boundInfo;
+    bool m_enableTiming = true;
     bool m_Once = false;
     mutable bool m_flag = false;
 };
