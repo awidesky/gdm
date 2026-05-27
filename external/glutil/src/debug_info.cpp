@@ -98,13 +98,13 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
     if(ver >= "4.3") { // TODO : check if loaded by extension
         GLint attrBindings = 0;
         GLint relOffset = 0;
-        GLint elementIndex = 0;
+        GLint64 elementIndex = 0;
         GLint labelLength = 0;
         GLint debugStack = 0;
 
         glGetIntegerv(GL_MAX_VERTEX_ATTRIB_BINDINGS, &attrBindings);
         glGetIntegerv(GL_MAX_VERTEX_ATTRIB_RELATIVE_OFFSET, &relOffset);
-        glGetIntegerv(GL_MAX_ELEMENT_INDEX, &elementIndex);
+        glGetInteger64v(GL_MAX_ELEMENT_INDEX, &elementIndex);
         glGetIntegerv(GL_MAX_LABEL_LENGTH, &labelLength);
         glGetIntegerv(GL_MAX_DEBUG_GROUP_STACK_DEPTH, &debugStack);
 
@@ -168,7 +168,6 @@ void printRuntimeInfo(std::ostream& os, bool verbose) {
     GLint contextMajor = 0;
     GLint contextMinor = 0;
     GLint contextFlags = 0;
-    GLint profileMask = 0;
     GLint extensionCount = 0;
 
 #if defined(GL_VERSION_3_0)
@@ -239,7 +238,7 @@ GLVersion availableGLversion() {
         glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
         glutInitContextVersion(version.major, version.minor);
         // Core profile is supported since OpenGL 3.2
-        glutInitContextProfile((version >= "3.2") ? GLUT_CORE_PROFILE) : GLUT_COMPATIBILITY_PROFILE);
+        glutInitContextProfile((version >= "3.2") ? GLUT_CORE_PROFILE : GLUT_COMPATIBILITY_PROFILE);
 
 #ifdef __APPLE__
         glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
