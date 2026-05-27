@@ -826,13 +826,14 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                 GLint mapped = 0;
                 glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
                 if (!mapped) {
-                    std::vector<unsigned char> data(curBufSize);
-                    glGetBufferSubData(GL_ARRAY_BUFFER, 0, curBufSize, data.data());
-
                     int typeSize = glTypeSize(type);
                     int actualStride = stride == 0 ? size * typeSize : stride;
                     int numVerts = actualStride > 0 ? curBufSize / actualStride : 0;
                     int printNum = std::min(numVerts, 10);
+                    size_t readSize = printNum * actualStride;
+
+                    std::vector<unsigned char> data(readSize);
+                    glGetBufferSubData(GL_ARRAY_BUFFER, 0, readSize, data.data());
 
                     for (int v = 0; v < printNum; v++) {
                         const unsigned char* ptr = data.data() + v * actualStride + off;
@@ -879,14 +880,14 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
                                                                           : sizeof(GLubyte);
 
                     int count = eboSize / elemSize;
-                    // TODO : don't get the whole thing, just print 30 elements
                     int printNum = std::min(count, 30);
+                    size_t readSize = printNum * elemSize;
 
                     out << ", Type : " << glTypeToString(indexType) << "\n";
                     out << "    indices : ";
 
-                    std::vector<unsigned char> raw(eboSize);
-                    glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, eboSize, raw.data());
+                    std::vector<unsigned char> raw(readSize);
+                    glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, readSize, raw.data());
 
                     for (int i = 0; i < printNum; i++) {
                         if (i > 0)
@@ -938,21 +939,21 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
         out << "  VBO ID=" << id  << "  Size=" << size << " bytes"
             << "  Usage=" << usageToString(usage);
 
-        appendObjectLabel(out, GL_BUFFER, id, "  ");
+        appendObjectLabel(out, GL_BUFFER, id, "\n    ");
 
         GLint mapped = 0;
         glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
         if (!mapped) {
             out << "\n    ";
-            std::vector<unsigned char> data(size);
-            glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
-
+            //std::vector<unsigned char> data(size);
+            //glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
+            //TODO : use this data?
             if (buffer.associatedVaos.empty()) {
                 out << "Not Bound to VAO";
             } else {
                 out << "Bound VAO ID : ";
                 for (auto vao : sortedIds(buffer.associatedVaos)) {
-                    out << vao << ' ';
+                    out << vao;
                     appendObjectLabel(out, GL_VERTEX_ARRAY, vao, ", ", "\n");
                 }
             }
