@@ -82,7 +82,7 @@ private:
     bool m_boundInfo;
     bool m_enableTiming = true;
     bool m_Once = false;
-    mutable bool m_flag = false;
+    mutable bool m_alreadyCaptured = false;
 };
 
 
