@@ -5,6 +5,15 @@
 #include <glutil/glutil.hpp>
 #include <glutil/debug.hpp>
 
+#include <atomic>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <type_traits>
+#include <utility>
+#include <string_view>
+
 #include <algorithm>
 #include <chrono>
 #include <iomanip>
@@ -18,11 +27,147 @@
 
 namespace glutil::debug {
 
-static void printSeparator(std::ostream& out, const char* title) {
+class SnapshotQueue {
+public:
+    explicit SnapshotQueue(std::ostream& out) : m_state(std::make_shared<State>(out)) {
+        std::thread([state = m_state] { workerLoop(state); }).detach();
+    }
+    SnapshotQueue(const SnapshotQueue&) = delete;
+    SnapshotQueue& operator=(const SnapshotQueue&) = delete;
+    ~SnapshotQueue() {
+        if (!m_state)
+            return;
+        m_state->done.store(true, std::memory_order_release);
+        m_state->cv.notify_one();
+    }
+
+    template <typename T>
+    void enqueue(T&& value) {
+        using Stored = std::decay_t<T>;
+        auto msg = std::make_unique<Message<Stored>>(std::forward<T>(value));
+        push(std::move(msg));
+    }
+
+private:
+    struct MessageBase {
+        virtual ~MessageBase() = default;
+        virtual void write(std::ostream& out) = 0;
+    };
+    template <typename T>
+    struct Message final : MessageBase {
+        explicit Message(T v) : value(std::move(v)) {}
+        void write(std::ostream& out) override { out << value; }
+        T value;
+    };
+    struct Node {
+        explicit Node(std::unique_ptr<MessageBase> value = {}) : msg(std::move(value)) {}
+        std::unique_ptr<MessageBase> msg;
+        std::atomic<Node*> next{nullptr};
+    };
+    struct State {
+        explicit State(std::ostream& stream) : out(&stream) {
+            Node* stub = new Node();
+            head.store(stub, std::memory_order_relaxed);
+            tail.store(stub, std::memory_order_relaxed);
+        }
+        ~State() {
+            Node* node = head.load(std::memory_order_relaxed);
+            while (node) {
+                Node* next = node->next.load(std::memory_order_relaxed);
+                delete node;
+                node = next;
+            }
+        }
+        std::ostream* out;
+        std::atomic<Node*> head, tail;
+        std::atomic<bool> done{false};
+        std::condition_variable cv;
+        std::mutex cvMutex;
+    };
+
+    void push(std::unique_ptr<MessageBase> msg) {
+        Node* node = new Node(std::move(msg));
+        Node* prev = m_state->tail.exchange(node, std::memory_order_acq_rel);
+        prev->next.store(node, std::memory_order_release);
+        m_state->cv.notify_one();
+    }
+
+    static void workerLoop(const std::shared_ptr<State>& state) {
+        while (true) {
+            Node* head = state->head.load(std::memory_order_acquire);
+            Node* next = head->next.load(std::memory_order_acquire);
+            if (!next) {
+                if (state->done.load(std::memory_order_acquire)) {
+                    state->head.store(nullptr, std::memory_order_relaxed);
+                    delete head;
+                    break;
+                }
+                std::unique_lock<std::mutex> lock(state->cvMutex);
+                state->cv.wait(lock, [&] {
+                    Node* h = state->head.load(std::memory_order_acquire);
+                    return state->done.load(std::memory_order_acquire) ||
+                           h->next.load(std::memory_order_acquire) != nullptr;
+                });
+                continue;
+            }
+
+            state->head.store(next, std::memory_order_release);
+            std::unique_ptr<MessageBase> msg = std::move(next->msg);
+            delete head;
+            if (msg)
+                msg->write(*state->out);
+        }
+    }
+
+    std::shared_ptr<State> m_state;
+};
+
+class SnapshotSink {
+public:
+    explicit SnapshotSink(std::ostream& out, SnapshotQueue* queue = nullptr)
+        : m_out(&out), m_queue(queue) {}
+
+    SnapshotSink& operator<<(const char* value) {
+        return (*this) << std::string(value ? value : "");
+    }
+    SnapshotSink& operator<<(char* value) {
+        return (*this) << std::string(value ? value : "");
+    }
+    SnapshotSink& operator<<(std::string_view value) {
+        return (*this) << std::string(value);
+    }
+    SnapshotSink& operator<<(std::ostream& (*manipulator)(std::ostream&)) {
+        if (m_queue) {
+            m_queue->enqueue(manipulator);
+            return *this;
+        }
+        (*m_out) << manipulator;
+        return *this;
+    }
+    template <typename T>
+    SnapshotSink& operator<<(T&& value) {
+        if (m_queue) {
+            m_queue->enqueue(std::forward<T>(value));
+            return *this;
+        }
+        (*m_out) << std::forward<T>(value);
+        return *this;
+    }
+    void flush() { *this << std::flush; }
+private:
+    std::ostream* m_out;
+    SnapshotQueue* m_queue;
+};
+
+static bool isAsyncStream(const std::ostream& out) {
+    return (&out == &std::cout) || (&out == &std::cerr) || (&out == &std::clog);
+}
+
+static void printSeparator(SnapshotSink& out, const char* title) {
     out << "\n============================== " << title << " ==============================\n\n";
 }
 
-static void printSubSeparator(std::ostream& out, const std::string& title) {
+static void printSubSeparator(SnapshotSink& out, const std::string& title) {
     out << "\n  ---------- " << title << " ----------\n";
 }
 
@@ -42,14 +187,14 @@ static std::vector<GLuint> sortedBufferIds(const std::unordered_map<GLuint, Buff
     return ids;
 }
 
-static void appendObjectLabel(std::ostream& out, GLenum identifier, GLuint name, std::string prefix = ", ", std::string suffix = "") {
+static void appendObjectLabel(SnapshotSink& out, GLenum identifier, GLuint name, std::string prefix = ", ", std::string suffix = "") {
     const std::string label = glutil::debug::getGLobjectLabel(identifier, name);
     if (!label.empty()) {
         out << prefix << "Label : \"" << label << '\"' << suffix;
     }
 }
 /** Many query functions like glGet* returns the name in GLint, not GLuint*/
-static void appendObjectLabel(std::ostream& out, GLenum identifier, GLint name, std::string prefix = ", ", std::string suffix = "") {
+static void appendObjectLabel(SnapshotSink& out, GLenum identifier, GLint name, std::string prefix = ", ", std::string suffix = "") {
     appendObjectLabel(out, identifier, static_cast<GLuint>(name), prefix, suffix);
 }
 
@@ -128,7 +273,7 @@ snapshot& snapshot::enableTiming(bool v) {
     return *this;
 }
 
-void snapshot::captureFramebuffer(std::ostream& out) const {
+void snapshot::captureFramebuffer(SnapshotSink& out) const {
     printSeparator(out, "Framebuffer");
 
     const GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -175,7 +320,7 @@ void snapshot::captureFramebuffer(std::ostream& out) const {
     }
 }
 
-void snapshot::captureShaderStatus(std::ostream& out) const {
+void snapshot::captureShaderStatus(SnapshotSink& out) const {
     printSeparator(out, "Shader Status");
 
     GLint program = 0;
@@ -201,7 +346,7 @@ void snapshot::captureShaderStatus(std::ostream& out) const {
     }
 }
 
-void snapshot::captureShaderUniforms(std::ostream& out) const {
+void snapshot::captureShaderUniforms(SnapshotSink& out) const {
     printSeparator(out, "Shader Uniforms");
 
     GLint program = 0;
@@ -576,7 +721,7 @@ void snapshot::captureShaderUniforms(std::ostream& out) const {
     }
 }
 
-void snapshot::captureTextureInfo(std::ostream& out) const {
+void snapshot::captureTextureInfo(SnapshotSink& out) const {
     printSeparator(out, "Texture Info");
     GLint savedActiveTexture = 0;
     glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActiveTexture);
@@ -721,7 +866,7 @@ void snapshot::captureTextureInfo(std::ostream& out) const {
     glActiveTexture(savedActiveTexture);
 }
 
-void snapshot::captureBufferVAOInfo(std::ostream& out) const {
+void snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
     auto formatVertex = [](const unsigned char* ptr, GLenum type, int components) -> std::string {
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(4) << std::right << "(";
@@ -914,7 +1059,7 @@ void snapshot::captureBufferVAOInfo(std::ostream& out) const {
         glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
     }
 }
-void snapshot::captureAllVBOInfo(std::ostream& out) const {
+void snapshot::captureAllVBOInfo(SnapshotSink& out) const {
 
     printSeparator(out, "All VBO Info");
     auto& tracker = GLStateTracker::instance();
@@ -963,7 +1108,7 @@ void snapshot::captureAllVBOInfo(std::ostream& out) const {
         out << "  (no VBOs tracked)\n";
     glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
 }
-void snapshot::captureRendererState(std::ostream& out) const {
+void snapshot::captureRendererState(SnapshotSink& out) const {
     printSeparator(out, "Renderer State");
 
     // Viewport
@@ -997,7 +1142,7 @@ void snapshot::captureRendererState(std::ostream& out) const {
     out << "  Blend Src    : " << glTextureFormatToString(blendSrc) << "\n";
     out << "  Blend Dst    : " << glTextureFormatToString(blendDst) << "\n";
 }
-void snapshot::captureBoundInfo(std::ostream& out) const {
+void snapshot::captureBoundInfo(SnapshotSink& out) const {
     printSeparator(out, "Bound Info");
 
     auto printBinding = [&](const char* name, GLenum pname, GLenum identifier = 0) {
@@ -1038,16 +1183,22 @@ void snapshot::captureBoundInfo(std::ostream& out) const {
 class ScopeTimer {
     const char* m_name;
     bool m_enable;
+    SnapshotSink* m_out;
     std::chrono::steady_clock::time_point m_start;
 public:
-    ScopeTimer(const char* name, bool enable) : m_name(name), m_enable(enable) {
+    ScopeTimer(const char* name, bool enable, SnapshotSink& out)
+        : m_name(name), m_enable(enable), m_out(&out) {
         if (m_enable) m_start = std::chrono::steady_clock::now();
     }
     ~ScopeTimer() {
         if (!m_enable) return;
+        stop();
+    }
+    void stop() {
+        m_enable = false;
         auto end = std::chrono::steady_clock::now();
         auto ms = std::chrono::duration<double, std::milli>(end - m_start).count();
-        std::cout << "\n[TIMER] " << m_name << ": " << ms << " ms\n";
+        (*m_out) << "\n[TIMER] " << m_name << ": " << ms << " ms\n";
     }
 };
 void snapshot::capture(std::ostream& out) const {
@@ -1063,49 +1214,55 @@ void snapshot::capture(std::ostream& out) const {
     insideSnapshot = true;
 
     GLStateGuard guard;
-    ScopeTimer wholeTime("Entire snapshot took", m_enableTiming);
+    std::unique_ptr<SnapshotQueue> queue;
+    if (isAsyncStream(out))
+        queue = std::make_unique<SnapshotQueue>(out);
+    SnapshotSink sink(out, queue.get());
+    ScopeTimer wholeTime("Entire snapshot took", m_enableTiming, sink);
 
-    out << "\n========================================================\n";
-    out << "               glutil::debug::snapshot                 \n";
-    out << "========================================================\n";
+    sink << "\n========================================================\n";
+    sink << "               glutil::debug::snapshot                 \n";
+    sink << "========================================================\n";
 
     if (m_framebufferInfo) {
-        ScopeTimer t("FramebufferInfo", m_enableTiming);
-        captureFramebuffer(out);
+        ScopeTimer t("FramebufferInfo", m_enableTiming, sink);
+        captureFramebuffer(sink);
     }
     if (m_shaderStatus) {
-        ScopeTimer t("ShaderStatus", m_enableTiming);
-        captureShaderStatus(out);
+        ScopeTimer t("ShaderStatus", m_enableTiming, sink);
+        captureShaderStatus(sink);
     }
     if (m_shaderUniform) {
-        ScopeTimer t("ShaderUniform", m_enableTiming);
-        captureShaderUniforms(out);
+        ScopeTimer t("ShaderUniform", m_enableTiming, sink);
+        captureShaderUniforms(sink);
     }
     if (m_textureInfo) {
-        ScopeTimer t("TextureInfo", m_enableTiming);
-        captureTextureInfo(out);
+        ScopeTimer t("TextureInfo", m_enableTiming, sink);
+        captureTextureInfo(sink);
     }
     if (m_bufferVAOInfo) {
-        ScopeTimer t("BufferVAOInfo", m_enableTiming);
-        captureBufferVAOInfo(out);
+        ScopeTimer t("BufferVAOInfo", m_enableTiming, sink);
+        captureBufferVAOInfo(sink);
     }
     if (m_allVBOInfo) {
-        ScopeTimer t("AllVBOInfo", m_enableTiming);
-        captureAllVBOInfo(out);
+        ScopeTimer t("AllVBOInfo", m_enableTiming, sink);
+        captureAllVBOInfo(sink);
     }
     if (m_rendererState) {
-        ScopeTimer t("RendererState", m_enableTiming);
-        captureRendererState(out);
+        ScopeTimer t("RendererState", m_enableTiming, sink);
+        captureRendererState(sink);
     }
     if (m_boundInfo) {
-        ScopeTimer t("BoundInfo", m_enableTiming);
-        captureBoundInfo(out);
+        ScopeTimer t("BoundInfo", m_enableTiming, sink);
+        captureBoundInfo(sink);
     }
 
-    out << "\n========================================================\n";
-    out << "                     snapshot end                      \n";
-    out << "========================================================\n\n";
-    out.flush();
+    sink << '\n';
+    wholeTime.stop();
+    sink << "========================================================\n";
+    sink << "                     snapshot end                      \n";
+    sink << "========================================================\n\n";
+    sink.flush(); // TODO : sink flushes before printing last timestamp. maybe add flush in sink dtor?
 
     insideSnapshot = false;
 }
@@ -1184,7 +1341,8 @@ void snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
            this->m_bufferIncludeUnbound = false;
 
             std::ofstream f(dir / (std::to_string(vaoId) + ".vao"));
-            captureBufferVAOInfo(f);
+            SnapshotSink fileSink(f);
+            captureBufferVAOInfo(fileSink);
 
             this->m_bufferIncludeUnbound = savedUnbound;
         }

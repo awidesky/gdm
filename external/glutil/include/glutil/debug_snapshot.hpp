@@ -9,6 +9,8 @@
 
 namespace glutil::debug {
 
+class SnapshotSink;
+
 // TODO : snapshot --> Snapshot
 class snapshot {
 public:
@@ -57,14 +59,14 @@ public:
     void capture(std::ostream& out = std::cerr) const;
     void capture(const std::filesystem::path& dir, bool dumpVertexData = false) const;
 private:
-    void captureFramebuffer(std::ostream& out) const;
-    void captureShaderStatus(std::ostream& out) const;
-    void captureShaderUniforms(std::ostream& out) const;
-    void captureTextureInfo(std::ostream& out) const;
-    void captureBufferVAOInfo(std::ostream& out) const;
-    void captureAllVBOInfo(std::ostream& out) const;
-    void captureRendererState(std::ostream& out) const;
-    void captureBoundInfo(std::ostream& out) const;
+    void captureFramebuffer(SnapshotSink& out) const;
+    void captureShaderStatus(SnapshotSink& out) const;
+    void captureShaderUniforms(SnapshotSink& out) const;
+    void captureTextureInfo(SnapshotSink& out) const;
+    void captureBufferVAOInfo(SnapshotSink& out) const;
+    void captureAllVBOInfo(SnapshotSink& out) const;
+    void captureRendererState(SnapshotSink& out) const;
+    void captureBoundInfo(SnapshotSink& out) const;
     void saveBufferInfoToFile(const std::filesystem::path& dir) const;
 
 
