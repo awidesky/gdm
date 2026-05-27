@@ -8,6 +8,8 @@
 
 namespace glutil::debug {
 
+bool disableAutoLabelGLObjects = false;
+
 namespace {
 static GLenum getGlError() {
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
