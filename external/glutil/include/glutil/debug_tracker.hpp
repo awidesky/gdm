@@ -23,6 +23,7 @@ struct BufferInfo {
     GLenum dataType = 0; 
     GLsizeiptr size = 0; 
     std::unordered_set<GLuint> associatedVaos;
+    std::string label;
 };
 
 class BufferRegistry {
@@ -41,17 +42,30 @@ private:
     std::unordered_map<GLuint, BufferInfo> buffers;
 };
 
-
+ 
 // "VAO", "Texture", "Shader", "Program", "FBO",
+
+struct ObjectInfo {
+    std::string label;
+};
 
 class GLObjectRegistry {
 public:
-    void create(const std::string& type, GLuint id) { objects[type].insert(id); }
+    void create(const std::string& type, GLuint id) { objects[type][id] = {}; }
     void destroy(const std::string& type, GLuint id) { objects[type].erase(id); }
-    const std::unordered_map<std::string, std::unordered_set<GLuint>>& getAll() const { return objects; }
+    ObjectInfo* get(const std::string& type, GLuint id) {
+        auto typeIt = objects.find(type);
+        if (typeIt == objects.end())
+            return nullptr;
+        auto idIt = typeIt->second.find(id);
+        if (idIt == typeIt->second.end())
+            return nullptr;
+        return &idIt->second;
+    }
+    const std::unordered_map<std::string, std::unordered_map<GLuint, ObjectInfo>>& getAll() const { return objects; }
 
 private:
-    std::unordered_map<std::string, std::unordered_set<GLuint>> objects;
+    std::unordered_map<std::string, std::unordered_map<GLuint, ObjectInfo>> objects;
 };
 
 class GLStateTracker {
@@ -83,16 +97,20 @@ private:
             const char* role = (info.role == BufferRole::VBO)   ? "VBO"
                                : (info.role == BufferRole::EBO) ? "EBO"
                                                                 : "Unknown";
-            fprintf(stderr, "[LEAK] Buffer id=%u role=%s size=%lld\n", id, role, (long long)info.size);
+
+            const char* label = info.label.c_str();
+
+            fprintf(stderr, "[LEAK] Buffer id=%u role=%s label=%s\n", id, role, label);
         }
 
-        for (auto& [type, ids] : objects.getAll()) {
-            for (auto id : ids) {
+       for (auto& [type, ids] : objects.getAll()) {
+            for (auto& [id, info] : ids) {
                 if (!hasLeak) {
                     fprintf(stderr, "\n=== Leak Check ===\n");
                     hasLeak = true;
                 }
-                fprintf(stderr, "[LEAK] Object type=%s id=%u\n", type.c_str(), id);
+                fprintf(stderr, "[LEAK] Object id=%u type=%s label=%s\n", id, type.c_str(),
+                        info.label.empty() ? "(none)" : info.label.c_str());
             }
         }
 
