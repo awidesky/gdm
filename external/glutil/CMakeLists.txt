@@ -176,6 +176,10 @@ if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM
         example/debugLabel.cpp
   )
 
+  add_glutil_example(glutil_autoLabelingExample
+        example/autoLabeling.cpp
+  )
+
   add_glutil_example(glutil_stacktraceExample
         example/stacktrace.cpp
   )
