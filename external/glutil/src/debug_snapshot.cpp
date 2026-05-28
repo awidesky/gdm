@@ -141,6 +141,7 @@ private:
             SnapshotQueueNode* next = head->next.load(std::memory_order_acquire);
             if (!next) {
                 if (state->done.load(std::memory_order_acquire)) {
+                    state->out->flush();
                     state->head.store(nullptr, std::memory_order_relaxed);
                     delete head;
                     state->finished.store(true, std::memory_order_release);
@@ -1315,10 +1316,11 @@ SnapshotAsyncHandle snapshot::capture(std::ostream& out, bool printAsync) const 
         queue = std::make_unique<SnapshotQueue>(out);
     if (queue)
         handle = queue->handle();
-    if (handle && m_lastAsyncHandle && !m_lastAsyncHandle.finished())
+    if (handle && m_lastAsyncHandle && !m_lastAsyncHandle.finished()) {
         LOG_WARNING() << "Previous snapshot async capture is still running; overwriting handle.";
         LOG_WARNING() << "Unless you have the SnapshotAsyncHandle object of previous capture,";
         LOG_WARNING() << "you don't have a way to wait for the previous async output worker thread.";
+    }
     if (handle)
         m_lastAsyncHandle = handle;
     SnapshotSink sink(out, queue.get());
@@ -1342,10 +1344,11 @@ SnapshotAsyncHandle snapshot::capture(const std::filesystem::path& dir, bool dum
         std::ostream& out = *f;
         std::unique_ptr<SnapshotQueue> queue = std::make_unique<SnapshotQueue>(std::move(f));
         handle = queue->handle();
-        if (handle && m_lastAsyncHandle && !m_lastAsyncHandle.finished())
+        if (handle && m_lastAsyncHandle && !m_lastAsyncHandle.finished()) {
             LOG_WARNING() << "Previous snapshot async capture is still running; overwriting handle.";
             LOG_WARNING() << "Unless you have the SnapshotAsyncHandle object of previous capture,";
             LOG_WARNING() << "you don't have a way to wait for the previous async output worker thread.";
+        }
         if (handle)
             m_lastAsyncHandle = handle;
         SnapshotSink sink(out, queue.get());
