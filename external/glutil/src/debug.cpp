@@ -145,9 +145,8 @@ void labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
 
 std::string getGLobjectLabel(GLenum identifier, GLuint name) {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
-    if (!support) {
+    if (!support || identifier == 0 || name == 0 || !isValidGLobject(identifier, name))
         return {};
-    }
 
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
     GLsizei length = 0;

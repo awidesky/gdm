@@ -443,7 +443,7 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
     if (err != GL_NO_ERROR) {
         LOG_ERROR() << "[GL Error] " << glErrorToString(err) << '(' << err << ')';
         printStackTrace(std::string("In function ") + name);
-        snapshot();
+        // snapshot(); TODO : proper snapshot?
         LOG_ERROR() << "---- End of \"" << glErrorToString(err) << '(' << err << ')' << " in function " << name << "\"\n\n";
     }
 
