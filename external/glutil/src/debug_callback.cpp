@@ -262,6 +262,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             }
             break;
         }
+        default: break;
     }
 }
 

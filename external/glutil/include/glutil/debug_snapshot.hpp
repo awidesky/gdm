@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream>
+#include <memory>
 #include <set>
 #include <fstream>
 #include <filesystem>
@@ -10,6 +11,21 @@
 namespace glutil::debug {
 
 class SnapshotSink;
+struct SnapshotAsyncState;
+
+class SnapshotAsyncHandle {
+public:
+    SnapshotAsyncHandle() = default;
+    explicit SnapshotAsyncHandle(std::shared_ptr<SnapshotAsyncState> state);
+    ~SnapshotAsyncHandle();
+
+    void wait() const;
+    bool finished() const;
+    explicit operator bool() const { return static_cast<bool>(m_state); }
+
+private:
+    std::shared_ptr<SnapshotAsyncState> m_state;
+};
 
 // TODO : snapshot --> Snapshot
 class snapshot {
@@ -56,9 +72,11 @@ public:
     /// @param v true to print elapsed time ofsnapshot.
     snapshot& enableTiming(bool v);
 
-    void capture(std::ostream& out = std::cerr) const;
-    void capture(const std::filesystem::path& dir, bool dumpVertexData = false) const;
+    SnapshotAsyncHandle capture(std::ostream& out = std::cerr, bool printAsync = true) const;
+    SnapshotAsyncHandle capture(const std::filesystem::path& dir, bool dumpVertexData = false,
+                                bool printAsync = false) const;
 private:
+    void captureInternal(SnapshotSink& out) const;
     void captureFramebuffer(SnapshotSink& out) const;
     void captureShaderStatus(SnapshotSink& out) const;
     void captureShaderUniforms(SnapshotSink& out) const;
@@ -85,6 +103,7 @@ private:
     bool m_enableTiming = true;
     bool m_Once = false;
     mutable bool m_alreadyCaptured = false;
+    mutable SnapshotAsyncHandle m_lastAsyncHandle;
 };
 
 

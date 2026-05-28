@@ -150,6 +150,8 @@ int main() {
     glUseProgram(program.id);
     if (texLoc >= 0) glUniform1i(texLoc, 0);
 
+    glutil::debug::SnapshotAsyncHandle lastSnapshot;
+
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -193,10 +195,13 @@ int main() {
         glBindVertexArray(0);
         glBindTexture(GL_TEXTURE_2D, 0);
 
-        ss.capture();
+        lastSnapshot = ss.capture();
 
         glfwSwapBuffers(window);
     }
+
+    if (lastSnapshot)
+        lastSnapshot.wait();
 
     glDeleteTextures(1, &secondTexture);
     glDeleteBuffers(1, &secondVbo);

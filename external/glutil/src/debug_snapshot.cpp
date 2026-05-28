@@ -27,9 +27,82 @@
 
 namespace glutil::debug {
 
+struct SnapshotMessageBase {
+    virtual ~SnapshotMessageBase() = default;
+    virtual void write(std::ostream& out) = 0;
+};
+
+template <typename T>
+struct SnapshotMessage final : SnapshotMessageBase {
+    explicit SnapshotMessage(T v) : value(std::move(v)) {}
+    void write(std::ostream& out) override { out << value; }
+    T value;
+};
+
+struct SnapshotQueueNode {
+    explicit SnapshotQueueNode(std::unique_ptr<SnapshotMessageBase> value = {})
+        : msg(std::move(value)) {}
+    std::unique_ptr<SnapshotMessageBase> msg;
+    std::atomic<SnapshotQueueNode*> next{nullptr};
+};
+
+struct SnapshotAsyncState {
+    explicit SnapshotAsyncState(std::ostream& stream) : out(&stream) {
+        SnapshotQueueNode* stub = new SnapshotQueueNode();
+        head.store(stub, std::memory_order_relaxed);
+        tail.store(stub, std::memory_order_relaxed);
+    }
+
+    explicit SnapshotAsyncState(std::unique_ptr<std::ostream> stream)
+        : ownedOut(std::move(stream)), out(ownedOut.get()) {
+        SnapshotQueueNode* stub = new SnapshotQueueNode();
+        head.store(stub, std::memory_order_relaxed);
+        tail.store(stub, std::memory_order_relaxed);
+    }
+
+    ~SnapshotAsyncState() {
+        SnapshotQueueNode* node = head.load(std::memory_order_relaxed);
+        while (node) {
+            SnapshotQueueNode* next = node->next.load(std::memory_order_relaxed);
+            delete node;
+            node = next;
+        }
+    }
+
+    std::unique_ptr<std::ostream> ownedOut;
+    std::ostream* out;
+    std::atomic<SnapshotQueueNode*> head, tail;
+    std::atomic<bool> done{false}, finished{false};
+    std::condition_variable cv, finishedCv;
+    std::mutex cvMutex, finishedMutex;
+};
+
+SnapshotAsyncHandle::SnapshotAsyncHandle(std::shared_ptr<SnapshotAsyncState> state)
+    : m_state(std::move(state)) {}
+SnapshotAsyncHandle::~SnapshotAsyncHandle() = default;
+
+void SnapshotAsyncHandle::wait() const {
+    if (!m_state)
+        return;
+    std::unique_lock<std::mutex> lock(m_state->finishedMutex);
+    m_state->finishedCv.wait(lock, [&] {
+        return m_state->finished.load(std::memory_order_acquire);
+    });
+}
+bool SnapshotAsyncHandle::finished() const {
+    if (!m_state)
+        return true;
+    return m_state->finished.load(std::memory_order_acquire);
+}
+
 class SnapshotQueue {
 public:
-    explicit SnapshotQueue(std::ostream& out) : m_state(std::make_shared<State>(out)) {
+    explicit SnapshotQueue(std::ostream& out) : m_state(std::make_shared<SnapshotAsyncState>(out)) {
+        std::thread([state = m_state] { workerLoop(state); }).detach();
+    }
+
+    explicit SnapshotQueue(std::unique_ptr<std::ostream> out)
+        : m_state(std::make_shared<SnapshotAsyncState>(std::move(out))) {
         std::thread([state = m_state] { workerLoop(state); }).detach();
     }
     SnapshotQueue(const SnapshotQueue&) = delete;
@@ -44,67 +117,39 @@ public:
     template <typename T>
     void enqueue(T&& value) {
         using Stored = std::decay_t<T>;
-        auto msg = std::make_unique<Message<Stored>>(std::forward<T>(value));
+        auto msg = std::make_unique<SnapshotMessage<Stored>>(std::forward<T>(value));
         push(std::move(msg));
     }
 
-private:
-    struct MessageBase {
-        virtual ~MessageBase() = default;
-        virtual void write(std::ostream& out) = 0;
-    };
-    template <typename T>
-    struct Message final : MessageBase {
-        explicit Message(T v) : value(std::move(v)) {}
-        void write(std::ostream& out) override { out << value; }
-        T value;
-    };
-    struct Node {
-        explicit Node(std::unique_ptr<MessageBase> value = {}) : msg(std::move(value)) {}
-        std::unique_ptr<MessageBase> msg;
-        std::atomic<Node*> next{nullptr};
-    };
-    struct State {
-        explicit State(std::ostream& stream) : out(&stream) {
-            Node* stub = new Node();
-            head.store(stub, std::memory_order_relaxed);
-            tail.store(stub, std::memory_order_relaxed);
-        }
-        ~State() {
-            Node* node = head.load(std::memory_order_relaxed);
-            while (node) {
-                Node* next = node->next.load(std::memory_order_relaxed);
-                delete node;
-                node = next;
-            }
-        }
-        std::ostream* out;
-        std::atomic<Node*> head, tail;
-        std::atomic<bool> done{false};
-        std::condition_variable cv;
-        std::mutex cvMutex;
-    };
+    SnapshotAsyncHandle handle() const {
+        return SnapshotAsyncHandle(m_state);
+    }
 
-    void push(std::unique_ptr<MessageBase> msg) {
-        Node* node = new Node(std::move(msg));
-        Node* prev = m_state->tail.exchange(node, std::memory_order_acq_rel);
+private:
+    void push(std::unique_ptr<SnapshotMessageBase> msg) {
+        SnapshotQueueNode* node = new SnapshotQueueNode(std::move(msg));
+        SnapshotQueueNode* prev = m_state->tail.exchange(node, std::memory_order_acq_rel);
         prev->next.store(node, std::memory_order_release);
         m_state->cv.notify_one();
     }
 
-    static void workerLoop(const std::shared_ptr<State>& state) {
+    static void workerLoop(const std::shared_ptr<SnapshotAsyncState>& state) {
         while (true) {
-            Node* head = state->head.load(std::memory_order_acquire);
-            Node* next = head->next.load(std::memory_order_acquire);
+            SnapshotQueueNode* head = state->head.load(std::memory_order_acquire);
+            if (!head)
+                break;
+            SnapshotQueueNode* next = head->next.load(std::memory_order_acquire);
             if (!next) {
                 if (state->done.load(std::memory_order_acquire)) {
                     state->head.store(nullptr, std::memory_order_relaxed);
                     delete head;
+                    state->finished.store(true, std::memory_order_release);
+                    state->finishedCv.notify_all();
                     break;
                 }
                 std::unique_lock<std::mutex> lock(state->cvMutex);
                 state->cv.wait(lock, [&] {
-                    Node* h = state->head.load(std::memory_order_acquire);
+                    SnapshotQueueNode* h = state->head.load(std::memory_order_acquire);
                     return state->done.load(std::memory_order_acquire) ||
                            h->next.load(std::memory_order_acquire) != nullptr;
                 });
@@ -112,14 +157,14 @@ private:
             }
 
             state->head.store(next, std::memory_order_release);
-            std::unique_ptr<MessageBase> msg = std::move(next->msg);
+            std::unique_ptr<SnapshotMessageBase> msg = std::move(next->msg);
             delete head;
             if (msg)
                 msg->write(*state->out);
         }
     }
 
-    std::shared_ptr<State> m_state;
+    std::shared_ptr<SnapshotAsyncState> m_state;
 };
 
 class SnapshotSink {
@@ -158,10 +203,6 @@ private:
     std::ostream* m_out;
     SnapshotQueue* m_queue;
 };
-
-static bool isAsyncStream(const std::ostream& out) {
-    return (&out == &std::cout) || (&out == &std::cerr) || (&out == &std::clog);
-}
 
 static void printSeparator(SnapshotSink& out, const char* title) {
     out << "\n============================== " << title << " ==============================\n\n";
@@ -1201,8 +1242,7 @@ public:
         (*m_out) << "\n[TIMER] " << m_name << ": " << ms << " ms\n";
     }
 };
-void snapshot::capture(std::ostream& out) const {
-
+void snapshot::captureInternal(SnapshotSink& sink) const {
     if (m_alreadyCaptured && m_Once)
         return;
 
@@ -1214,10 +1254,6 @@ void snapshot::capture(std::ostream& out) const {
     insideSnapshot = true;
 
     GLStateGuard guard;
-    std::unique_ptr<SnapshotQueue> queue;
-    if (isAsyncStream(out))
-        queue = std::make_unique<SnapshotQueue>(out);
-    SnapshotSink sink(out, queue.get());
     ScopeTimer wholeTime("Entire snapshot took", m_enableTiming, sink);
 
     sink << "\n========================================================\n";
@@ -1267,26 +1303,68 @@ void snapshot::capture(std::ostream& out) const {
     insideSnapshot = false;
 }
 
-void snapshot::capture(const std::filesystem::path& dir, bool dumpVertexData) const
-{
+SnapshotAsyncHandle snapshot::capture(std::ostream& out, bool printAsync) const {
+    if (m_Once && m_alreadyCaptured)
+        return m_lastAsyncHandle;
+
+    SnapshotAsyncHandle handle;
+    std::unique_ptr<SnapshotQueue> queue;
+    if (printAsync)
+        queue = std::make_unique<SnapshotQueue>(out);
+    if (queue)
+        handle = queue->handle();
+    if (handle && m_lastAsyncHandle && !m_lastAsyncHandle.finished())
+        LOG_WARNING() << "Previous snapshot async capture is still running; overwriting handle.";
+        LOG_WARNING() << "Unless you have the SnapshotAsyncHandle object of previous capture,";
+        LOG_WARNING() << "you don't have a way to wait for the previous async output worker thread.";
+    if (handle)
+        m_lastAsyncHandle = handle;
+    SnapshotSink sink(out, queue.get());
+    captureInternal(sink);
+    return handle;
+}
+
+SnapshotAsyncHandle snapshot::capture(const std::filesystem::path& dir, bool dumpVertexData,
+                                      bool printAsync) const {
+    if (m_Once && m_alreadyCaptured)
+        return m_lastAsyncHandle;
+
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
     std::ostringstream filename;
     filename << std::put_time(std::localtime(&time), "%Y%m%d_%H%M%S") << ".txt";
 
-    std::ofstream f(dir / filename.str());
-    this->capture(f);
+    SnapshotAsyncHandle handle;
+    if (printAsync) {
+        auto f = std::make_unique<std::ofstream>(dir / filename.str());
+        std::ostream& out = *f;
+        std::unique_ptr<SnapshotQueue> queue = std::make_unique<SnapshotQueue>(std::move(f));
+        handle = queue->handle();
+        if (handle && m_lastAsyncHandle && !m_lastAsyncHandle.finished())
+            LOG_WARNING() << "Previous snapshot async capture is still running; overwriting handle.";
+            LOG_WARNING() << "Unless you have the SnapshotAsyncHandle object of previous capture,";
+            LOG_WARNING() << "you don't have a way to wait for the previous async output worker thread.";
+        if (handle)
+            m_lastAsyncHandle = handle;
+        SnapshotSink sink(out, queue.get());
+        captureInternal(sink);
+    } else {
+        std::ofstream f(dir / filename.str());
+        SnapshotSink sink(f);
+        captureInternal(sink);
+    }
 
-    if (dumpVertexData)
-    {
+    if (dumpVertexData) {
         static thread_local bool insideSnapshot = false;
         if (insideSnapshot)
-            return;
+            return handle;
         insideSnapshot = true;
 
         GLStateGuard guard;
         saveBufferInfoToFile(dir);
     }
+
+    return handle;
 }
 
 void snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
