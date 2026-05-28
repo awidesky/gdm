@@ -33,7 +33,7 @@ enum class GLFunctions {
     GenVertexArrays, CreateVertexArrays,
     GenTextures, CreateTextures,
     GenFramebuffers, CreateFramebuffers,
-    CreateShader, CreateProgram, LinkProgram,
+    CreateShader, CompileShader, CreateProgram, LinkProgram,
     DeleteBuffers, DeleteVertexArrays, DeleteTextures,
     DeleteFramebuffers, DeleteShader, DeleteProgram,
     BindBuffer, BindVertexArray, BindTexture, 
@@ -52,6 +52,7 @@ static GLFunctions classifyGLFunctions(std::string_view fname) {
     if (fname == "glGenFramebuffers") return GLFunctions::GenFramebuffers;
     if (fname == "glCreateFramebuffers") return GLFunctions::CreateFramebuffers;
     if (fname == "glCreateShader") return GLFunctions::CreateShader;
+    if (fname == "glCompileShader") return GLFunctions::CompileShader;
     if (fname == "glCreateProgram") return GLFunctions::CreateProgram;
     if (fname == "glLinkProgram") return GLFunctions::LinkProgram;
     if (fname == "glDeleteBuffers") return GLFunctions::DeleteBuffers;
@@ -286,19 +287,35 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             labelGLobject(GL_PROGRAM, id, "Program#" + std::to_string(id) + codeline);
             break;
         }
+        case GLFunctions::CompileShader: {
+            GLuint shader = va_arg(args, GLuint);
+            GLint compileStatus = GL_FALSE;
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &compileStatus);
+
+            std::string label = getGLobjectLabel(GL_SHADER, shader);
+            if (label.empty()) {
+                GLint shaderType = 0;
+                glGetShaderiv(shader, GL_SHADER_TYPE, &shaderType);
+                label = std::string(glShaderTypeToShortString(shaderType)) + '#' + std::to_string(shader) + codeline;
+            }
+            label += std::string("[Compile: ") + (compileStatus == GL_TRUE ? "OK" : "FAILED") + ']';
+            labelGLobject(GL_SHADER, shader, label);
+            break;
+        }
         case GLFunctions::LinkProgram: {
             GLuint program = va_arg(args, GLuint);
             GLint attachedCount = 0;
             glGetProgramiv(program, GL_ATTACHED_SHADERS, &attachedCount);
 
-            std::vector<GLuint> attachedShaders(attachedCount > 0 ? static_cast<size_t>(attachedCount) : 0u);
+            std::ostringstream ss;
+            ss << "Program#" << program << "(";
             if (attachedCount > 0) {
+                std::vector<GLuint> attachedShaders(static_cast<size_t>(attachedCount));
                 GLsizei shaderCount = 0;
                 glGetAttachedShaders(program, attachedCount, &shaderCount, attachedShaders.data());
 
                 std::vector<std::string> shaderLabels;
                 shaderLabels.reserve(static_cast<size_t>(shaderCount));
-
                 for (GLsizei i = 0; i < shaderCount; ++i) {
                     const GLuint shader = attachedShaders[static_cast<size_t>(i)];
                     GLint shaderType = 0;
@@ -311,17 +328,16 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
                     shaderLabels.push_back(std::move(shaderLabel));
                 }
 
-                std::ostringstream ss;
-                ss << "Program#" << program << "(";
                 for (size_t i = 0; i < shaderLabels.size(); ++i) {
                     if (i != 0) ss << ", ";
                     ss << shaderLabels[i];
                 }
-                ss << ')';
-                labelGLobject(GL_PROGRAM, program, ss.str());
-            } else {
-                labelGLobject(GL_PROGRAM, program, "Program(attached=none)");
-            }
+            } else { ss << "attached=none"; }
+
+            GLint linkStatus = GL_FALSE;
+            glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
+            ss << ")[Link: " << (linkStatus == GL_TRUE ? "OK" : "FAILED") << ']';
+            labelGLobject(GL_PROGRAM, program, ss.str());
             break;
         }
         case GLFunctions::GenVertexArrays:
