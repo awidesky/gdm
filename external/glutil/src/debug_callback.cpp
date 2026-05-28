@@ -278,8 +278,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
         case GLFunctions::CreateShader: {
             GLenum type = va_arg(args, GLenum);
             GLuint id = *static_cast<GLuint*>(ret);
-            labelGLobject(GL_SHADER, id, std::string(glShaderTypeToShortString(type))
-                 + '#' + std::to_string(id) + codeline);
+            labelGLobject(GL_SHADER, id, std::string(glShaderTypeToShortString(type)) + '#' + std::to_string(id) + codeline);
             break;
         }
         case GLFunctions::CreateProgram: {
@@ -364,21 +363,29 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
         }
 
         /** Some implementation does not create object before use, so we track glBind* too */
-        // TODO : bind functions in snapshot removes the original label. why disableAutoLabelGLObjects does not work?
         case GLFunctions::BindBuffer: {
             GLenum target = va_arg(args, GLenum);
             GLuint id = va_arg(args, GLuint);
+            const std::string prevLabel = getGLobjectLabel(GL_BUFFER, id);
+            if (!prevLabel.empty() && prevLabel.rfind("Buffer#", 0) != 0) 
+                break;
             labelGLobject(GL_BUFFER, id, std::string(glBufferTypeToShortString(target)) + '#' + std::to_string(id) + codeline);
             break;
         }
         case GLFunctions::BindVertexArray: {
             GLuint id = va_arg(args, GLuint);
+            const std::string prevLabel = getGLobjectLabel(GL_VERTEX_ARRAY, id);
+            if (!prevLabel.empty())
+                break;
             labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + codeline);
             break;
         }
         case GLFunctions::BindTexture: {
             GLenum target = va_arg(args, GLenum);
             GLuint id = va_arg(args, GLuint);
+            const std::string prevLabel = getGLobjectLabel(GL_TEXTURE, id);
+            if (!prevLabel.empty() && prevLabel.rfind("Tex#", 0) != 0)
+                break;
             labelGLobject(GL_TEXTURE, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id) + codeline);
             break;
         }

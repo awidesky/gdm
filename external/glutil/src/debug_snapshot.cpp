@@ -241,12 +241,14 @@ static void appendObjectLabel(SnapshotSink& out, GLenum identifier, GLint name, 
 
 struct GLStateGuard {
     GLint vao, arrayBuffer, activeTexture, renderbuffer;
+    bool prev_disableAutoLabelGLObjects;
 
     GLStateGuard() {
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
         glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &arrayBuffer);
         glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
         glGetIntegerv(GL_RENDERBUFFER_BINDING, &renderbuffer);
+        prev_disableAutoLabelGLObjects = disableAutoLabelGLObjects;
         disableAutoLabelGLObjects = true;
     }
     ~GLStateGuard() {
@@ -254,7 +256,7 @@ struct GLStateGuard {
         glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer);
         glActiveTexture(activeTexture);
         glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
-        disableAutoLabelGLObjects = false;
+        disableAutoLabelGLObjects = prev_disableAutoLabelGLObjects;
     }
 };
 
