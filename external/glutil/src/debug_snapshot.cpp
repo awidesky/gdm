@@ -220,6 +220,16 @@ static std::vector<GLuint> sortedIds(const Container& ids) {
     return sorted;
 }
 
+static std::vector<GLuint> sortedMapIds(const std::unordered_map<GLuint, ObjectInfo>& ids) {
+    std::vector<GLuint> sorted;
+    sorted.reserve(ids.size());
+    for (auto& [id, info] : ids)
+        sorted.push_back(id);
+    std::sort(sorted.begin(), sorted.end());
+    return sorted;
+}
+
+
 static std::vector<GLuint> sortedBufferIds(const std::unordered_map<GLuint, BufferInfo>& buffers) {
     std::vector<GLuint> ids;
     ids.reserve(buffers.size());
@@ -856,7 +866,7 @@ void snapshot::captureTextureInfo(SnapshotSink& out) const {
     auto texIt = allObjects.find("Texture");
 
     if (texIt != allObjects.end()) {
-        for (GLuint texId : sortedIds(texIt->second)) {
+        for (GLuint texId : sortedMapIds(texIt->second)) {
             bool isBound = false;
             for (int i = 0; i < maxUnits && !isBound; i++) {
                 glActiveTexture(GL_TEXTURE0 + i);
@@ -953,7 +963,7 @@ void snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
         return;
     }
 
-    for (GLuint vaoId : sortedIds(vaoIt->second)) {
+    for (GLuint vaoId : sortedMapIds(vaoIt->second)) {
 
         bool isBound = (static_cast<GLuint>(savedVAO) == vaoId);
 
@@ -1417,7 +1427,7 @@ void snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
     const auto& allObjects = tracker.objects.getAll();
     auto vaoIt = allObjects.find("VAO");
     if (vaoIt != allObjects.end()) {
-        for (GLuint vaoId : vaoIt->second) {
+        for (auto& [vaoId, info] : vaoIt->second) {
             std::ofstream f(dir / (std::to_string(vaoId) + ".vao"));
             SnapshotSink sink(f);
             saveVAOInfoToFile(sink, vaoId);
