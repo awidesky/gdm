@@ -86,6 +86,7 @@ private:
     void captureRendererState(SnapshotSink& out) const;
     void captureBoundInfo(SnapshotSink& out) const;
     void saveBufferInfoToFile(const std::filesystem::path& dir) const;
+    void saveVAOInfoToFile(SnapshotSink& out, GLuint vaoId) const;
 
 
     bool m_shaderStatus;
