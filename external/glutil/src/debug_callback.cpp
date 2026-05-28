@@ -266,7 +266,37 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
         default: break;
     }
 }
-
+static void updateTrackerLabel(GLStateTracker& tracker, GLFunctions func, GLuint id, const std::string& label) {
+    switch (func) {
+        case GLFunctions::CreateShader:
+            if (auto* info = tracker.objects.get("Shader", id))
+                info->label = label;
+            break;
+        case GLFunctions::CreateProgram:
+        case GLFunctions::LinkProgram:
+            if (auto* info = tracker.objects.get("Program", id))
+                info->label = label;
+            break;
+        case GLFunctions::GenBuffers:
+        case GLFunctions::BindBuffer:
+            if (auto* info = tracker.buffers.get(id))
+                info->label = label;
+            break;
+        case GLFunctions::GenVertexArrays:
+        case GLFunctions::BindVertexArray:
+            if (auto* info = tracker.objects.get("VAO", id))
+                info->label = label;
+            break;
+        case GLFunctions::GenTextures:
+        case GLFunctions::BindTexture:
+        case GLFunctions::TexImage2D:
+        case GLFunctions::TexImage3D:
+            if (auto* info = tracker.objects.get("Texture", id))
+                info->label = label;
+            break;
+        default: break;
+    }
+}
 static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_list args) {
     if (disableAutoLabelGLObjects) return;
 
@@ -279,11 +309,13 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             GLenum type = va_arg(args, GLenum);
             GLuint id = *static_cast<GLuint*>(ret);
             labelGLobject(GL_SHADER, id, std::string(glShaderTypeToShortString(type)) + '#' + std::to_string(id) + codeline);
+            updateTrackerLabel(tracker, func, id, std::string(glShaderTypeToShortString(type)) + '#' + std::to_string(id) + codeline);
             break;
         }
         case GLFunctions::CreateProgram: {
             GLuint id = *static_cast<GLuint*>(ret);
             labelGLobject(GL_PROGRAM, id, "Program#" + std::to_string(id) + codeline);
+            updateTrackerLabel(tracker, func, id, std::string("Program#" + std::to_string(id) + codeline));
             break;
         }
         case GLFunctions::CompileShader: {
@@ -299,6 +331,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             }
             label += std::string("[Compile: ") + (compileStatus == GL_TRUE ? "OK" : "FAILED") + ']';
             labelGLobject(GL_SHADER, shader, label);
+            updateTrackerLabel(tracker, GLFunctions::CreateShader, shader, label);
             break;
         }
         case GLFunctions::LinkProgram: {
@@ -337,6 +370,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
             ss << ")[Link: " << (linkStatus == GL_TRUE ? "OK" : "FAILED") << ']';
             labelGLobject(GL_PROGRAM, program, ss.str());
+            updateTrackerLabel(tracker, func, program, ss.str());
             break;
         }
         case GLFunctions::GenVertexArrays:
@@ -357,8 +391,10 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
                 shortType = "Tex";
             }
 
-            for (GLsizei i = 0; i < count; i++)
+            for (GLsizei i = 0; i < count; i++) {
                 labelGLobject(identifier, ids[i], shortType + '#' + std::to_string(ids[i]) + codeline);
+                updateTrackerLabel(tracker, func, ids[i], shortType + '#' + std::to_string(ids[i]) + codeline);
+            }
             break;
         }
 
@@ -370,6 +406,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             if (!prevLabel.empty() && prevLabel.rfind("Buffer#", 0) != 0) 
                 break;
             labelGLobject(GL_BUFFER, id, std::string(glBufferTypeToShortString(target)) + '#' + std::to_string(id) + codeline);
+            updateTrackerLabel(tracker, func, id,std::string(glBufferTypeToShortString(target)) + '#' + std::to_string(id) + codeline);
             break;
         }
         case GLFunctions::BindVertexArray: {
@@ -387,6 +424,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             if (!prevLabel.empty() && prevLabel.rfind("Tex#", 0) != 0)
                 break;
             labelGLobject(GL_TEXTURE, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id) + codeline);
+            updateTrackerLabel(tracker, func, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id) + codeline);
             break;
         }
 
@@ -401,6 +439,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             ss << glTextureTargetToShortString(target) << '#' << std::to_string(id) << '[' << std::to_string(width)
                << 'x' << std::to_string(height) << ' ' << glTextureInternalFormatToString(internalFormat) << ']';
             labelGLobject(GL_TEXTURE, id, ss.str());
+            updateTrackerLabel(tracker, func, id, ss.str());
             break;
         }
         case GLFunctions::TexImage3D: {
@@ -416,6 +455,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
                << 'x' << std::to_string(height) << 'x' << std::to_string(depth) << ' '
                << glTextureInternalFormatToString(internalFormat) << ']';
             labelGLobject(GL_TEXTURE, id,ss.str());
+            updateTrackerLabel(tracker, func, id, ss.str());
             break;
         }
 
