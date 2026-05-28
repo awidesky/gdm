@@ -1418,21 +1418,162 @@ void snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
     auto vaoIt = allObjects.find("VAO");
     if (vaoIt != allObjects.end()) {
         for (GLuint vaoId : vaoIt->second) {
-            glBindVertexArray(vaoId);
-
-           bool savedUnbound = m_bufferIncludeUnbound;
-           this->m_bufferIncludeUnbound = false;
-
             std::ofstream f(dir / (std::to_string(vaoId) + ".vao"));
-            SnapshotSink fileSink(f);
-            captureBufferVAOInfo(fileSink);
+            SnapshotSink sink(f);
+            saveVAOInfoToFile(sink, vaoId);
+        }
+    }
+    glBindVertexArray(savedVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
+}
 
-            this->m_bufferIncludeUnbound = savedUnbound;
+void snapshot::saveVAOInfoToFile(SnapshotSink& out, GLuint vaoId) const
+{
+    glBindVertexArray(vaoId);
+
+    auto formatVertex = [](const unsigned char* ptr, GLenum type, int components) -> std::string {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(4) << std::right;
+        for (int c = 0; c < components; c++) {
+            if (c > 0)
+                oss << "  ";
+            switch (type) {
+                case GL_FLOAT: oss << std::setw(10) << reinterpret_cast<const GLfloat*>(ptr)[c]; break;
+                case GL_DOUBLE: oss << std::setw(14) << reinterpret_cast<const GLdouble*>(ptr)[c]; break;
+                case GL_INT: oss << std::setw(8) << reinterpret_cast<const GLint*>(ptr)[c]; break;
+                case GL_UNSIGNED_INT: oss << std::setw(8) << reinterpret_cast<const GLuint*>(ptr)[c]; break;
+                case GL_SHORT: oss << std::setw(6) << reinterpret_cast<const GLshort*>(ptr)[c]; break;
+                case GL_UNSIGNED_SHORT: oss << std::setw(6) << reinterpret_cast<const GLushort*>(ptr)[c]; break;
+                case GL_BYTE: oss << std::setw(4) << static_cast<int>(reinterpret_cast<const GLbyte*>(ptr)[c]); break;
+                case GL_UNSIGNED_BYTE:
+                    oss << std::setw(4) << static_cast<int>(reinterpret_cast<const GLubyte*>(ptr)[c]);
+                    break;
+                default: oss << "?"; break;
+            }
+        }
+        return oss.str();
+    };
+
+    // VAO 헤더
+    out << "VAO_ID=" << vaoId;
+    const std::string label = glutil::debug::getGLobjectLabel(GL_VERTEX_ARRAY, vaoId);
+    if (!label.empty())
+        out << "  LABEL=\"" << label << "\"";
+    out << "\n";
+
+    // attrib 정보 수집
+    struct AttribInfo {
+        GLint vboId = 0, size = 0, stride = 0;
+        GLenum type = 0;
+        uintptr_t offset = 0;
+    };
+    std::vector<AttribInfo> attribs;
+
+    GLint maxAttribs = 0;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
+    for (int i = 0; i < maxAttribs; i++) {
+        GLint enabled = 0;
+        glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
+        if (!enabled)
+            continue;
+
+        AttribInfo a;
+        void* offset = nullptr;
+        glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &a.vboId);
+        glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_SIZE, &a.size);
+        glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_TYPE, (GLint*)&a.type);
+        glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &a.stride);
+        glGetVertexAttribPointerv(i, GL_VERTEX_ATTRIB_ARRAY_POINTER, &offset);
+        a.offset = reinterpret_cast<uintptr_t>(offset);
+        attribs.push_back(a);
+    }
+
+    // EBO 인덱스 수집
+    GLint ebo = 0;
+    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &ebo);
+    std::vector<GLuint> indices;
+
+    if (ebo != 0) {
+        GLint eboSize = 0, mapped = 0;
+        glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &eboSize);
+        glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
+
+        if (!mapped) {
+            GLenum indexType = GL_UNSIGNED_INT;
+            auto& tracker = GLStateTracker::instance();
+            if (auto* info = tracker.buffers.get(static_cast<GLuint>(ebo)))
+                if (info->dataType != 0)
+                    indexType = info->dataType;
+
+            GLsizei elemSize = (indexType == GL_UNSIGNED_INT)     ? sizeof(GLuint)
+                               : (indexType == GL_UNSIGNED_SHORT) ? sizeof(GLushort)
+                                                                  : sizeof(GLubyte);
+            int count = eboSize / elemSize;
+
+            std::vector<unsigned char> raw(eboSize);
+            glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, eboSize, raw.data());
+
+            out << "INDEX: ";
+            for (int i = 0; i < count; i++) {
+                GLuint idx = (indexType == GL_UNSIGNED_INT)     ? reinterpret_cast<GLuint*>(raw.data())[i]
+                             : (indexType == GL_UNSIGNED_SHORT) ? reinterpret_cast<GLushort*>(raw.data())[i]
+                                                                : raw.data()[i];
+                indices.push_back(idx);
+                if (i > 0)
+                    out << ", ";
+                out << idx;
+            }
+            out << "\n";
         }
     }
 
-    glBindVertexArray(savedVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
+    // ATTRIB 헤더 출력
+    out << "\n";
+    for (int i = 0; i < (int)attribs.size(); i++) {
+        out << "ATTRIB[" << i << "]"
+            << " size=" << attribs[i].size << " type=" << glTypeToString(attribs[i].type)
+            << " stride=" << attribs[i].stride << " offset=" << attribs[i].offset << "\n";
+    }
+    out << "\n";
+
+    // VBO 데이터 읽기
+    std::unordered_map<GLint, std::vector<unsigned char>> vboData;
+    std::unordered_map<GLint, GLint> vboSizes;
+    for (auto& a : attribs) {
+        if (vboData.count(a.vboId))
+            continue;
+        glBindBuffer(GL_ARRAY_BUFFER, a.vboId);
+        GLint size = 0, mapped = 0;
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
+        if (!mapped) {
+            vboData[a.vboId].resize(size);
+            glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, vboData[a.vboId].data());
+            vboSizes[a.vboId] = size;
+        }
+    }
+
+    // EBO 인덱스 순서대로 정점 출력
+    for (GLuint idx : indices) {
+        out << idx;
+        for (auto& a : attribs) {
+            if (!vboData.count(a.vboId))
+                continue;
+            int typeSize = glTypeSize(a.type);
+            int actualStride = a.stride == 0 ? a.size * typeSize : a.stride;
+            size_t byteOffset = (size_t)idx * actualStride + a.offset;
+
+            if (byteOffset + a.size * typeSize > (size_t)vboSizes[a.vboId]) {
+                for (int c = 0; c < a.size; c++)
+                    out << "  ";
+                continue;
+            }
+
+            const unsigned char* base = vboData[a.vboId].data() + byteOffset;
+            out << "  " << formatVertex(base, a.type, a.size);
+        }
+        out << "\n";
+    }
 }
 
 } // namespace glutil::debug
