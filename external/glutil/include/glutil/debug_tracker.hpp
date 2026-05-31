@@ -2,9 +2,11 @@
 #define GLUTIL_DEBUG_TRACKER_HPP
 
 #include <glutil/gl.hpp>
+#include <glutil/logging.hpp>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 namespace glutil::debug {
 
@@ -23,6 +25,7 @@ struct BufferInfo {
     GLenum dataType = 0; 
     GLsizeiptr size = 0; 
     std::unordered_set<GLuint> associatedVaos;
+    std::string label;
 };
 
 class BufferRegistry {
@@ -41,17 +44,36 @@ private:
     std::unordered_map<GLuint, BufferInfo> buffers;
 };
 
-
+ 
 // "VAO", "Texture", "Shader", "Program", "FBO",
+
+struct ObjectInfo { //pair<type, id> as key, this as value
+    std::string label;
+};
+
+using ObjectKey = std::pair<std::string, GLuint>;
+struct ObjectKeyHash {
+    std::size_t operator()(const ObjectKey& key) const noexcept {
+        const std::size_t h1 = std::hash<std::string>{}(key.first);
+        const std::size_t h2 = std::hash<GLuint>{}(key.second);
+        return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+    }
+};
 
 class GLObjectRegistry {
 public:
-    void create(const std::string& type, GLuint id) { objects[type].insert(id); }
-    void destroy(const std::string& type, GLuint id) { objects[type].erase(id); }
-    const std::unordered_map<std::string, std::unordered_set<GLuint>>& getAll() const { return objects; }
+    void create(const std::string& type, GLuint id) { objects[{type, id}] = {}; }
+    void destroy(const std::string& type, GLuint id) { objects.erase({type, id}); }
+    ObjectInfo* get(const std::string& type, GLuint id) {
+        auto it = objects.find({type, id});
+        if (it == objects.end())
+            return nullptr;
+        return &it->second;
+    }
+    const std::unordered_map<ObjectKey, ObjectInfo, ObjectKeyHash>& getAll() const { return objects; }
 
 private:
-    std::unordered_map<std::string, std::unordered_set<GLuint>> objects;
+    std::unordered_map<ObjectKey, ObjectInfo, ObjectKeyHash> objects;
 };
 
 class GLStateTracker {
@@ -80,27 +102,29 @@ private:
 
         for (auto& [id, info] : buffers.getAll()) {
             if (!hasLeak) {
-                fprintf(stderr, "\n=== Leak Check ===\n");
+                LOG_INFO() << "\n=== Leak Check ===";
                 hasLeak = true;
             }
             const char* role = (info.role == BufferRole::VBO)   ? "VBO"
                                : (info.role == BufferRole::EBO) ? "EBO"
                                                                 : "Unknown";
-            fprintf(stderr, "[LEAK] Buffer id=%u role=%s size=%lld\n", id, role, (long long)info.size);
+
+            LOG_ERROR() << "[LEAK] Buffer id=" << id << " role=" << role
+                        << " label=" << (info.label.empty() ? "(none)" : info.label);
         }
 
-        for (auto& [type, ids] : objects.getAll()) {
-            for (auto id : ids) {
-                if (!hasLeak) {
-                    fprintf(stderr, "\n=== Leak Check ===\n");
-                    hasLeak = true;
-                }
-                fprintf(stderr, "[LEAK] Object type=%s id=%u\n", type.c_str(), id);
+       for (auto& [key, info] : objects.getAll()) {
+            const auto& [type, id] = key;
+            if (!hasLeak) {
+                LOG_INFO() << "\n=== Leak Check ===";
+                hasLeak = true;
             }
+            LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << type
+                        << " label=" << (info.label.empty() ? "(none)" : info.label);
         }
 
         if (!hasLeak)
-            fprintf(stderr, "\n=== No Leaks Detected ===\n");
+            LOG_INFO() << "\n=== No Leaks Detected ===";
     }
 };
 

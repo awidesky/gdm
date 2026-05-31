@@ -272,7 +272,6 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
         default: break;
     }
 }
-
 static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_list args) {
     if (disableAutoLabelGLObjects) return;
 

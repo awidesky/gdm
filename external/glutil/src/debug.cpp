@@ -132,6 +132,39 @@ static std::string makeSafeGLobjectLabel(const std::string& label) {
     // Reserve room for the ellipsis so the final content length does not exceed maxContent.
     return label.substr(0, static_cast<size_t>(maxContent - 3)) + "...";
 }
+
+static void syncTrackerLabel(GLenum identifier, GLuint name, const std::string& label) {
+    auto& tracker = GLStateTracker::instance();
+    switch (identifier) {
+        case GL_BUFFER:
+            if (auto* info = tracker.buffers.get(name))
+                info->label = label;
+            break;
+        case GL_VERTEX_ARRAY:
+            if (auto* info = tracker.objects.get("VAO", name))
+                info->label = label;
+            break;
+        case GL_TEXTURE:
+            if (auto* info = tracker.objects.get("Texture", name))
+                info->label = label;
+            break;
+        case GL_SHADER:
+            if (auto* info = tracker.objects.get("Shader", name))
+                info->label = label;
+            break;
+        case GL_PROGRAM:
+            if (auto* info = tracker.objects.get("Program", name))
+                info->label = label;
+            break;
+        case GL_FRAMEBUFFER:
+            if (auto* info = tracker.objects.get("FBO", name))
+                info->label = label;
+            break;
+        default:
+            break;
+    }
+}
+
 bool labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
     if (!support || identifier == 0 || name == 0 || !isValidGLobject(identifier, name))
@@ -140,6 +173,7 @@ bool labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
     const std::string safeLabel = makeSafeGLobjectLabel(label);
     glObjectLabel(identifier, name, static_cast<GLsizei>(safeLabel.size()), safeLabel.c_str());
+    syncTrackerLabel(identifier, name, safeLabel);
     return true;
 #else
     return false;
@@ -162,6 +196,7 @@ std::string getGLobjectLabel(GLenum identifier, GLuint name) {
     if (length < static_cast<GLsizei>(label.size())) {
         label.resize(static_cast<size_t>(length));
     }
+    syncTrackerLabel(identifier, name, label);
     return label;
 #else
     return {};

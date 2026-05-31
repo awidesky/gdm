@@ -83,35 +83,36 @@ int main() {
     auto& tracker = glutil::debug::GLStateTracker::instance();
 
     for (auto& [id, info] : tracker.buffers.getAll()) {
-        printf("Buffer id=%u role=%s size=%lld dataType=0x%X\n", id,
-               info.role == glutil::debug::BufferRole::VBO   ? "VBO"
-               : info.role == glutil::debug::BufferRole::EBO ? "EBO"
-                                                             : "Unknown",
-               (long long)info.size, info.dataType);
+        LOG_INFO() << "Buffer id=" << id
+                   << " role="
+                   << (info.role == glutil::debug::BufferRole::VBO   ? "VBO"
+                       : info.role == glutil::debug::BufferRole::EBO ? "EBO"
+                                                                     : "Unknown")
+                   << " size=" << static_cast<long long>(info.size)
+                   << " dataType=0x" << std::hex << info.dataType << std::dec;
     }
 
-    for (auto& [name, ids] : tracker.objects.getAll()) {
-        for (auto id : ids) {
-            printf("Object id=%u type=%s\n", id, name.c_str());
-        }
+    for (auto& [key, info] : tracker.objects.getAll()) {
+        const auto& [type, id] = key;
+        LOG_INFO() << "Object id=" << id << " type=" << type;
     }
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &EBO);
 
-
-
-    printf("\n=== Leak Check ===\n");
+    LOG_INFO() << "\n=== Leak Check ===";
     for (auto& [id, info] : tracker.buffers.getAll()) {
-        printf("[LEAK] Buffer id=%u role=%s\n", id,
-               info.role == glutil::debug::BufferRole::VBO   ? "VBO"
-               : info.role == glutil::debug::BufferRole::EBO ? "EBO"
-                                                             : "Unknown");
+        LOG_ERROR() << "[LEAK] Buffer id=" << id
+                    << " role="
+                    << (info.role == glutil::debug::BufferRole::VBO   ? "VBO"
+                        : info.role == glutil::debug::BufferRole::EBO ? "EBO"
+                                                                      : "Unknown")
+                    << " label=" << (info.label.empty() ? "(none)" : info.label);
     }
-    for (auto& [type, ids] : tracker.objects.getAll()) {
-        for (auto id : ids) {
-            printf("[LEAK] Object id=%u type=%s\n", id, type.c_str());
-        }
+    for (auto& [key, info] : tracker.objects.getAll()) {
+        const auto& [type, id] = key;
+        LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << type
+                    << " label=" << (info.label.empty() ? "(none)" : info.label);
     }
 
     glfwDestroyWindow(window);
