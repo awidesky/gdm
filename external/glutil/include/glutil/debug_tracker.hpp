@@ -68,6 +68,9 @@ public:
     GLuint boundArrayBuffer = 0;
     GLuint boundElementArrayBuffer = 0;
     std::unordered_map<GLenum, GLuint> boundTextures;
+    std::unordered_set<GLuint> labeledBuffers;
+    std::unordered_set<GLuint> labeledVAOs;
+    std::unordered_set<GLuint> labeledTextures;
 
 private:
     GLStateTracker() = default;

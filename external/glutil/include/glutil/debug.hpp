@@ -27,7 +27,7 @@ GL_KHR_DebugSupport isGL_KHR_debugSupported();
 
 extern bool disableAutoLabelGLObjects;
 // Labels a GL object, only if KHR_debug is supported.
-void labelGLobject(GLenum identifier, GLuint name, const std::string& label);
+bool labelGLobject(GLenum identifier, GLuint name, const std::string& label);
 // Returns the GL object label only if KHR_debug is supported.
 std::string getGLobjectLabel(GLenum identifier, GLuint name);
 

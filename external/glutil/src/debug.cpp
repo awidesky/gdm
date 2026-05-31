@@ -132,14 +132,17 @@ static std::string makeSafeGLobjectLabel(const std::string& label) {
     // Reserve room for the ellipsis so the final content length does not exceed maxContent.
     return label.substr(0, static_cast<size_t>(maxContent - 3)) + "...";
 }
-void labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
+bool labelGLobject(GLenum identifier, GLuint name, const std::string& label) {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
     if (!support || identifier == 0 || name == 0 || !isValidGLobject(identifier, name))
-        return;
+        return false;
 
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
     const std::string safeLabel = makeSafeGLobjectLabel(label);
     glObjectLabel(identifier, name, static_cast<GLsizei>(safeLabel.size()), safeLabel.c_str());
+    return true;
+#else
+    return false;
 #endif
 }
 
