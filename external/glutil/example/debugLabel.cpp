@@ -3,8 +3,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 
 #include "config.hpp"
@@ -151,9 +153,14 @@ int main() {
     if (texLoc >= 0) glUniform1i(texLoc, 0);
 
     glutil::debug::SnapshotAsyncHandle lastSnapshot;
+    auto lastPrint = std::chrono::steady_clock::now();
+    unsigned int frameCount = 0;
+    double renderTime = 0.0;
 
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        const auto frameBegin = std::chrono::steady_clock::now();
 
         int fbW = 0;
         int fbH = 0;
@@ -197,7 +204,30 @@ int main() {
 
         lastSnapshot = ss.capture();
 
+        const auto renderEnd = std::chrono::steady_clock::now();
+
         glfwSwapBuffers(window);
+
+        const std::chrono::duration<double> renderElapsed = renderEnd - frameBegin;
+        renderTime += renderElapsed.count();
+        frameCount++;
+
+        const auto printNow = std::chrono::steady_clock::now();
+        const std::chrono::duration<double> printElapsed = printNow - lastPrint;
+        if (printElapsed.count() >= 5.0) {
+            const double frameTimeAvgMs = (printElapsed.count() / static_cast<double>(frameCount)) * 1000.0;
+            const double renderTimeAvgMs = (renderTime / static_cast<double>(frameCount)) * 1000.0;
+            std::cout << "[Render Time / Frame Time] "
+                      << std::fixed << std::setprecision(4)
+                      << renderTimeAvgMs << " / " << frameTimeAvgMs << " ms ("
+                      << std::setprecision(2)
+                      << (100.0 * renderTimeAvgMs / frameTimeAvgMs) << "%)"
+                      << std::endl;
+
+            lastPrint = printNow;
+            frameCount = 0;
+            renderTime = 0.0;
+        }
     }
 
     if (lastSnapshot)
