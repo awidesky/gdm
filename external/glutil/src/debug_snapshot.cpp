@@ -856,7 +856,7 @@ void snapshot::captureTextureInfo(SnapshotSink& out) const {
 
             out << "  Unit " << std::setw(2) << i << "  [" << centerName(t.name, std::strlen(t.name) + 2) << "]"
                 << "  ID : " << texId;
-            appendObjectLabel(out, t.target, texId);
+            appendObjectLabel(out, GL_TEXTURE, texId);
             out << "\n";
             if (t.hasSize)
                 out << indent << "Size=" << w << "x" << h << "  Format=" << glTextureInternalFormatToString(fmt) << '\n';
