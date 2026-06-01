@@ -277,18 +277,19 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
 
     auto& tracker = GLStateTracker::instance();
     GLFunctions func = classifyGLFunctions(name);
-    const std::string codeline = '(' + getCalledGLfunctionName() + ')';
     // debug label auto generate in glCreate/Gen
     switch (func) {
         case GLFunctions::CreateShader: {
             GLenum type = va_arg(args, GLenum);
             GLuint id = *static_cast<GLuint*>(ret);
-            labelGLobject(GL_SHADER, id, std::string(glShaderTypeToShortString(type)) + '#' + std::to_string(id) + codeline);
+            labelGLobject(GL_SHADER, id,
+                          std::string(glShaderTypeToShortString(type)) + '#' + std::to_string(id)
+                            + '(' + getCalledGLfunctionName() + ')');
             break;
         }
         case GLFunctions::CreateProgram: {
             GLuint id = *static_cast<GLuint*>(ret);
-            labelGLobject(GL_PROGRAM, id, "Program#" + std::to_string(id) + codeline);
+            labelGLobject(GL_PROGRAM, id, "Program#" + std::to_string(id) + '(' + getCalledGLfunctionName() + ')');
             break;
         }
         case GLFunctions::CompileShader: {
@@ -300,7 +301,8 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             if (label.empty()) {
                 GLint shaderType = 0;
                 glGetShaderiv(shader, GL_SHADER_TYPE, &shaderType);
-                label = std::string(glShaderTypeToShortString(shaderType)) + '#' + std::to_string(shader) + codeline;
+                label = std::string(glShaderTypeToShortString(shaderType)) + '#' + std::to_string(shader)
+                            + '(' + getCalledGLfunctionName() + ')';
             }
             label += std::string("[Compile: ") + (compileStatus == GL_TRUE ? "OK" : "FAILED") + ']';
             labelGLobject(GL_SHADER, shader, label);
@@ -362,6 +364,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
                 shortType = "Tex";
             }
 
+            const std::string codeline = '(' + getCalledGLfunctionName() + ')';
             for (GLsizei i = 0; i < count; i++) {
                 const bool labeled = labelGLobject(identifier, ids[i], shortType + '#' + std::to_string(ids[i]) + codeline);
                 if (func == GLFunctions::GenVertexArrays && labeled)
@@ -378,7 +381,9 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             if (tracker.labeledBuffers.find(id) != tracker.labeledBuffers.end())
                 break;
 
-            labelGLobject(GL_BUFFER, id, std::string(glBufferTypeToShortString(target)) + '#' + std::to_string(id) + codeline);
+            labelGLobject(GL_BUFFER, id,
+                          std::string(glBufferTypeToShortString(target)) + '#' + std::to_string(id)
+                            + '(' + getCalledGLfunctionName() + ')');
             tracker.labeledBuffers.insert(id);
             break;
         }
@@ -388,7 +393,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             if (tracker.labeledVAOs.find(id) != tracker.labeledVAOs.end())
                 break;
 
-            labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + codeline);
+            labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + '(' + getCalledGLfunctionName() + ')');
             tracker.labeledVAOs.insert(id);
             break;
         }
@@ -398,7 +403,8 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             if (id == 0) break;
             if (tracker.labeledTextures.find(id) != tracker.labeledTextures.end()) break;
 
-            labelGLobject(GL_TEXTURE, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id) + codeline);
+            labelGLobject(GL_TEXTURE, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id)
+                + '(' + getCalledGLfunctionName() + ')');
             tracker.labeledTextures.insert(id);
             break;
         }
