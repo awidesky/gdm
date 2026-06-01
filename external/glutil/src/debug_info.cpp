@@ -6,6 +6,11 @@
 #include <glm/glm.hpp>
 #endif
 
+// for using /sys/class/drm/card0/device/
+#ifdef __linux__
+#include <fstream>
+#endif
+
 #include <iostream>
 #include <ostream>
 
@@ -255,5 +260,90 @@ GLVersion availableGLversion() {
 
     LOG_ERROR() << "No available OpenGL version is found from glfw!";
     return {};
+}
+
+
+#ifndef GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
+#define GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX 0x9047
+#define GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
+#define GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
+#define GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX 0x904A
+#define GL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX 0x904B
+#endif
+
+#ifndef GL_VBO_FREE_MEMORY_ATI
+#define GL_VBO_FREE_MEMORY_ATI 0x87FB
+#define GL_TEXTURE_FREE_MEMORY_ATI 0x87FC
+#define GL_RENDERBUFFER_FREE_MEMORY_ATI 0x87FD
+#endif
+
+bool printGpuMemoryInfo(std::ostream& os) {
+    bool printed = false;
+    os << "Vendor : " << glGetString(GL_VENDOR) << ", Renderer : " << glGetString(GL_RENDERER) << '\n';
+
+    // NVIDIA
+    if (hasGLExtension("GL_NVX_gpu_memory_info")) {
+        printed = true;
+        GLint v;
+        glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &v);
+        os << "NV Dedicated VRAM  : " << v / 1024 << " MB\n"; // total VRAM
+        glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &v);
+        os << "NV Total Available : " << v / 1024 << " MB\n"; // available total vram
+        glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &v);
+        os << "NV Current Free    : " << v / 1024 << " MB\n";
+        glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX, &v);
+        os << "NV Evictions Count : " << v << '\n';
+        glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, &v);
+        os << "NV Evicted Memory  : " << v / 1024 << " MB\n";
+    } else
+        os << "(GL_NVX_gpu_memory_info not available)\n";
+
+    // AMD
+    if (hasGLExtension("GL_ATI_meminfo")) {
+        printed = true;
+        GLint tex[4], vbo[4], rb[4];
+
+        glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, tex);
+        glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, vbo);
+        glGetIntegerv(GL_RENDERBUFFER_FREE_MEMORY_ATI, rb);
+
+        os << "ATI Texture Local Free  : " << tex[0] / 1024 << " MB\n"
+           << "ATI Texture Local Block : " << tex[1] / 1024 << " MB\n"
+           << "ATI Texture Aux Free    : " << tex[2] / 1024 << " MB\n"
+           << "ATI Texture Aux Block   : " << tex[3] / 1024 << " MB\n"
+
+           << "ATI VBO Local Free      : " << vbo[0] / 1024 << " MB\n"
+           << "ATI VBO Local Block     : " << vbo[1] / 1024 << " MB\n"
+           << "ATI VBO Aux Free        : " << vbo[2] / 1024 << " MB\n"
+           << "ATI VBO Aux Block       : " << vbo[3] / 1024 << " MB\n"
+
+           << "ATI RB Local Free       : " << rb[0] / 1024 << " MB\n"
+           << "ATI RB Local Block      : " << rb[1] / 1024 << " MB\n"
+           << "ATI RB Aux Free         : " << rb[2] / 1024 << " MB\n"
+           << "ATI RB Aux Block        : " << rb[3] / 1024 << " MB\n";
+    } else
+        os << "(GL_ATI_meminfo not available)\n";
+
+#ifdef __linux__
+    auto printFile = [&os](const char* name, const char* path) {
+        std::ifstream f(path);
+        uint64_t value;
+        if (f >> value)
+            os << name << " : " << value << '\n';
+    };
+    printed = true;
+    printFile("GPU Busy (%)", "/sys/class/drm/card0/device/gpu_busy_percent");
+    printFile("VRAM Total", "/sys/class/drm/card0/device/mem_info_vram_total");
+    printFile("VRAM Used", "/sys/class/drm/card0/device/mem_info_vram_used");
+    printFile("GTT Total", "/sys/class/drm/card0/device/mem_info_gtt_total");
+    printFile("GTT Used", "/sys/class/drm/card0/device/mem_info_gtt_used");
+#else
+    os << "(Linux physical hardware symlink not available)\n";
+#endif
+
+    if (!printed)
+        os << "GPU memory information is not available!\n";
+
+    return printed;
 }
 } // glutil::debug

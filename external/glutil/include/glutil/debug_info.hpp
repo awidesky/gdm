@@ -14,6 +14,7 @@ bool hasGLExtension(const char* extName);
 
 void printRuntimeInfo(std::ostream& os, bool verbose = false);
 void printRuntimeInfo(bool verbose = false);
+bool printGpuMemoryInfo(std::ostream& os);
 
 struct GLVersion; GLVersion parseGLVersion(const char* version);
 struct GLVersion {
