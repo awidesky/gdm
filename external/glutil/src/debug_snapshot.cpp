@@ -173,15 +173,9 @@ public:
     explicit SnapshotSink(std::ostream& out, SnapshotQueue* queue = nullptr)
         : m_out(&out), m_queue(queue) {}
 
-    SnapshotSink& operator<<(const char* value) {
-        return (*this) << std::string(value ? value : "");
-    }
-    SnapshotSink& operator<<(char* value) {
-        return (*this) << std::string(value ? value : "");
-    }
-    SnapshotSink& operator<<(std::string_view value) {
-        return (*this) << std::string(value);
-    }
+    SnapshotSink& operator<<(const char* value) { return (*this) << std::string(value ? value : ""); }
+    SnapshotSink& operator<<(char* value) { return (*this) << std::string(value ? value : ""); }
+    SnapshotSink& operator<<(std::string_view value) { return (*this) << std::string(value); }
     SnapshotSink& operator<<(std::ostream& (*manipulator)(std::ostream&)) {
         if (m_queue) {
             m_queue->enqueue(manipulator);
@@ -1202,6 +1196,12 @@ void snapshot::captureRendererState(SnapshotSink& out) const {
     glGetIntegerv(GL_BLEND_DST_ALPHA, &blendDst);
     out << "  Blend Src    : " << glTextureFormatToString(blendSrc) << "\n";
     out << "  Blend Dst    : " << glTextureFormatToString(blendDst) << "\n";
+
+    out << "  GPU VRAM     :\n";
+    std::stringstream ss;
+    printGpuMemoryInfo(ss);
+    std::string line;
+    while (std::getline(ss, line)) out << "    " << line << '\n';
 }
 void snapshot::captureBoundInfo(SnapshotSink& out) const {
     printSeparator(out, "Bound Info");

@@ -138,12 +138,7 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    auto ss = glutil::debug::snapshot(false)
-                .shaderStatus(true)
-                .textureInfo(true, true)
-                .bufferVAOInfo(true, true, true)
-                .allVBOInfo(true)
-                .boundInfo(true);
+    auto ss = glutil::debug::snapshot(true);
 
     const GLint mvpLoc = glGetUniformLocation(program.id, "uMVP");
     const GLint texLoc = glGetUniformLocation(program.id, "uTexture");
