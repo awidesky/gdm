@@ -372,9 +372,24 @@ GLTexture2D ImageLoader::loadImageToGL(const std::filesystem::path& path, bool f
 
     glGenTextures(1, &out.id);
     glBindTexture(GL_TEXTURE_2D, out.id);
+
+    // Set reasonable default sampling/wrap parameters and generate mipmaps.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
     glTexImage2D(GL_TEXTURE_2D, 0, image.internalFormat(), image.width(), image.height(),
                  0, image.format(), GL_UNSIGNED_BYTE, image.data());
     glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Set max mip level to the computed number of levels to avoid undefined sampling
+    // on drivers that query GL_TEXTURE_MAX_LEVEL.
+    int maxLevel = 0;
+    int larger = std::max(image.width(), image.height());
+    while (larger > 1) { larger >>= 1; ++maxLevel; }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, maxLevel);
 
     if (needsTightAlignment) {
         glPixelStorei(GL_UNPACK_ALIGNMENT, unpackAlignment);
@@ -399,8 +414,16 @@ GLTexture2D ImageLoader::loadDDSToGL(const std::filesystem::path& path, bool fli
         return out;
     }
 
+
     glGenTextures(1, &out.id);
     glBindTexture(GL_TEXTURE_2D, out.id);
+
+    // Set reasonable default sampling/wrap parameters. DDS contains its own mip levels,
+    // so ensure the sampler expects mipmapped data.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     const GLenum internalFmt = dds.format();
     const auto& mips = dds.mips();
@@ -410,6 +433,10 @@ GLTexture2D ImageLoader::loadDDSToGL(const std::filesystem::path& path, bool fli
                                mip.width, mip.height, 0, mip.size,
                                dds.data() + mip.offset);
     }
+
+    // Explicitly set the base/max mip level based on the DDS mip count.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(mips.size() > 0 ? (mips.size() - 1) : 0));
 
     const std::string label = "TextureDDS:" + path.filename().string();
     glutil::debug::labelGLobject(GL_TEXTURE, out.id, label);
