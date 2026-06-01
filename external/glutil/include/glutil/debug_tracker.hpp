@@ -124,7 +124,7 @@ private:
         }
 
         if (!hasLeak)
-            LOG_INFO() << "\n=== No Leaks Detected ===";
+            LOG_INFO() << "=== No Leaks Detected ===";
     }
 };
 
