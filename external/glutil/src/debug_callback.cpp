@@ -145,10 +145,8 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
         case GLFunctions::DeleteBuffers: {
             GLsizei count = va_arg(args, GLsizei);
             const GLuint* ids = va_arg(args, const GLuint*);
-            for (GLsizei i = 0; i < count; i++) // TODOTODO : can we merge the two for loop?
-                tracker.buffers.destroy(ids[i]);
             for (GLsizei i = 0; i < count; i++)
-                tracker.labeledBuffers.erase(ids[i]);
+                tracker.buffers.destroy(ids[i]);
             break;
         }
 
@@ -157,8 +155,6 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             const GLuint* ids = va_arg(args, const GLuint*);
             for (GLsizei i = 0; i < count; i++)
                 tracker.objects.destroy("VAO", ids[i]);
-            for (GLsizei i = 0; i < count; i++)
-                tracker.labeledVAOs.erase(ids[i]);
             break;
         }
 
@@ -167,8 +163,6 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             const GLuint* ids = va_arg(args, const GLuint*);
             for (GLsizei i = 0; i < count; i++)
                 tracker.objects.destroy("Texture", ids[i]);
-            for (GLsizei i = 0; i < count; i++)
-                tracker.labeledTextures.erase(ids[i]);
             break;
         }
 
@@ -368,7 +362,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             for (GLsizei i = 0; i < count; i++) {
                 const bool labeled = labelGLobject(identifier, ids[i], shortType + '#' + std::to_string(ids[i]) + codeline);
                 if (func == GLFunctions::GenVertexArrays && labeled)
-                    tracker.labeledVAOs.insert(ids[i]);
+                    tracker.objects.get("VAO", ids[i])->autoLabeled = true;
             }
             break;
         }
@@ -378,34 +372,37 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             GLenum target = va_arg(args, GLenum);
             GLuint id = va_arg(args, GLuint);
             if (id == 0) break;
-            if (tracker.labeledBuffers.find(id) != tracker.labeledBuffers.end())
-                break;
 
-            labelGLobject(GL_BUFFER, id,
-                          std::string(glBufferTypeToShortString(target)) + '#' + std::to_string(id)
+            auto* info = tracker.buffers.get(id);
+            if (info != nullptr && info->autoLabeled) break;
+
+            (void)labelGLobject(GL_BUFFER, id, std::string(glBufferTypeToShortString(target)) + '#' + std::to_string(id)
                             + '(' + getCalledGLfunctionName() + ')');
-            tracker.labeledBuffers.insert(id);
+            if (info != nullptr) info->autoLabeled = true;
             break;
         }
         case GLFunctions::BindVertexArray: {
             GLuint id = va_arg(args, GLuint);
             if (id == 0) break;
-            if (tracker.labeledVAOs.find(id) != tracker.labeledVAOs.end())
-                break;
 
-            labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + '(' + getCalledGLfunctionName() + ')');
-            tracker.labeledVAOs.insert(id);
+            auto* info = tracker.objects.get("VAO", id);
+            if (info != nullptr && info->autoLabeled) break;
+
+            (void)labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + '(' + getCalledGLfunctionName() + ')');
+            if (info != nullptr) info->autoLabeled = true;
             break;
         }
         case GLFunctions::BindTexture: {
             GLenum target = va_arg(args, GLenum);
             GLuint id = va_arg(args, GLuint);
             if (id == 0) break;
-            if (tracker.labeledTextures.find(id) != tracker.labeledTextures.end()) break;
 
-            labelGLobject(GL_TEXTURE, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id)
-                + '(' + getCalledGLfunctionName() + ')');
-            tracker.labeledTextures.insert(id);
+            auto* info = tracker.objects.get("Texture", id);
+            if (info != nullptr && info->autoLabeled) break;
+
+            (void)labelGLobject(GL_TEXTURE, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id)
+                     + '(' + getCalledGLfunctionName() + ')');
+            if (info != nullptr) info->autoLabeled = true;
             break;
         }
 

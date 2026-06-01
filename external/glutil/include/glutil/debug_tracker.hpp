@@ -26,6 +26,9 @@ struct BufferInfo {
     GLsizeiptr size = 0; 
     std::unordered_set<GLuint> associatedVaos;
     std::string label;
+    // Not just "has a non-empty label": this tracks whether auto-labeling was already attempted,
+    // so we avoid repeated attempts even when labeling is unsupported and the attempt fails.
+    bool autoLabeled = false;
 };
 
 class BufferRegistry {
@@ -47,8 +50,11 @@ private:
  
 // "VAO", "Texture", "Shader", "Program", "FBO",
 
-struct ObjectInfo { //pair<type, id> as key, this as value
+struct ObjectInfo {
     std::string label;
+    // Not just "has a non-empty label": this tracks whether auto-labeling was already attempted,
+    // so we avoid repeated attempts even when labeling is unsupported and the attempt fails.
+    bool autoLabeled = false;
 };
 
 using ObjectKey = std::pair<std::string, GLuint>;
@@ -62,6 +68,7 @@ struct ObjectKeyHash {
 
 class GLObjectRegistry {
 public:
+    // TODO : make the type from string to glenum
     void create(const std::string& type, GLuint id) { objects[{type, id}] = {}; }
     void destroy(const std::string& type, GLuint id) { objects.erase({type, id}); }
     ObjectInfo* get(const std::string& type, GLuint id) {
@@ -90,9 +97,6 @@ public:
     GLuint boundArrayBuffer = 0;
     GLuint boundElementArrayBuffer = 0;
     std::unordered_map<GLenum, GLuint> boundTextures;
-    std::unordered_set<GLuint> labeledBuffers;
-    std::unordered_set<GLuint> labeledVAOs;
-    std::unordered_set<GLuint> labeledTextures;
 
 private:
     GLStateTracker() = default;
