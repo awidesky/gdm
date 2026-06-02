@@ -77,62 +77,78 @@ target_link_libraries(glutil PRIVATE
 # C++ standard
 target_compile_features(glutil PRIVATE cxx_std_17)
 
+function(add_glutil_example TARGET_NAME)
+    add_executable(${TARGET_NAME} ${ARGN})
+
+    target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+    target_link_libraries(${TARGET_NAME} PRIVATE
+        glutil
+        gdm::gdm
+    )
+
+    target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+    if(MSVC)
+        target_compile_options(${TARGET_NAME} PRIVATE
+            /W4 /utf-8
+        )
+    else()
+        target_compile_options(${TARGET_NAME} PRIVATE
+            -Wall -Wextra -Wpedantic
+        )
+    endif()
+
+    set_target_properties(${TARGET_NAME} PROPERTIES
+        FOLDER "GLUTIL_Examples"
+    )
+endfunction()
+
+function(add_glutil_test TARGET_NAME TEST_NAME)
+    add_executable(${TARGET_NAME} ${ARGN})
+
+    target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+    target_link_libraries(${TARGET_NAME} PRIVATE
+        glutil
+        gdm::gdm
+    )
+
+    target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
+    if(MSVC)
+        target_compile_options(${TARGET_NAME} PRIVATE
+            /W4 /utf-8
+        )
+    else()
+        target_compile_options(${TARGET_NAME} PRIVATE
+            -Wall -Wextra -Wpedantic
+        )
+    endif()
+
+    set_target_properties(${TARGET_NAME} PROPERTIES
+        FOLDER "GLUTIL_Tests"
+    )
+
+    add_test(NAME ${TEST_NAME} COMMAND ${TARGET_NAME})
+endfunction()
+
 # Tests (only when GDM is standalone project)
 if (GDM_BUILD_TESTS)
   if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM_USE_GLM)
-    add_executable(glutil_shaderTest)
-    target_sources(glutil_shaderTest
-          PRIVATE test/shaderTest.cpp
+    add_glutil_test(glutil_shaderTest
+          ShaderTest
+          test/shaderTest.cpp
     )
-    target_include_directories(glutil_shaderTest
-          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-    )
-    target_link_libraries(glutil_shaderTest PRIVATE
-          glutil
-          gdm::gdm
-    )
-    target_compile_features(glutil_shaderTest PRIVATE cxx_std_17)
-    target_compile_options(glutil_shaderTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-    set_target_properties(glutil_shaderTest PROPERTIES
-          FOLDER "GLUTIL_Tests"
-    )
-    add_test(NAME ShaderTest COMMAND glutil_shaderTest)
 
-    add_executable(glutil_encodingCheckBenchMark)
-    target_sources(glutil_encodingCheckBenchMark
-          PRIVATE test/encodingCheck.cpp
-    )
-    target_include_directories(glutil_encodingCheckBenchMark
-          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    add_glutil_test(glutil_encodingCheckBenchMark
+          EncodingCheckBenchmark
+          test/encodingCheck.cpp
     )
     target_compile_definitions(glutil_encodingCheckBenchMark PRIVATE GLUTIL_ENABLE_BENCHMARKS)
-    target_link_libraries(glutil_encodingCheckBenchMark PRIVATE
-          glutil gdm::gdm
-    )
-    target_compile_features(glutil_encodingCheckBenchMark PRIVATE cxx_std_17)
-    target_compile_options(glutil_encodingCheckBenchMark PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-    set_target_properties(glutil_encodingCheckBenchMark PROPERTIES
-          FOLDER "GLUTIL_Tests"
-    )
-    add_test(NAME EncodingCheckBenchmark COMMAND glutil_encodingCheckBenchMark)
 
-    add_executable(glutil_pathResolveTest)
-    target_sources(glutil_pathResolveTest
-          PRIVATE test/pathResolveTest.cpp
+    add_glutil_test(glutil_pathResolveTest
+          PathResolveTest
+          test/pathResolveTest.cpp
     )
-    target_include_directories(glutil_pathResolveTest
-          PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-    )
-    target_link_libraries(glutil_pathResolveTest PRIVATE
-          glutil
-          gdm::gdm
-    )
-    target_compile_features(glutil_pathResolveTest PRIVATE cxx_std_17)
-    target_compile_options(glutil_pathResolveTest PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-    set_target_properties(glutil_pathResolveTest PROPERTIES
-          FOLDER "GLUTIL_Tests"
-    )
-    add_test(NAME PathResolveTest COMMAND glutil_pathResolveTest)
   else()
     message(STATUS "[glutil] Tests skipped: require GDM_WINDOW_BACKEND=glfw, GDM_GL_LOADER=glad, and GDM_USE_GLM=ON")
   endif()
@@ -140,123 +156,39 @@ endif()
 
 # Examples (require GLFW + GLAD + GLM)
 if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM_USE_GLM)
-  add_executable(glutil_textureExample)
-  target_sources(glutil_textureExample
-        PRIVATE example/texture.cpp
-  )
-  target_include_directories(glutil_textureExample
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_textureExample PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_textureExample PRIVATE cxx_std_17)
-  target_compile_options(glutil_textureExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_textureExample PROPERTIES
-        FOLDER "GLUTIL_Examples"
+  add_glutil_example(glutil_textureExample
+        example/texture.cpp
   )
 
-  add_executable(glutil_modelExample)
-  target_sources(glutil_modelExample
-        PRIVATE example/model.cpp
-  )
-  target_include_directories(glutil_modelExample
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_modelExample PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_modelExample PRIVATE cxx_std_17)
-  target_compile_options(glutil_modelExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_modelExample PROPERTIES
-        FOLDER "GLUTIL_Examples"
+  add_glutil_example(glutil_modelExample
+        example/model.cpp
   )
 
-  add_executable(glutil_manyCubesExample)
-  target_sources(glutil_manyCubesExample
-        PRIVATE example/manyCubes.cpp
-  )
-  target_include_directories(glutil_manyCubesExample
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_manyCubesExample PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_manyCubesExample PRIVATE cxx_std_17)
-  target_compile_options(glutil_manyCubesExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_manyCubesExample PROPERTIES
-        FOLDER "GLUTIL_Examples"
+  add_glutil_example(glutil_manyCubesExample
+        example/manyCubes.cpp
   )
 
-  add_executable(glutil_normalMappingExample)
-  target_sources(glutil_normalMappingExample
-        PRIVATE example/normalMapping.cpp
-  )
-  target_include_directories(glutil_normalMappingExample
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_normalMappingExample PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_normalMappingExample PRIVATE cxx_std_17)
-  target_compile_options(glutil_normalMappingExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_normalMappingExample PROPERTIES
-        FOLDER "GLUTIL_Examples"
+  add_glutil_example(glutil_normalMappingExample
+        example/normalMapping.cpp
   )
 
-  add_executable(glutil_stacktraceExample)
-  target_sources(glutil_stacktraceExample
-        PRIVATE example/stacktrace.cpp
-  )
-  target_include_directories(glutil_stacktraceExample
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_stacktraceExample PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_stacktraceExample PRIVATE cxx_std_17)
-  target_compile_options(glutil_stacktraceExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_stacktraceExample PROPERTIES
-        FOLDER "GLUTIL_Examples"
+  add_glutil_example(glutil_debugLabelExample
+        example/debugLabel.cpp
   )
 
-  add_executable(glutil_snapshotExample)
-  target_sources(glutil_snapshotExample
-        PRIVATE example/snapshot.cpp
-  )
-  target_include_directories(glutil_snapshotExample
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_snapshotExample PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_snapshotExample PRIVATE cxx_std_17)
-  target_compile_options(glutil_snapshotExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_snapshotExample PROPERTIES
-        FOLDER "GLUTIL_Examples"
+  add_glutil_example(glutil_autoLabelingExample
+        example/autoLabeling.cpp
   )
 
- add_executable(glutil_trackerExample)
-  target_sources(glutil_trackerExample
-        PRIVATE example/tracker.cpp
-  )
-  target_include_directories(glutil_trackerExample
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  target_link_libraries(glutil_trackerExample PRIVATE
-        glutil
-        gdm::gdm
-  )
-  target_compile_features(glutil_trackerExample PRIVATE cxx_std_17)
-  target_compile_options(glutil_trackerExample PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-  set_target_properties(glutil_trackerExample PROPERTIES
-        FOLDER "GLUTIL_Examples"
+  add_glutil_example(glutil_stacktraceExample
+        example/stacktrace.cpp
   )
 
+  add_glutil_example(glutil_snapshotExample
+        example/snapshot.cpp
+  )
+
+  add_glutil_example(glutil_trackerExample
+        example/tracker.cpp
+  )
 endif()

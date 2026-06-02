@@ -53,13 +53,13 @@ void main() {
 
 int main()
 {
-    GLFWwindow* ctx;
-    if (!(ctx = initGLFWAndContext()))
+    GLFWwindow* ctx = initGLFWAndContext();
+    if (ctx == nullptr)
         return 1;
 
-    const std::filesystem::path objPath = glutil::EXAMPLE_ASSET_DIR / "model" / "cube.obj";
+    const std::filesystem::path objPath = glutil::EXAMPLE_ASSET_DIR / "model" / "cube_UVatlas.obj";
 
-    glutil::ModelData model = glutil::ModelLoader::loadOBJ(objPath);
+    glutil::ModelData model = glutil::ModelLoader::loadOBJ(objPath, true);
 
     if (!model.warn.empty())
         std::cerr << "Model load warning: " << model.warn << std::endl;
@@ -98,8 +98,6 @@ int main()
     gpuMeshes.reserve(model.meshes.size());
 
     for (const glutil::MeshData& mesh : model.meshes) {
-
-
         GpuMesh gm;
         gm.indexCount = static_cast<GLsizei>(mesh.indexCount());
 
@@ -156,13 +154,13 @@ int main()
                 }
             }
         }
-
         gpuMeshes.push_back(gm);
-
     }
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
+
+    auto snapshot = glutil::debug::snapshot(false).bufferVAOInfo(true, true);
 
     while (glfwGetKey(ctx, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
            glfwWindowShouldClose(ctx) == 0)
@@ -196,6 +194,8 @@ int main()
             glDrawElements(GL_TRIANGLES, gm.indexCount, GL_UNSIGNED_INT, nullptr);
         }
 
+        snapshot.capture();
+
         glfwSwapBuffers(ctx);
     }
 
@@ -219,8 +219,9 @@ GLFWwindow* initGLFWAndContext()
         return nullptr;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    auto version = glutil::debug::availableGLversion();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -240,6 +241,8 @@ GLFWwindow* initGLFWAndContext()
         glfwTerminate();
         return nullptr;
     }
+
+    glutil::debug::init();
 
     glfwSetInputMode(ret, GLFW_STICKY_KEYS, GL_TRUE);
     return ret;

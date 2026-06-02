@@ -42,48 +42,48 @@ void main() {
 }
 )";
 
-const glutil::VertexPNT kVertices[] = {
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.002000f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.334000f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.002000f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.334000f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.666000f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.666000f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.002000f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.002000f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.002000f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.002000f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
-    {-1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.666000f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.666000f},
-    {-1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.334000f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.002000f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f},
-    { 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.002000f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.002000f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.334000f},
-    { 1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.666000f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.666000f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.002000f, 1.0f-0.334000f},
-    {-1.0f,  1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.666000f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.334000f, 1.0f-0.334000f},
-    { 1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.666000f},
-    {-1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.998000f, 1.0f-0.666000f},
-    { 1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 0.666000f, 1.0f-0.334000f}
+const glutil::VertexPT kVertices[] = {
+    {-1.0f, -1.0f, -1.0f, 0.002000f, 1.0f-0.002000f},
+    {-1.0f, -1.0f,  1.0f, 0.002000f, 1.0f-0.334000f},
+    {-1.0f,  1.0f,  1.0f, 0.334000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f, -1.0f, 0.998000f, 1.0f-0.002000f},
+    {-1.0f, -1.0f, -1.0f, 0.666000f, 1.0f-0.334000f},
+    {-1.0f,  1.0f, -1.0f, 0.998000f, 1.0f-0.334000f},
+    { 1.0f, -1.0f,  1.0f, 0.666000f, 1.0f-0.334000f},
+    {-1.0f, -1.0f, -1.0f, 0.334000f, 1.0f-0.666000f},
+    { 1.0f, -1.0f, -1.0f, 0.666000f, 1.0f-0.666000f},
+    { 1.0f,  1.0f, -1.0f, 0.998000f, 1.0f-0.002000f},
+    { 1.0f, -1.0f, -1.0f, 0.666000f, 1.0f-0.002000f},
+    {-1.0f, -1.0f, -1.0f, 0.666000f, 1.0f-0.334000f},
+    {-1.0f, -1.0f, -1.0f, 0.002000f, 1.0f-0.002000f},
+    {-1.0f,  1.0f,  1.0f, 0.334000f, 1.0f-0.334000f},
+    {-1.0f,  1.0f, -1.0f, 0.334000f, 1.0f-0.002000f},
+    { 1.0f, -1.0f,  1.0f, 0.666000f, 1.0f-0.334000f},
+    {-1.0f, -1.0f,  1.0f, 0.334000f, 1.0f-0.334000f},
+    {-1.0f, -1.0f, -1.0f, 0.334000f, 1.0f-0.666000f},
+    {-1.0f,  1.0f,  1.0f, 0.998000f, 1.0f-0.666000f},
+    {-1.0f, -1.0f,  1.0f, 0.998000f, 1.0f-0.334000f},
+    { 1.0f, -1.0f,  1.0f, 0.666000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f,  1.0f, 0.666000f, 1.0f-0.002000f},
+    { 1.0f, -1.0f, -1.0f, 0.334000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f, -1.0f, 0.666000f, 1.0f-0.334000f},
+    { 1.0f, -1.0f, -1.0f, 0.334000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f,  1.0f, 0.666000f, 1.0f-0.002000f},
+    { 1.0f, -1.0f,  1.0f, 0.334000f, 1.0f-0.002000f},
+    { 1.0f,  1.0f,  1.0f, 0.002000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f, -1.0f, 0.002000f, 1.0f-0.666000f},
+    {-1.0f,  1.0f, -1.0f, 0.334000f, 1.0f-0.666000f},
+    { 1.0f,  1.0f,  1.0f, 0.002000f, 1.0f-0.334000f},
+    {-1.0f,  1.0f, -1.0f, 0.334000f, 1.0f-0.666000f},
+    {-1.0f,  1.0f,  1.0f, 0.334000f, 1.0f-0.334000f},
+    { 1.0f,  1.0f,  1.0f, 0.666000f, 1.0f-0.666000f},
+    {-1.0f,  1.0f,  1.0f, 0.998000f, 1.0f-0.666000f},
+    { 1.0f, -1.0f,  1.0f, 0.666000f, 1.0f-0.334000f}
 };
 
 int main() {
-    GLFWwindow* ctx;
-    if (!(ctx = initGLFWAndContext()))
+    GLFWwindow* ctx = initGLFWAndContext();
+    if (ctx == nullptr)
         return 1;
 
     const std::filesystem::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
@@ -139,11 +139,11 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, vboVertex);
     glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(kVertices), kVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
-                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, x)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPT, x)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPNT),
-                          reinterpret_cast<void*>(offsetof(glutil::VertexPNT, u)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glutil::VertexPT),
+                          reinterpret_cast<void*>(offsetof(glutil::VertexPT, u)));
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -200,8 +200,9 @@ GLFWwindow* initGLFWAndContext() {
         return nullptr;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    auto version = glutil::debug::availableGLversion();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);

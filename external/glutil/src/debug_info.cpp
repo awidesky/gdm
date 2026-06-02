@@ -1,8 +1,14 @@
 #include <glutil/debug_info.hpp>
+#include <glutil/logging.hpp>
 #include <glutil/gl.hpp>
 
 #ifdef GDM_HAS_GLM
 #include <glm/glm.hpp>
+#endif
+
+// for using /sys/class/drm/card0/device/
+#ifdef __linux__
+#include <fstream>
 #endif
 
 #include <iostream>
@@ -94,16 +100,16 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
     }
 #endif
 #ifdef GL_VERSION_4_3
-    if(ver >= "4.3") {
+    if(ver >= "4.3") { // TODO : check if loaded by extension
         GLint attrBindings = 0;
         GLint relOffset = 0;
-        GLint elementIndex = 0;
+        GLint64 elementIndex = 0;
         GLint labelLength = 0;
         GLint debugStack = 0;
 
         glGetIntegerv(GL_MAX_VERTEX_ATTRIB_BINDINGS, &attrBindings);
         glGetIntegerv(GL_MAX_VERTEX_ATTRIB_RELATIVE_OFFSET, &relOffset);
-        glGetIntegerv(GL_MAX_ELEMENT_INDEX, &elementIndex);
+        glGetInteger64v(GL_MAX_ELEMENT_INDEX, &elementIndex);
         glGetIntegerv(GL_MAX_LABEL_LENGTH, &labelLength);
         glGetIntegerv(GL_MAX_DEBUG_GROUP_STACK_DEPTH, &debugStack);
 
@@ -167,7 +173,6 @@ void printRuntimeInfo(std::ostream& os, bool verbose) {
     GLint contextMajor = 0;
     GLint contextMinor = 0;
     GLint contextFlags = 0;
-    GLint profileMask = 0;
     GLint extensionCount = 0;
 
 #if defined(GL_VERSION_3_0)
@@ -183,7 +188,7 @@ if (ver >= "3.0") {
     os << "\n" << "[OpenGL] Extension Count: " << extensionCount << "\n";
 
     #ifdef GL_CONTEXT_FLAG_DEBUG_BIT
-    os << "[OpenGL] Debug context: " << (((contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) != 0) ? "YES" : "NO") << "\n";
+    os << "[OpenGL] Created as Debug context: " << (((contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) != 0) ? "YES" : "NO") << "\n";
     #endif
 }
 #endif
@@ -205,4 +210,140 @@ GLVersion getOpenGLVersion() {
     else return parseGLVersion(versionStr);
 }
 
+GLVersion availableGLversion() {
+    constexpr GLVersion versions[] = {{4, 6}, {4, 5}, {4, 4}, {4, 3}, {4, 2}, {4, 1}, {4, 0}, {3, 3}, {3, 2},
+                                      {3, 1}, {3, 0}, {2, 1}, {2, 0}, {1, 5}, {1, 4}, {1, 3}, {1, 2}, {1, 1}};
+
+    for (auto version : versions) {
+#if defined(GDM_HAS_GLFW)
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
+
+        // Core profile is supported since OpenGL 3.2
+        if (version >= "3.2")
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+        GLFWwindow* window = glfwCreateWindow(1, 1, "", nullptr, nullptr);
+        if (window) {
+            glfwDestroyWindow(window);
+            glfwDefaultWindowHints();
+            return version;
+        } else {
+            const char* description = nullptr;
+            int code = glfwGetError(&description);
+            if(code != GLFW_VERSION_UNAVAILABLE)
+                std::cerr << "[glutil::availableGLversion] GLFW Error(" << code << "): " << description << std::endl;
+        }
+#elif defined(GDM_HAS_FREEGLUT)
+        glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+        glutInitContextVersion(version.major, version.minor);
+        // Core profile is supported since OpenGL 3.2
+        glutInitContextProfile((version >= "3.2") ? GLUT_CORE_PROFILE : GLUT_COMPATIBILITY_PROFILE);
+
+#ifdef __APPLE__
+        glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
+#else
+        glutInitContextFlags(0);
+#endif
+        int window = glutCreateWindow("");
+        if (window > 0) {
+            glutDestroyWindow(window);
+            return version;
+        }
+#endif
+    }
+
+    LOG_ERROR() << "No available OpenGL version is found from glfw!";
+    return {};
+}
+
+
+#ifndef GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
+#define GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX 0x9047
+#define GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
+#define GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
+#define GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX 0x904A
+#define GL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX 0x904B
+#endif
+
+#ifndef GL_VBO_FREE_MEMORY_ATI
+#define GL_VBO_FREE_MEMORY_ATI 0x87FB
+#define GL_TEXTURE_FREE_MEMORY_ATI 0x87FC
+#define GL_RENDERBUFFER_FREE_MEMORY_ATI 0x87FD
+#endif
+
+bool printGpuMemoryInfo(std::ostream& os) {
+    bool printed = false;
+    os << "Vendor : " << glGetString(GL_VENDOR) << ", Renderer : " << glGetString(GL_RENDERER) << '\n';
+
+    // NVIDIA
+    if (hasGLExtension("GL_NVX_gpu_memory_info")) {
+        printed = true;
+        GLint v;
+        glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &v);
+        os << "NV Dedicated VRAM  : " << v / 1024 << " MB\n"; // total VRAM
+        glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &v);
+        os << "NV Total Available : " << v / 1024 << " MB\n"; // available total vram
+        glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &v);
+        os << "NV Current Free    : " << v / 1024 << " MB\n";
+        glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX, &v);
+        os << "NV Evictions Count : " << v << '\n';
+        glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, &v);
+        os << "NV Evicted Memory  : " << v / 1024 << " MB\n";
+    } else
+        os << "(GL_NVX_gpu_memory_info not available)\n";
+
+    // AMD
+    if (hasGLExtension("GL_ATI_meminfo")) {
+        printed = true;
+        GLint tex[4], vbo[4], rb[4];
+
+        glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, tex);
+        glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, vbo);
+        glGetIntegerv(GL_RENDERBUFFER_FREE_MEMORY_ATI, rb);
+
+        os << "ATI Texture Local Free  : " << tex[0] / 1024 << " MB\n"
+           << "ATI Texture Local Block : " << tex[1] / 1024 << " MB\n"
+           << "ATI Texture Aux Free    : " << tex[2] / 1024 << " MB\n"
+           << "ATI Texture Aux Block   : " << tex[3] / 1024 << " MB\n"
+
+           << "ATI VBO Local Free      : " << vbo[0] / 1024 << " MB\n"
+           << "ATI VBO Local Block     : " << vbo[1] / 1024 << " MB\n"
+           << "ATI VBO Aux Free        : " << vbo[2] / 1024 << " MB\n"
+           << "ATI VBO Aux Block       : " << vbo[3] / 1024 << " MB\n"
+
+           << "ATI RB Local Free       : " << rb[0] / 1024 << " MB\n"
+           << "ATI RB Local Block      : " << rb[1] / 1024 << " MB\n"
+           << "ATI RB Aux Free         : " << rb[2] / 1024 << " MB\n"
+           << "ATI RB Aux Block        : " << rb[3] / 1024 << " MB\n";
+    } else
+        os << "(GL_ATI_meminfo not available)\n";
+
+#ifdef __linux__
+    auto printFile = [&os](const char* name, const char* path) {
+        std::ifstream f(path);
+        uint64_t value;
+        if (f >> value)
+            os << name << " : " << value << '\n';
+    };
+    printed = true;
+    printFile("GPU Busy (%)", "/sys/class/drm/card0/device/gpu_busy_percent");
+    printFile("VRAM Total", "/sys/class/drm/card0/device/mem_info_vram_total");
+    printFile("VRAM Used", "/sys/class/drm/card0/device/mem_info_vram_used");
+    printFile("GTT Total", "/sys/class/drm/card0/device/mem_info_gtt_total");
+    printFile("GTT Used", "/sys/class/drm/card0/device/mem_info_gtt_used");
+#else
+    os << "(Linux physical hardware symlink not available)\n";
+#endif
+
+    if (!printed)
+        os << "GPU memory information is not available!\n";
+
+    return printed;
+}
 } // glutil::debug

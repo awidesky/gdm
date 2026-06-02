@@ -1,12 +1,15 @@
-﻿#define TINYOBJLOADER_IMPLEMENTATION
+#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
 #include <glutil/path.hpp>
 #include <glutil/model.hpp>
 #include <glutil/logging.hpp>
+#include <glutil/debug.hpp>
 
 #include <algorithm>
 #include <filesystem>
+#include <unordered_map>
+#include <functional>
 
 namespace glutil {
 
@@ -18,7 +21,7 @@ template <size_t Stride> static float safeGet(const std::vector<float>& arr, int
     return (base < arr.size()) ? arr[base] : 0.0f;
 }
 
-ModelData ModelLoader::loadOBJ(const std::filesystem::path& path) {
+ModelData ModelLoader::loadOBJ(const std::filesystem::path& path, bool deduplicate) {
     ModelData result;
 
     const PathResolveResult pathResult = pathResolve(path);
@@ -104,7 +107,22 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path) {
         mesh.vertices.reserve(numIdx);
         mesh.indices.reserve(numIdx);
 
-        // TODO(4): (position, normal, uv) 인덱스 조합 기준으로 정점 dedup 적용해 정점/인덱스 버퍼 최적화.
+        // TODO(5): attrib.colors도 있는 경우?
+        auto hasher = [](const VertexPNT& vert) {
+            // combine std::hash<float> results
+            size_t h = std::hash<float>{}(vert.x);
+            auto mix = [](size_t& seed, size_t v) { seed ^= v + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2); };
+            mix(h, std::hash<float>{}(vert.y));
+            mix(h, std::hash<float>{}(vert.z));
+            mix(h, std::hash<float>{}(vert.nx));
+            mix(h, std::hash<float>{}(vert.ny));
+            mix(h, std::hash<float>{}(vert.nz));
+            mix(h, std::hash<float>{}(vert.u));
+            mix(h, std::hash<float>{}(vert.v));
+            return h;
+        };
+        std::unordered_map<VertexPNT, unsigned int, decltype(hasher)> map(deduplicate ? numIdx : 0, hasher);
+
         for (size_t i = 0; i < numIdx; ++i) {
             const tinyobj::index_t& idx = shape.mesh.indices[i];
 
@@ -121,8 +139,20 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path) {
             v.u = safeGet<2>(attrib.texcoords, idx.texcoord_index, 0);
             v.v = safeGet<2>(attrib.texcoords, idx.texcoord_index, 1);
 
-            mesh.vertices.push_back(v);
-            mesh.indices.push_back(static_cast<unsigned int>(i));
+            if (deduplicate) {
+                auto it = map.find(v);
+                if (it != map.end()) {
+                    mesh.indices.push_back(it->second);
+                } else {
+                    unsigned int newIndex = static_cast<unsigned int>(mesh.vertices.size());
+                    mesh.vertices.push_back(v);
+                    mesh.indices.push_back(newIndex);
+                    map.emplace(v, newIndex);
+                }
+            } else {
+                mesh.vertices.push_back(v);
+                mesh.indices.push_back(static_cast<unsigned int>(i));
+            }
         }
 
         const std::string meshNameForLog = mesh.name.empty() ? "<unnamed>" : mesh.name;
@@ -153,6 +183,76 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path) {
                << ", indices=" << totalIndices << ", texturedMeshes=" << texturedMeshCount
                << ", unnamedMeshes=" << unnamedMeshCount << ", warnings=" << warnLineCount << ")";
 
+    return result;
+}
+
+static GLMeshData uploadMeshToGL(const MeshData& mesh, std::string baseName) {
+    GLMeshData gm;
+    gm.name = mesh.name;
+    gm.indexCount = static_cast<GLsizei>(mesh.indexCount());
+
+    glGenVertexArrays(1, &gm.vao);
+    glBindVertexArray(gm.vao);
+
+    glGenBuffers(1, &gm.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, gm.vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(mesh.vertexCount() * sizeof(VertexPNT)),
+                 mesh.vertexData(),
+                 GL_STATIC_DRAW);
+
+    glGenBuffers(1, &gm.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gm.ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(mesh.indexCount() * sizeof(unsigned int)),
+                 mesh.indexData(),
+                 GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(VertexPNT),
+                          (void*)offsetof(VertexPNT, x));
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(VertexPNT),
+                          (void*)offsetof(VertexPNT, nx));
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
+                          sizeof(VertexPNT),
+                          (void*)offsetof(VertexPNT, u));
+
+    glBindVertexArray(0);
+
+    glutil::debug::labelGLobject(GL_VERTEX_ARRAY, gm.vao, "VAO" + baseName);
+    glutil::debug::labelGLobject(GL_BUFFER, gm.vbo, "VBO" + baseName);
+    glutil::debug::labelGLobject(GL_BUFFER, gm.ebo, "EBO" + baseName);
+
+    gm.ok = true;
+    return gm;
+}
+
+GLModelData ModelLoader::loadOBJtoGL(const std::filesystem::path& path, bool deduplicate) {
+    GLModelData result;
+
+    const ModelData cpuModel = loadOBJ(path, deduplicate);
+    result.warn = cpuModel.warn;
+    if (!cpuModel.ok) {
+        result.error = cpuModel.error;
+        return result;
+    }
+
+    result.meshes.reserve(cpuModel.meshes.size());
+    int i = 0;
+    for (const MeshData& mesh : cpuModel.meshes) {
+        result.meshes.push_back(
+          uploadMeshToGL(mesh, ("(path=" +  path.filename().string() + ", object=" + 
+                (mesh.name.empty() ? ("mesh #" + std::to_string(i)) : mesh.name) + ")")));
+        i++;
+    }
+
+    result.ok = true;
     return result;
 }
 

@@ -7,6 +7,8 @@ namespace glutil::debug {
 
 void initDebugCallbacks();
 
+extern GLenum debugCallbackSeverityThreshold;
+
 } // namespace glutil
 
 #endif // GLUTIL_DEBUG_CALLBACK_HPP

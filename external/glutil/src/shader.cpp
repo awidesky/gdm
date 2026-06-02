@@ -1,6 +1,7 @@
 #include <glutil/shader.hpp>
 #include <glutil/logging.hpp>
 #include <glutil/glutil.hpp>
+#include <glutil/debug.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -88,7 +89,7 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
 
     const PathResolveResult pr = pathResolve(inputPath);
     if (!pr.success) {
-        result.error = "Input path resolve failed: " + pr.message;
+        result.error = "Input path resolve failed:\n" + pr.message;
         LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
     }
@@ -191,6 +192,83 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
     result.len = static_cast<GLint>(convertedSize);
     result.ok = true;
     return result;
+}
+
+GLShader ShaderLoader::loadShaderToGL(GLenum type, const std::filesystem::path& inputPath) {
+    GLShader out;
+    out.type = type;
+
+    ShaderLoadResult src = loadFile(inputPath);
+    if (!src.ok) {
+        out.error = src.error;
+        return out;
+    }
+
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, src.string(), src.lengthPtr());
+    glCompileShader(shader);
+
+    const auto compileResult = glutil::Inspector::shaderCompileResult(shader);
+    if (!compileResult.ok) {
+        out.error = compileResult.message.empty()
+            ? "Shader compile failed: " + inputPath.string()
+            : compileResult.message;
+        glDeleteShader(shader);
+        return out;
+    }
+
+    glutil::debug::labelGLobject(GL_SHADER, shader, std::string(glutil::glShaderTypeToShortString(type)) + "(" +
+                                 inputPath.filename().string() + ")");
+    out.id = shader;
+    out.ok = true;
+    return out;
+}
+
+GLProgram ShaderLoader::loadProgramToGL(const std::filesystem::path& vertexPath,
+                                        const std::filesystem::path& fragmentPath) {
+    GLProgram out;
+
+    GLShader vert = loadShaderToGL(GL_VERTEX_SHADER, vertexPath);
+    if (!vert.ok) {
+        out.error = vert.error;
+        return out;
+    }
+
+    GLShader frag = loadShaderToGL(GL_FRAGMENT_SHADER, fragmentPath);
+    if (!frag.ok) {
+        out.error = frag.error;
+        vert.reset();
+        return out;
+    }
+
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vert.id);
+    glAttachShader(program, frag.id);
+    glLinkProgram(program);
+
+    const auto linkResult = glutil::Inspector::programLinkResult(program);
+    if (!linkResult.ok) {
+        out.error = linkResult.message.empty()
+            ? "Program link failed."
+            : linkResult.message;
+        glDeleteProgram(program);
+        vert.reset();
+        frag.reset();
+        return out;
+    }
+
+    glDetachShader(program, vert.id);
+    glDetachShader(program, frag.id);
+    vert.reset();
+    frag.reset();
+
+    glutil::debug::labelGLobject(GL_PROGRAM, program,
+                                 "Program#" + std::to_string(program) + "(vs:" + vertexPath.filename().string()
+                                 + ", fs:" + fragmentPath.filename().string() + ")");
+
+    out.id = program;
+    out.ok = true;
+    return out;
 }
 
 } // namespace glutil

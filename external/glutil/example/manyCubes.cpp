@@ -598,8 +598,9 @@ static GLFWwindow* initGLFWAndContext() {
         return nullptr;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    auto version = glutil::debug::availableGLversion();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version.major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version.minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 #ifdef __APPLE__
@@ -808,6 +809,7 @@ static std::vector<glm::vec3> computeBitangents(
 }
 
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    (void)window; (void)scancode; (void)mods;
     const bool down = (action == GLFW_PRESS || action == GLFW_REPEAT);
     switch (key) {
         case GLFW_KEY_W: g_input.w = down; break;
