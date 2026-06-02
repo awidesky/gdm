@@ -138,7 +138,7 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    auto ss = glutil::debug::snapshot(true);
+    auto ss = glutil::debug::snapshot(true).bufferVAOInfo(true, true, true);
 
     const GLint mvpLoc = glGetUniformLocation(program.id, "uMVP");
     const GLint texLoc = glGetUniformLocation(program.id, "uTexture");
@@ -270,6 +270,7 @@ static GLFWwindow* initGLFWAndContext() {
         glfwTerminate();
         return nullptr;
     }
+    glutil::debug::debugCallbackSeverityThreshold = GL_DEBUG_SEVERITY_LOW;
     glutil::debug::init();
     return window;
 }

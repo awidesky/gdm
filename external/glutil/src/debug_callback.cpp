@@ -468,11 +468,27 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
 #endif
 } // namespace callbacks
 
+GLenum debugCallbackSeverityThreshold = GL_DEBUG_SEVERITY_NOTIFICATION;
 #if defined(GDM_HAS_GLEW) || defined(GDM_HAS_GLAD)
+static bool severityThresholdCheck(GLenum severity) {
+    // Order: HIGH > MEDIUM > LOW > NOTIFICATION
+    auto SeverityRank = [](GLenum sev) {
+        switch (sev) {
+            case GL_DEBUG_SEVERITY_NOTIFICATION: return 0;
+            case GL_DEBUG_SEVERITY_LOW: return 1;
+            case GL_DEBUG_SEVERITY_MEDIUM: return 2;
+            case GL_DEBUG_SEVERITY_HIGH: return 3;
+            default: return -1;
+        }
+    };
+    return SeverityRank(severity) < SeverityRank(debugCallbackSeverityThreshold);
+}
 static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                                  const GLchar* message, const void* userParam) {
     (void)length;
     (void)userParam;
+
+    if (severityThresholdCheck(severity)) return;
 
     std::ostringstream ss;
     ss << "OpenGL debug message callback invoked!\n";
