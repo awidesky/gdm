@@ -1,6 +1,4 @@
-#include <glutil/debug_info.hpp>
-#include <glutil/logging.hpp>
-#include <glutil/gl.hpp>
+#include <glutil/GLUTIL.hpp>
 
 #ifdef GDM_HAS_GLM
 #include <glm/glm.hpp>
@@ -123,6 +121,9 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
 void printRuntimeInfo(std::ostream& os, bool verbose) {
     os << "=== Runtime Dependency Info ===\n";
     GLVersion ver = getOpenGLVersion();
+
+    os << "[GLUTIL] Version: " << GLUTIL_VERSION_MAJOR << "." << GLUTIL_VERSION_MINOR << "." << GLUTIL_VERSION_REVISION
+       << "\n";
 
 #ifdef GDM_HAS_GLFW
     int major = 0;

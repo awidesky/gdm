@@ -199,6 +199,7 @@ int main() {
 
         lastSnapshot = ss.capture();
 
+        glFinish();
         const auto renderEnd = std::chrono::steady_clock::now();
 
         glfwSwapBuffers(window);
