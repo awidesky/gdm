@@ -957,6 +957,7 @@ void snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
     const auto& allObjects = tracker.objects.getAll();
     const std::vector<GLuint> vaoIds = sortedObjectIdsByType(allObjects, "VAO");
 
+    // DEBUG TODO : when release build, the tracker is empty, but bound buffer info must be available.
     if (vaoIds.empty()) {
         out << "  No VAOs tracked\n";
         glBindVertexArray(savedVAO);

@@ -543,6 +543,7 @@ static void initGladCallbacks(bool openglDebugExtension) {
 #endif
 }
 
+// DEBUG TODO : do not enable opengl callback when GLAD_OPTION_GL_DEBUG(or other flag indecates it's release mode) is off
 static bool initOpenGLDebugExtension() {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
     if (!support.compiledIn) {
