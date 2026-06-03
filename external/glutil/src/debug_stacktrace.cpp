@@ -1,4 +1,7 @@
-﻿#include <glutil/debug_stacktrace.hpp>
+﻿#include <glutil/gl.hpp>
+#include <glutil/debug_stacktrace.hpp>
+
+#ifdef GLAD_OPTION_GL_DEBUG
 #include <cpptrace/cpptrace.hpp>
 #include <cpptrace/formatting.hpp>
 
@@ -48,4 +51,10 @@ std::string getCalledGLfunctionName(int skip) {
 
     return out;
 }
-}
+} // namespace glutil::debug
+#else
+namespace glutil::debug {
+void printStackTrace(std::string header, int skip, int depth, bool snippets, int snippet_context) {}
+std::string getCalledGLfunctionName(int skip) { return ""; }
+} // namespace glutil::debug
+#endif
