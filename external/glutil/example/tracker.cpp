@@ -100,7 +100,7 @@ int main() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &EBO);
 
-    LOG_INFO() << "\n=== Leak Check ===";
+    LOG_INFO() << "=== Leak Check(in trackerExample, not dtor of GLStateTracker) ===";
     for (auto& [id, info] : tracker.buffers.getAll()) {
         LOG_ERROR() << "[LEAK] Buffer id=" << id
                     << " role="

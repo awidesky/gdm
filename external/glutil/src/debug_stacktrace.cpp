@@ -1,4 +1,4 @@
-﻿#if GLUTIL_DEBUG
+﻿#if GDM_DEBUG
 
 #include <glutil/gl.hpp>
 #include <glutil/debug_stacktrace.hpp>

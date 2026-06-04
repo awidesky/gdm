@@ -1,4 +1,5 @@
-﻿#if GLUTIL_DEBUG
+#if GDM_DEBUG
+
 #include <glutil/debug.hpp>
 #include <glutil/logging.hpp>
 
@@ -444,6 +445,16 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
 static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)apiproc; (void)len_args;
 
+    const GLenum err = glad_glGetError();
+    if (err != GL_NO_ERROR) {
+        LOG_ERROR() << "[GL Error] " << glErrorToString(err) << '(' << err << ')';
+        printStackTrace(std::string("In function ") + name);
+        // snapshot(); TODO : proper snapshot?
+        LOG_ERROR() << "---- End of \"" << glErrorToString(err) << '(' << err << ')' << " in function " << name << "\"\n\n";
+        return; // If error occurred, there's no use of traking or labeling the invalid object
+    }
+
+
     gladSetGLPostCallback(checkGLErrorOnlyPostCallback);
     
     va_list args;
@@ -454,15 +465,6 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
     autoLabelGLObjects(ret, name, len_args, args_copy);
     va_end(args_copy);
     va_end(args);
-
-
-    const GLenum err = glad_glGetError();
-    if (err != GL_NO_ERROR) {
-        LOG_ERROR() << "[GL Error] " << glErrorToString(err) << '(' << err << ')';
-        printStackTrace(std::string("In function ") + name);
-        // snapshot(); TODO : proper snapshot?
-        LOG_ERROR() << "---- End of \"" << glErrorToString(err) << '(' << err << ')' << " in function " << name << "\"\n\n";
-    }
 
     gladSetGLPostCallback(checkGLErrorPostCallback);
 }

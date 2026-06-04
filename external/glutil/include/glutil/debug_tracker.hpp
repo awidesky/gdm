@@ -1,14 +1,13 @@
 ﻿#ifndef GLUTIL_DEBUG_TRACKER_HPP
 #define GLUTIL_DEBUG_TRACKER_HPP
 
-#if GLUTIL_DEBUG
-
-#include <glutil/gl.hpp>
-#include <glutil/logging.hpp>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+
+#include <glutil/gl.hpp>
+#include <glutil/logging.hpp>
 
 namespace glutil::debug {
 
@@ -102,8 +101,8 @@ public:
 
 private:
     GLStateTracker() = default;
-    ~GLStateTracker()
-    {
+#if GDM_DEBUG
+    ~GLStateTracker() {
         bool hasLeak = false;
 
         for (auto& [id, info] : buffers.getAll()) {
@@ -132,8 +131,11 @@ private:
         if (!hasLeak)
             LOG_INFO() << "=== No Leaks Detected ===";
     }
+#else
+        ~GLStateTracker() = default;
+#endif // GDM_DEBUG
 };
 
 } // namespace glutil::debug
-#endif // GLUTIL_DEBUG
+
 #endif // GLUTIL_DEBUG_TRACKER_HPP

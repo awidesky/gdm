@@ -625,8 +625,16 @@ if (GDM_USE_GLUTIL)
 endif()
 
 target_compile_definitions(gdm_deps INTERFACE
-    ${_gdm_defs} 
-    $<${_gdm_dbg}:GDM_HAS_CPPTRACE> # TODO : $<${_gdm_dbg}:GDM_DEBUG> 
+    ${_gdm_defs}
+
+    $<${_gdm_dbg}:GDM_DEBUG=1>
+    $<$<NOT:${_gdm_dbg}>:GDM_DEBUG=0>
+
+    # Build type as macro
+    $<$<CONFIG:Debug>:GDM_BUILD_TYPE_DEBUG>
+    $<$<CONFIG:Release>:GDM_BUILD_TYPE_RELEASE>
+    $<$<CONFIG:RelWithDebInfo>:GDM_BUILD_TYPE_RELWITHDEBINFO>
+    $<$<CONFIG:MinSizeRel>:GDM_BUILD_TYPE_MINSIZEREL>
 )
 if (GDM_GL_LOADER STREQUAL "glew-glad")
     target_compile_definitions(gdm_glew_glad PRIVATE ${_gdm_defs})

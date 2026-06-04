@@ -7,6 +7,9 @@
 #include <string_view>
 
 #ifdef _WIN32
+#if defined(APIENTRY)
+#undef APIENTRY
+#endif /* APIENTRY */
 #include <Windows.h>
 #elif __APPLE__
 #include <mach-o/dyld.h>

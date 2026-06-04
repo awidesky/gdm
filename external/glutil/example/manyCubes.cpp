@@ -536,6 +536,8 @@ int main(int argc, char** argv) {
         glBindVertexArray(planeVao);
         glDrawArrays(GL_TRIANGLES, 0, sizeof(kPlaneVertices) / sizeof(kPlaneVertices[0]));
 
+        glFinish();
+
         const auto renderEnd = std::chrono::steady_clock::now();
 
         glfwSwapBuffers(window);
@@ -585,6 +587,7 @@ int main(int argc, char** argv) {
     if (diffuseTex != 0) glDeleteTextures(1, &diffuseTex);
     if (normalTex != 0) glDeleteTextures(1, &normalTex);
     if (specularTex != 0) glDeleteTextures(1, &specularTex);
+    // if (planeTex != 0) glDeleteTextures(1, &planeTex); // To test leack check
 
     glDeleteProgram(program);
     glfwDestroyWindow(window);

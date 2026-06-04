@@ -3,21 +3,22 @@
 
 #include <string>
 
-#if GLUTIL_DEBUG
-
-// DEBUG TODO : the stacktrace library itself must excluded
 namespace glutil::debug {
+
+#if GDM_DEBUG
+
 void printStackTrace(std::string header = "Stack trace:", int skip = 3, int depth = 15, bool snippets = true,
                      int snippet_context = 2);
 
 std::string getCalledGLfunctionName(int skip = 4);
-}
 
 #else
-namespace glutil::debug {
-inline void printStackTrace(std::string, int, int, bool, int) noexcept {}
-inline std::string getCalledGLfunctionName(int) noexcept { return ""; }
-} // namespace glutil::debug
+inline void printStackTrace(std::string h = "", int sk = 0, int d = 0, bool s = false, int sc = 0) noexcept {
+    (void)h; (void)sk; (void)d; (void)s; (void)sc;
+}
+inline std::string getCalledGLfunctionName(int skip = 0) noexcept { (void)skip; return ""; }
 #endif
+
+} // namespace glutil::debug
 
 #endif //GLUTIL_DEBUG_STACKTRACE_HPP

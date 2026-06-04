@@ -1,4 +1,6 @@
-﻿#include <glutil/gl.hpp>
+﻿#if GDM_DEBUG
+
+#include <glutil/gl.hpp>
 #include <glutil/glToString.hpp>
 
 #include <glutil/debug_snapshot.hpp>
@@ -18,6 +20,7 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -234,7 +237,6 @@ static std::vector<GLuint> sortedObjectIdsByType(const std::unordered_map<Object
     return ids;
 }
 
-
 static std::vector<GLuint> sortedBufferIds(const std::unordered_map<GLuint, BufferInfo>& buffers) {
     std::vector<GLuint> ids;
     ids.reserve(buffers.size());
@@ -275,62 +277,6 @@ struct GLStateGuard {
         disableAutoLabelGLObjects = prev_disableAutoLabelGLObjects;
     }
 };
-
-snapshot::snapshot(bool printAll)
-    : m_shaderStatus(printAll), m_shaderUniform(printAll), m_textureInfo(printAll), m_textureIncludeSampler(printAll),
-      m_bufferVAOInfo(printAll), m_bufferIncludeUnbound(false), m_bufferIncludeDisabled(false), m_allVBOInfo(printAll),
-      m_bufferIncludeData(false), m_rendererState(printAll), m_framebufferInfo(printAll), m_boundInfo(printAll),
-      m_Once(true), m_alreadyCaptured(false) {}
-
-snapshot& snapshot::shaderStatus(bool v) {
-    m_shaderStatus = v;
-    return *this;
-}
-snapshot& snapshot::shaderUniform(bool v) {
-    m_shaderUniform = v;
-    return *this;
-}
-
-snapshot& snapshot::textureInfo(bool v, bool includeSampler) {
-    m_textureInfo = v;
-    m_textureIncludeSampler = includeSampler;
-    return *this;
-}
-
-snapshot& snapshot::bufferVAOInfo(bool v, bool includeData, bool includeUnbound, bool includeDisabled) {
-    m_bufferVAOInfo = v;
-    m_bufferIncludeUnbound = includeUnbound;
-    m_bufferIncludeDisabled = includeDisabled;
-    m_bufferIncludeData = includeData;
-    return *this;
-}
-
-snapshot& snapshot::allVBOInfo(bool v) {
-    m_allVBOInfo = v;
-    return *this;
-}
-
-snapshot& snapshot::rendererState(bool v) {
-    m_rendererState = v;
-    return *this;
-}
-snapshot& snapshot::framebufferInfo(bool v) {
-    m_framebufferInfo = v;
-    return *this;
-}
-snapshot& snapshot::boundInfo(bool v) {
-    m_boundInfo = v;
-    return *this;
-}
-
-snapshot& snapshot::printPerCall(bool v) {
-    m_Once = !v;
-    return *this;
-}
-snapshot& snapshot::enableTiming(bool v) {
-    m_enableTiming = v;
-    return *this;
-}
 
 void snapshot::captureFramebuffer(SnapshotSink& out) const {
     printSeparator(out, "Framebuffer");
@@ -1592,3 +1538,5 @@ void snapshot::saveVAOInfoToFile(SnapshotSink& out, GLuint vaoId) const
 }
 
 } // namespace glutil::debug
+
+#endif

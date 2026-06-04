@@ -23,6 +23,8 @@ struct GL_KHR_DebugSupport {
 	}
 };
 
+#if GDM_DEBUG
+
 GL_KHR_DebugSupport isGL_KHR_debugSupported();
 
 extern bool disableAutoLabelGLObjects;
@@ -33,7 +35,18 @@ std::string getGLobjectLabel(GLenum identifier, GLuint name);
 
 void init();
 
-void checkGLError(const std::string& msg = {});
+#else 
+// always returns null in release build.
+inline constexpr GL_KHR_DebugSupport isGL_KHR_debugSupported() noexcept { return {nullptr, false, false}; }
+// always false in release build. Even if the value is changed, It won't be used.
+inline bool disableAutoLabelGLObjects = true;
+// always returns false in release build.
+inline constexpr bool labelGLobject(GLenum, GLuint, const std::string&) noexcept { return false; }
+// always returns empty string in release build.
+inline std::string getGLobjectLabel(GLenum, GLuint) noexcept { return ""; };
+// does nothing in release build.
+inline constexpr void init() noexcept {};
+#endif // GDM_DEBUG
 
 } // namespace glutil::debug
 

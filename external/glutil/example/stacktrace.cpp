@@ -4,7 +4,7 @@
 #include <iostream>
 #include "config.hpp"
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height){
+void static framebuffer_size_callback(GLFWwindow* window, int width, int height){
     (void)window;
     glViewport(0, 0, width, height);
 }
@@ -13,7 +13,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height){
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-void postCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
+void static postCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)apiproc; (void)len_args;
     GLenum err = glad_glGetError();
     if (err == GL_NO_ERROR)

@@ -1,4 +1,5 @@
 #include <glutil/glutil.hpp>
+#include <glutil/debug_info.hpp>
 
 #ifdef GDM_HAS_GLM
 #include <glm/glm.hpp>
@@ -346,5 +347,35 @@ bool printGpuMemoryInfo(std::ostream& os) {
         os << "GPU memory information is not available!\n";
 
     return printed;
+}
+
+static std::set<std::string> loadGLExtensions() {
+    std::set<std::string> extensions;
+    GLint count = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+
+    if (count > 0) {
+        for (GLint i = 0; i < count; ++i) {
+            const GLubyte* ext = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));
+            if (ext != nullptr && *ext != '\0') {
+                extensions.emplace(reinterpret_cast<const char*>(ext));
+            }
+        }
+    }
+    return extensions;
+}
+
+const std::set<std::string>& getGLExtensions() {
+    static const std::set<std::string> extensions = loadGLExtensions();
+    return extensions;
+}
+
+bool hasGLExtension(const char* extName) {
+    if (extName == nullptr || *extName == '\0') {
+        return false;
+    }
+
+    const auto& extensions = getGLExtensions();
+    return extensions.find(extName) != extensions.end();
 }
 } // glutil::debug
