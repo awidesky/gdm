@@ -24,6 +24,9 @@ option(GDM_BUILD_EXAMPLES "Build GDM examples" ${GDM_STANDALONE})
 option(GDM_BUILD_TESTS "Build the GDM/GLUtil test programs" ${GDM_STANDALONE})
 option(GDM_TLS_VERIFY "Enable TLS verification" ON)
 
+# Variable for build config
+set(_gdm_dbg "$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>")
+
 if (GDM_BUILD_TESTS)
     enable_testing()
 endif()
@@ -280,8 +283,8 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
     add_library(gdm::loader ALIAS gdm_loader)
     add_dependencies(gdm_loader gdm_glad_debug gdm_glad_release)
     target_link_libraries(gdm_loader INTERFACE
-        $<$<CONFIG:Debug>:gdm_glad_debug>
-        $<$<NOT:$<CONFIG:Debug>>:gdm_glad_release>
+        $<${_gdm_dbg}:gdm_glad_debug>
+        $<$<NOT:${_gdm_dbg}>:gdm_glad_release>
     )
     list(APPEND _gdm_defs GDM_HAS_GLAD)
 
@@ -512,8 +515,8 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
     add_library(gdm_glewglad_glad INTERFACE)
     add_dependencies(gdm_glewglad_glad gdm_glad_allext_debug gdm_glad_allext_release)
     target_link_libraries(gdm_glewglad_glad INTERFACE
-        $<$<CONFIG:Debug>:gdm_glad_allext_debug>
-        $<$<NOT:$<CONFIG:Debug>>:gdm_glad_allext_release>
+        $<${_gdm_dbg}:gdm_glad_allext_debug>
+        $<$<NOT:${_gdm_dbg}>:gdm_glad_allext_release>
     )
     target_link_libraries(gdm_glew_glad
         PUBLIC
@@ -610,8 +613,8 @@ set_property(TARGET gdm_deps PROPERTY INTERFACE_COMPILE_DEFINITIONS "")
 # -----------------------
 if (GDM_USE_GLUTIL)
     add_subdirectory(external/glutil)
-    set(_glutil_dbg "$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>")
-    target_link_libraries(glutil PRIVATE $<${_glutil_dbg}:cpptrace::cpptrace>)
+    target_link_libraries(glutil PRIVATE $<${_gdm_dbg}:cpptrace::cpptrace>)
+    list(APPEND _gdm_defs GDM_HAS_GLUTIL)
 
     add_library(gdm_glutil INTERFACE)
     add_library(gdm::glutil ALIAS gdm_glutil)
@@ -623,7 +626,7 @@ endif()
 
 target_compile_definitions(gdm_deps INTERFACE
     ${_gdm_defs} 
-    $<${_glutil_dbg}:GDM_HAS_CPPTRACE> # TODO : $<${_gdm_dbg}:GDM_DEBUG> 
+    $<${_gdm_dbg}:GDM_HAS_CPPTRACE> # TODO : $<${_gdm_dbg}:GDM_DEBUG> 
 )
 if (GDM_GL_LOADER STREQUAL "glew-glad")
     target_compile_definitions(gdm_glew_glad PRIVATE ${_gdm_defs})
