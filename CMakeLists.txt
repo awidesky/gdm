@@ -611,7 +611,7 @@ set_property(TARGET gdm_deps PROPERTY INTERFACE_COMPILE_DEFINITIONS "")
 if (GDM_USE_GLUTIL)
     add_subdirectory(external/glutil)
     # DEBUG TODO : target_link_libraries(glutil PRIVATE $<$<CONFIG:Debug>:cpptrace::cpptrace>)
-    target_link_libraries(glutil PRIVATE cpptrace::cpptrace)
+    target_link_libraries(glutil PRIVATE $<$<CONFIG:Debug>:cpptrace::cpptrace>)
     list(APPEND _gdm_defs GDM_HAS_GLUTIL GDM_HAS_CPPTRACE)
 
     add_library(gdm_glutil INTERFACE)

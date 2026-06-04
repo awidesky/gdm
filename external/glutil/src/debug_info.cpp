@@ -1,4 +1,4 @@
-#include <glutil/GLUTIL.hpp>
+#include <glutil/glutil.hpp>
 
 #ifdef GDM_HAS_GLM
 #include <glm/glm.hpp>
