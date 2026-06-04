@@ -610,9 +610,8 @@ set_property(TARGET gdm_deps PROPERTY INTERFACE_COMPILE_DEFINITIONS "")
 # -----------------------
 if (GDM_USE_GLUTIL)
     add_subdirectory(external/glutil)
-    # DEBUG TODO : target_link_libraries(glutil PRIVATE $<$<CONFIG:Debug>:cpptrace::cpptrace>)
-    target_link_libraries(glutil PRIVATE $<$<CONFIG:Debug>:cpptrace::cpptrace>)
-    list(APPEND _gdm_defs GDM_HAS_GLUTIL GDM_HAS_CPPTRACE)
+    set(_glutil_dbg "$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>")
+    target_link_libraries(glutil PRIVATE $<${_glutil_dbg}:cpptrace::cpptrace>)
 
     add_library(gdm_glutil INTERFACE)
     add_library(gdm::glutil ALIAS gdm_glutil)
@@ -622,7 +621,10 @@ if (GDM_USE_GLUTIL)
     endif()
 endif()
 
-target_compile_definitions(gdm_deps INTERFACE ${_gdm_defs})
+target_compile_definitions(gdm_deps INTERFACE
+    ${_gdm_defs} 
+    $<${_glutil_dbg}:GDM_HAS_CPPTRACE> # TODO : $<${_gdm_dbg}:GDM_DEBUG> 
+)
 if (GDM_GL_LOADER STREQUAL "glew-glad")
     target_compile_definitions(gdm_glew_glad PRIVATE ${_gdm_defs})
 endif()
