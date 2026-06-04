@@ -1,4 +1,5 @@
-﻿#include <glutil/debug.hpp>
+﻿#if GLUTIL_DEBUG
+#include <glutil/debug.hpp>
 #include <glutil/logging.hpp>
 
 #include <sstream>
@@ -469,6 +470,7 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
 } // namespace callbacks
 
 GLenum debugCallbackSeverityThreshold = GL_DEBUG_SEVERITY_NOTIFICATION;
+void setDebugCallbackSeverityThreshold(GLenum severityThreshold) { debugCallbackSeverityThreshold = severityThreshold; }
 #if defined(GDM_HAS_GLEW) || defined(GDM_HAS_GLAD)
 static bool severityThresholdCheck(GLenum severity) {
     // Order: HIGH > MEDIUM > LOW > NOTIFICATION
@@ -585,3 +587,4 @@ void initDebugCallbacks() {
 }
 
 } // namespace glutil
+#endif

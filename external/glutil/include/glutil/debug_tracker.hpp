@@ -1,6 +1,8 @@
 ﻿#ifndef GLUTIL_DEBUG_TRACKER_HPP
 #define GLUTIL_DEBUG_TRACKER_HPP
 
+#if GLUTIL_DEBUG
+
 #include <glutil/gl.hpp>
 #include <glutil/logging.hpp>
 #include <string>
@@ -133,4 +135,5 @@ private:
 };
 
 } // namespace glutil::debug
+#endif // GLUTIL_DEBUG
 #endif // GLUTIL_DEBUG_TRACKER_HPP
