@@ -33,7 +33,7 @@ constexpr inline std::size_t glTypeSize(GLenum type) {
     }
 }
 
-/* TODO : too much coverage
+/* TODO_later : too much coverage, including pixel mode, sample mode..
 GL_CULL_FACE_MODE
 glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
 glGetIntegerv(GL_BLEND_SRC_ALPHA, &blendSrc);

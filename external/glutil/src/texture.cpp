@@ -63,7 +63,7 @@ TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flip
         return result;
     }
 
-    // TODO : there are many other types like RG, BRG, etc. let user choose? or remove fmt parameter.
+    // TODO_later : there are many other types like RG, BRG, etc. let user choose? or remove fmt parameter.
     GLenum fmt = 0;
     GLint internalFmt = 0;
     switch (c) {
@@ -86,11 +86,6 @@ TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flip
             return result;
     }
 
-    // OpenGL default unpack alignment is 4.
-    // RGB textures whose row size(width * channels) is not divisible by 4
-    // will appear diagonally skewed unless GL_UNPACK_ALIGNMENT is set to 1.
-    // TODO : should this check occur in glTexImage2D, so that we can check actual issue exists?
-    //        user may call glPixelStorei(GL_UNPACK_ALIGNMENT, 1) when they loading image, but we won't know at this point.
     const int rowBytes = w * c;
     GLint unpackAlignment = 0;
     glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);

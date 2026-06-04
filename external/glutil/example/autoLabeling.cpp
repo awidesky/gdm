@@ -181,7 +181,7 @@ static void printObjectLabel(const char* stage, GLenum identifier, GLuint id) {
 
 static void printBoundInfo(const char* stage) {
     std::cout << "\n[BoundInfo] " << stage << '\n';
-    glutil::debug::snapshot(false)
+    glutil::debug::Snapshot(false)
         .boundInfo(true)
         .enableTiming(false)
         .capture(std::cout, false);

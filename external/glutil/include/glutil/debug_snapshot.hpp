@@ -39,22 +39,21 @@ struct SnapshotAsyncHandle {
 };
 #endif
 
-// TODO : snapshot --> Snapshot
-class snapshot {
+class Snapshot {
 public:
-    explicit snapshot(bool printAll = true)
+    explicit Snapshot(bool printAll = true)
         : m_shaderStatus(printAll), m_shaderUniform(printAll), m_textureInfo(printAll),
           m_textureIncludeSampler(printAll), m_bufferVAOInfo(printAll), m_bufferIncludeUnbound(false),
           m_bufferIncludeDisabled(false), m_allVBOInfo(printAll), m_bufferIncludeData(false), m_rendererState(printAll),
           m_framebufferInfo(printAll), m_boundInfo(printAll), m_Once(true), m_alreadyCaptured(false) {}
 
     /// @brief Set whether to output shader program link status and info log
-    snapshot& shaderStatus(bool v) {
+    Snapshot& shaderStatus(bool v) {
         m_shaderStatus = v;
         return *this;
     }
     /// @brief Set whether to output all active uniform values of the currently bound shader
-    snapshot& shaderUniform(bool v) {
+    Snapshot& shaderUniform(bool v) {
         m_shaderUniform = v;
         return *this;
     }
@@ -62,7 +61,7 @@ public:
     /// @brief Set whether to output texture binding information for all active texture units
     /// @param v true to enable output
     /// @param includeSampler true to also output sampler parameters (MIN/MAG filter, WRAP mode, etc.)
-    snapshot& textureInfo(bool v, bool includeSampler = false) {
+    Snapshot& textureInfo(bool v, bool includeSampler = false) {
         m_textureInfo = v;
         m_textureIncludeSampler = includeSampler;
         return *this;
@@ -73,7 +72,7 @@ public:
     /// @param includeData true to output raw vertex/index data (may be slow)
     /// @param includeUnbound true to also output VAOs not currently bound
     /// @param includeDisabled true to also output attribs not enabled
-    snapshot& bufferVAOInfo(bool v, bool includeData = false, bool includeUnbound = false,
+    Snapshot& bufferVAOInfo(bool v, bool includeData = false, bool includeUnbound = false,
                             bool includeDisabled = false) {
         m_bufferVAOInfo = v;
         m_bufferIncludeUnbound = includeUnbound;
@@ -84,40 +83,40 @@ public:
 
     /// @brief Set whether to output all VBO info regardless of VAO association
     /// @param includeData true to output raw buffer data (may be slow)
-    snapshot& allVBOInfo(bool v) {
+    Snapshot& allVBOInfo(bool v) {
         m_allVBOInfo = v;
         return *this;
     }
 
     /// @brief Set whether to output renderer state (viewport, depth test, blend, cull face, etc.)
-    snapshot& rendererState(bool v) {
+    Snapshot& rendererState(bool v) {
         m_rendererState = v;
         return *this;
     }
 
     /// @brief Set whether to output framebuffer status and attachment info
-    snapshot& framebufferInfo(bool v) {
+    Snapshot& framebufferInfo(bool v) {
         m_framebufferInfo = v;
         return *this;
     }
 
     /// @brief Set whether to output current GL binding state
     /// (GL_ARRAY_BUFFER_BINDING, GL_CURRENT_PROGRAM, GL_FRAMEBUFFER_BINDING, etc.)
-    snapshot& boundInfo(bool v) {
+    Snapshot& boundInfo(bool v) {
         m_boundInfo = v;
         return *this;
     }
 
     /// @brief Set whether to print a snapshot on every tracked GL call (via GLAD post callback)
     /// @param v true to enable per-call snapshot output (warning: extremely verbose)
-    snapshot& printPerCall(bool v) {
+    Snapshot& printPerCall(bool v) {
         m_Once = !v;
         return *this;
     }
 
     /// @brief Set whether to print elapsed time while taking snapshot.
     /// @param v true to print elapsed time ofsnapshot.
-    snapshot& enableTiming(bool v) {
+    Snapshot& enableTiming(bool v) {
         m_enableTiming = v;
         return *this;
     }

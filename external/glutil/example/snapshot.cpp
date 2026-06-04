@@ -195,7 +195,7 @@ int main()
     //glutil::debug::snapshot();
     //glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true);
     std::filesystem::path p1("C:/Temp/");
-    glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true).printPerCall(true);
+    glutil::debug::Snapshot ss = glutil::debug::Snapshot{}.bufferVAOInfo(true, true, true, true).printPerCall(true);
     ss.capture(p1,true);
     ss.capture();
     while (!glfwWindowShouldClose(window)) {

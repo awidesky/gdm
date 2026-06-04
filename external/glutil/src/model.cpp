@@ -74,7 +74,7 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path, bool deduplica
         bool warnedInvalidMatId = false;
         bool warnedMixedMaterial = false;
 
-        // TODO(3): shape에 여러 material이 섞인 경우 material 단위로 MeshData를 분할(submesh)하는 구조로 확장 검토.
+        // TODO_later(3): shape에 여러 material이 섞인 경우 material 단위로 MeshData를 분할(submesh)하는 구조로 확장 검토.
         for (int matId : shape.mesh.material_ids) {
             if (matId < 0 || static_cast<size_t>(matId) >= materials.size()) {
                 if (!warnedInvalidMatId) {
@@ -107,7 +107,7 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path, bool deduplica
         mesh.vertices.reserve(numIdx);
         mesh.indices.reserve(numIdx);
 
-        // TODO(5): attrib.colors도 있는 경우?
+        // TODO_later: attrib.colors도 있는 경우?
         auto hasher = [](const VertexPNT& vert) {
             // combine std::hash<float> results
             size_t h = std::hash<float>{}(vert.x);

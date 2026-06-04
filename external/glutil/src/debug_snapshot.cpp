@@ -278,7 +278,7 @@ struct GLStateGuard {
     }
 };
 
-void snapshot::captureFramebuffer(SnapshotSink& out) const {
+void Snapshot::captureFramebuffer(SnapshotSink& out) const {
     printSeparator(out, "Framebuffer");
 
     const GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -325,7 +325,7 @@ void snapshot::captureFramebuffer(SnapshotSink& out) const {
     }
 }
 
-void snapshot::captureShaderStatus(SnapshotSink& out) const {
+void Snapshot::captureShaderStatus(SnapshotSink& out) const {
     printSeparator(out, "Shader Status");
 
     GLint program = 0;
@@ -351,7 +351,7 @@ void snapshot::captureShaderStatus(SnapshotSink& out) const {
     }
 }
 
-void snapshot::captureShaderUniforms(SnapshotSink& out) const {
+void Snapshot::captureShaderUniforms(SnapshotSink& out) const {
     printSeparator(out, "Shader Uniforms");
 
     GLint program = 0;
@@ -719,14 +719,14 @@ void snapshot::captureShaderUniforms(SnapshotSink& out) const {
                 break;
             }
 
-            // TODO : image  (GL_IMAGE_2D ) - NEED ??
-            // TODO : GL_UNSIGNED_INT_ATOMIC_COUNTER - NEED ??
+            // TODO_think : image  (GL_IMAGE_2D ) - NEED ??
+            // TODO_think : GL_UNSIGNED_INT_ATOMIC_COUNTER - NEED ??
             default: out << "unknown" << " =    0x" << std::hex << type << std::dec << "\n"; break;
         }
     }
 }
 
-void snapshot::captureTextureInfo(SnapshotSink& out) const {
+void Snapshot::captureTextureInfo(SnapshotSink& out) const {
     printSeparator(out, "Texture Info");
     GLint savedActiveTexture = 0;
     glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActiveTexture);
@@ -784,7 +784,6 @@ void snapshot::captureTextureInfo(SnapshotSink& out) const {
 
     for (int i = 0; i < maxUnits; i++) {
         glActiveTexture(GL_TEXTURE0 + i);
-        // TODO : this may be slow. calculate time and if it is, add texture object into tracker(hook bindTexture and createTexture) and use it instead of looping all possible unit numbers.
         for (auto& t : types) {
             GLint texId = 0;
             glGetIntegerv(t.binding, &texId);
@@ -867,7 +866,7 @@ void snapshot::captureTextureInfo(SnapshotSink& out) const {
     glActiveTexture(savedActiveTexture);
 }
 
-void snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
+void Snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
     auto formatVertex = [](const unsigned char* ptr, GLenum type, int components) -> std::string {
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(4) << std::right << "(";
@@ -903,7 +902,6 @@ void snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
     const auto& allObjects = tracker.objects.getAll();
     const std::vector<GLuint> vaoIds = sortedObjectIdsByType(allObjects, "VAO");
 
-    // DEBUG TODO : when release build, the tracker is empty, but bound buffer info must be available.
     if (vaoIds.empty()) {
         out << "  No VAOs tracked\n";
         glBindVertexArray(savedVAO);
@@ -1061,7 +1059,7 @@ void snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
         glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
     }
 }
-void snapshot::captureAllVBOInfo(SnapshotSink& out) const {
+void Snapshot::captureAllVBOInfo(SnapshotSink& out) const {
 
     printSeparator(out, "All VBO Info");
     auto& tracker = GLStateTracker::instance();
@@ -1092,9 +1090,6 @@ void snapshot::captureAllVBOInfo(SnapshotSink& out) const {
         glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
         if (!mapped) {
             out << "\n    ";
-            //std::vector<unsigned char> data(size);
-            //glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
-            //TODO : use this data?
             if (buffer.associatedVaos.empty()) {
                 out << "Not Bound to VAO";
             } else {
@@ -1110,7 +1105,7 @@ void snapshot::captureAllVBOInfo(SnapshotSink& out) const {
         out << "  (no VBOs tracked)\n";
     glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
 }
-void snapshot::captureRendererState(SnapshotSink& out) const {
+void Snapshot::captureRendererState(SnapshotSink& out) const {
     printSeparator(out, "Renderer State");
 
     // Viewport
@@ -1150,7 +1145,7 @@ void snapshot::captureRendererState(SnapshotSink& out) const {
     std::string line;
     while (std::getline(ss, line)) out << "    " << line << '\n';
 }
-void snapshot::captureBoundInfo(SnapshotSink& out) const {
+void Snapshot::captureBoundInfo(SnapshotSink& out) const {
     printSeparator(out, "Bound Info");
 
     auto printBinding = [&](const char* name, GLenum pname, GLenum identifier = 0) {
@@ -1209,7 +1204,7 @@ public:
         (*m_out) << "\n[TIMER] " << m_name << ": " << ms << " ms\n";
     }
 };
-void snapshot::captureInternal(SnapshotSink& sink) const {
+void Snapshot::captureInternal(SnapshotSink& sink) const {
     if (m_alreadyCaptured && m_Once)
         return;
 
@@ -1221,10 +1216,10 @@ void snapshot::captureInternal(SnapshotSink& sink) const {
     insideSnapshot = true;
 
     GLStateGuard guard;
-    ScopeTimer wholeTime("Entire snapshot took", m_enableTiming, sink);
+    ScopeTimer wholeTime("Entire Snapshot took", m_enableTiming, sink);
 
     sink << "\n========================================================\n";
-    sink << "               glutil::debug::snapshot                 \n";
+    sink << "               glutil::debug::Snapshot                 \n";
     sink << "========================================================\n";
 
     if (m_framebufferInfo) {
@@ -1263,14 +1258,14 @@ void snapshot::captureInternal(SnapshotSink& sink) const {
     sink << '\n';
     wholeTime.stop();
     sink << "========================================================\n";
-    sink << "                     snapshot end                      \n";
+    sink << "                     Snapshot end                      \n";
     sink << "========================================================\n\n";
-    sink.flush(); // TODO : sink flushes before printing last timestamp. maybe add flush in sink dtor?
+    sink.flush();
 
     insideSnapshot = false;
 }
 
-SnapshotAsyncHandle snapshot::capture(std::ostream& out, bool printAsync) const {
+SnapshotAsyncHandle Snapshot::capture(std::ostream& out, bool printAsync) const {
     if (m_Once && m_alreadyCaptured)
         return m_lastAsyncHandle;
 
@@ -1281,7 +1276,7 @@ SnapshotAsyncHandle snapshot::capture(std::ostream& out, bool printAsync) const 
     if (queue)
         handle = queue->handle();
     if (handle && m_lastAsyncHandle && !m_lastAsyncHandle.finished()) {
-        LOG_WARNING() << "Previous snapshot async capture is still running; overwriting handle.";
+        LOG_WARNING() << "Previous Snapshot async capture is still running; overwriting handle.";
         LOG_WARNING() << "Unless you have the SnapshotAsyncHandle object of previous capture,";
         LOG_WARNING() << "you don't have a way to wait for the previous async output worker thread.";
     }
@@ -1292,7 +1287,7 @@ SnapshotAsyncHandle snapshot::capture(std::ostream& out, bool printAsync) const 
     return handle;
 }
 
-SnapshotAsyncHandle snapshot::capture(const std::filesystem::path& dir, bool dumpVertexData,
+SnapshotAsyncHandle Snapshot::capture(const std::filesystem::path& dir, bool dumpVertexData,
                                       bool printAsync) const {
     if (m_Once && m_alreadyCaptured)
         return m_lastAsyncHandle;
@@ -1309,7 +1304,7 @@ SnapshotAsyncHandle snapshot::capture(const std::filesystem::path& dir, bool dum
         std::unique_ptr<SnapshotQueue> queue = std::make_unique<SnapshotQueue>(std::move(f));
         handle = queue->handle();
         if (handle && m_lastAsyncHandle && !m_lastAsyncHandle.finished()) {
-            LOG_WARNING() << "Previous snapshot async capture is still running; overwriting handle.";
+            LOG_WARNING() << "Previous Snapshot async capture is still running; overwriting handle.";
             LOG_WARNING() << "Unless you have the SnapshotAsyncHandle object of previous capture,";
             LOG_WARNING() << "you don't have a way to wait for the previous async output worker thread.";
         }
@@ -1336,7 +1331,7 @@ SnapshotAsyncHandle snapshot::capture(const std::filesystem::path& dir, bool dum
     return handle;
 }
 
-void snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
+void Snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
     std::filesystem::create_directories(dir);
     auto& tracker = GLStateTracker::instance();
 
@@ -1388,7 +1383,7 @@ void snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
     glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
 }
 
-void snapshot::saveVAOInfoToFile(SnapshotSink& out, GLuint vaoId) const
+void Snapshot::saveVAOInfoToFile(SnapshotSink& out, GLuint vaoId) const
 {
     glBindVertexArray(vaoId);
 

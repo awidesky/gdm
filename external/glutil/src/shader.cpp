@@ -28,8 +28,8 @@ static bool isGLSLSupportUTF8() {
     return (major > 4) || (major == 4 && minor >= 2);;
 }
 
-// TODO : instead of re-writing, in-place substitution to space?
-// TODO : possible memory leak senario?
+// TODO_think : instead of re-writing, in-place substitution to space?
+// TODO_think : possible memory leak senario?
 static GLchar* utf16_to_ascii(const GLchar* data, size_t size, bool littleEndian, size_t& outSize) {
     GLchar* out = new GLchar[(size / 2) + 1];
     size_t out_i = 0;

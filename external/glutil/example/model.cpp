@@ -160,7 +160,7 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    auto snapshot = glutil::debug::snapshot(false).bufferVAOInfo(true, true);
+    auto Snapshot = glutil::debug::Snapshot(false).bufferVAOInfo(true, true);
 
     while (glfwGetKey(ctx, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
            glfwWindowShouldClose(ctx) == 0)
@@ -194,7 +194,7 @@ int main()
             glDrawElements(GL_TRIANGLES, gm.indexCount, GL_UNSIGNED_INT, nullptr);
         }
 
-        snapshot.capture();
+        Snapshot.capture();
 
         glfwSwapBuffers(ctx);
     }

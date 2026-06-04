@@ -99,7 +99,7 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
     }
 #endif
 #ifdef GL_VERSION_4_3
-    if(ver >= "4.3") { // TODO : check if loaded by extension
+    if(ver >= "4.3") { // TODO_easy : check if loaded by extension
         GLint attrBindings = 0;
         GLint relOffset = 0;
         GLint64 elementIndex = 0;

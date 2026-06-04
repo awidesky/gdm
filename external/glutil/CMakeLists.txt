@@ -6,7 +6,6 @@ project(glutil
 	HOMEPAGE_URL "https://github.com/awidesky/gdm"
 )
 
-# TODO : only when test is enabled
 file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/test" GLUTIL_TEST_DIR)
 file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/example" GLUTIL_EXAMPLE_DIR)
 configure_file(

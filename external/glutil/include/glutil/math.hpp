@@ -11,7 +11,7 @@ using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using mat4 = glm::mat4;
 
-// TODO : add padding?
+// TODO_think : add padding?
 struct VertexP {
     float x, y, z;
 };
@@ -66,7 +66,7 @@ inline constexpr bool operator==(const VertexPNT& a, const VertexPNT& b) noexcep
            a.u == b.u && a.v == b.v;
 }
 
-// TODO : add extranction in range, using iterator
+// TODO_later : add extranction in range, using iterator
 inline constexpr vec3 position(const VertexP& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
 inline constexpr vec3 position(const VertexPC& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
 inline constexpr vec3 position(const VertexPT& vertex) noexcept { return vec3{vertex.x, vertex.y, vertex.z}; }
