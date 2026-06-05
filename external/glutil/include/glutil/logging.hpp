@@ -2,53 +2,89 @@
 #define GLUTIL_LOGGING_HPP
 
 #include <iostream>
+#include <utility>
 #include <sstream>
-#include <string>
 
 namespace glutil {
 
 class Logger {
 public:
-    static Logger& getInstance();
+    inline static Logger& stdoutLogger() {
+        static Logger instance(&std::cout);
+        return instance;
+    }
+    inline static Logger& stderrLogger() {
+        static Logger instance(&std::cerr);
+        return instance;
+    }
 
     class LogStream {
     public:
-        LogStream(const std::string& level);
-        ~LogStream();
+        LogStream(std::ostream* out, const char* level, bool enabled) : out(out), level(level), enabled(enabled) {}
+        ~LogStream() {
+            if (!enabled || !out) return;
 
-        template<typename T>
-        LogStream& operator<<(const T& value) {
-            buffer << value;
+            auto msg = buffer.str();
+            if (msg.empty()) return;
+
+            (*out) << "[" << level << "] " << msg;
+
+            if (msg.back() != '\n') (*out) << '\n';
+        }
+
+        LogStream& operator<<(std::ostream& (*m)(std::ostream&)) {
+            if (enabled) buffer << m;
+            return *this;
+        }
+        LogStream& operator<<(std::ios& (*m)(std::ios&)) {
+            if (enabled) m(buffer);
+            return *this;
+        }
+        LogStream& operator<<(std::ios_base& (*m)(std::ios_base&)) {
+            if (enabled) m(buffer);
             return *this;
         }
 
-        // Specialization for std::endl
-        LogStream& operator<<(std::ostream& (*manipulator)(std::ostream&)) {
-            buffer << manipulator;
+        template <typename T> LogStream& operator<<(T&& value) {
+            if (enabled) buffer << std::forward<T>(value);
             return *this;
         }
-
     private:
-        std::string logLevel;
-        std::stringstream buffer;
+        std::ostream* out = nullptr;
+        const char* level = "";
+        bool enabled = true;
+        std::ostringstream buffer;
     };
 
-    LogStream warning();
-    LogStream error();
-    LogStream info();
+    LogStream warning() const { return LogStream(stream, "WARNING", enabled); }
+    LogStream error() const { return LogStream(stream, "ERROR", enabled); }
+    LogStream info() const { return LogStream(stream, "INFO", enabled); }
+
+    void setOutput(std::ostream* os) { stream = os; }
+    void enable(bool v) { enabled = v; }
 
 private:
-    Logger() = default;
-    Logger(const Logger&) = delete;
-    Logger& operator=(const Logger&) = delete;
+    Logger(std::ostream* os) : stream(os) {}
+
+    std::ostream* stream;
+    bool enabled = true;
 };
 
+inline void enableAllLoggers(bool enable) {
+    Logger::stdoutLogger().enable(enable);
+    Logger::stderrLogger().enable(enable);
+}
 } // namespace glutil
 
 // Macro definitions for convenient usage
-// TODO_easy : null logger
-#define LOG_WARNING() glutil::Logger::getInstance().warning()
-#define LOG_ERROR() glutil::Logger::getInstance().error()
-#define LOG_INFO() glutil::Logger::getInstance().info()
+#if GLUTIL_DISABLE_LOG_ON_RELEASE && !GDM_DEBUG
+    #define LOG_WARNING() if constexpr(true) ; else glutil::Logger::stdoutLogger().warning()
+    #define LOG_ERROR()   if constexpr(true) ; else glutil::Logger::stderrLogger().error()
+    #define LOG_INFO()    if constexpr(true) ; else glutil::Logger::stdoutLogger().info()
+#else
+    #define LOG_WARNING() glutil::Logger::stdoutLogger().warning()
+    #define LOG_ERROR()   glutil::Logger::stderrLogger().error()
+    #define LOG_INFO()    glutil::Logger::stdoutLogger().info()
+#endif
 
 #endif // GLUTIL_LOGGING_HPP

@@ -20,6 +20,21 @@ if (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(GDM_USE_GLUTIL "Enable GLUtil module" ON)
+# Option to control GLUtil logging in non-debug builds
+if (GDM_USE_GLUTIL)
+    set(_gdm_glutil_disable_log_default OFF)
+    if (NOT GDM_STANDALONE)
+        set(_gdm_glutil_disable_log_default ON)
+    endif()
+
+    option(GLUTIL_DISABLE_LOG_ON_RELEASE "Disable GLUtil logging in non-debug builds"
+        ${_gdm_glutil_disable_log_default}
+    )
+
+    unset(_gdm_glutil_disable_log_default)
+else()
+    unset(GLUTIL_DISABLE_LOG_ON_RELEASE CACHE)
+endif()
 option(GDM_BUILD_EXAMPLES "Build GDM examples" ${GDM_STANDALONE})
 option(GDM_BUILD_TESTS "Build the GDM/GLUtil test programs" ${GDM_STANDALONE})
 option(GDM_TLS_VERIFY "Enable TLS verification" ON)
@@ -616,6 +631,9 @@ if (GDM_USE_GLUTIL)
     target_link_libraries(glutil PRIVATE $<${_gdm_dbg}:cpptrace::cpptrace>)
     list(APPEND _gdm_defs GDM_HAS_GLUTIL)
 
+    target_compile_definitions(glutil PUBLIC
+        GLUTIL_DISABLE_LOG_ON_RELEASE=$<BOOL:${GLUTIL_DISABLE_LOG_ON_RELEASE}>
+    )
     add_library(gdm_glutil INTERFACE)
     add_library(gdm::glutil ALIAS gdm_glutil)
     target_link_libraries(gdm_glutil INTERFACE glutil)

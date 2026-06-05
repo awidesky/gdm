@@ -53,7 +53,6 @@ target_sources(glutil
     src/inspector.cpp
     src/glutil.cpp
     src/path.cpp
-    src/logging.cpp
     src/texture.cpp
     src/model.cpp
 
