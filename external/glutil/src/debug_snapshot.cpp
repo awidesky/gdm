@@ -719,8 +719,8 @@ void Snapshot::captureShaderUniforms(SnapshotSink& out) const {
                 break;
             }
 
-            // TODO_think : image  (GL_IMAGE_2D ) - NEED ??
-            // TODO_think : GL_UNSIGNED_INT_ATOMIC_COUNTER - NEED ??
+            // Other shader like Compute my have uniform type : GL_IMAGE_2D, GL_UNSIGNED_INT_ATOMIC_COUNTER
+            // but we don't support them for now, just print the raw value
             default: out << "unknown" << " =    0x" << std::hex << type << std::dec << "\n"; break;
         }
     }

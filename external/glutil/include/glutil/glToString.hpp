@@ -33,7 +33,9 @@ constexpr inline std::size_t glTypeSize(GLenum type) {
     }
 }
 
-/* TODO_later : too much coverage, including pixel mode, sample mode..
+/* TODO_easy :  this function has too much coverage.
+It can be used to find  pixel mode, sample mode, internal format, filter mode, wrap mode, compare mode, blend mode, depth func, cull face mode, etc.
+we can split it into multiple functions like glTextureFormatToString, glTextureFilterToString, glTextureWrapModeToString, glDepthFuncToString, glBlendModeToString
 GL_CULL_FACE_MODE
 glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
 glGetIntegerv(GL_BLEND_SRC_ALPHA, &blendSrc);

@@ -12,6 +12,8 @@ NamespaceIndentation: None
 
 AllowShortCaseLabelsOnASingleLine: true
 
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+
 ColumnLimit: 120
 
 SpacesInParentheses: false
