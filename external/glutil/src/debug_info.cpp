@@ -98,24 +98,50 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
         os << "[OpenGL] Color Texture Samples: " << colorSamples << ", Depth Texture Samples: " << depthSamples << "\n";
     }
 #endif
-#ifdef GL_VERSION_4_3
-    if(ver >= "4.3") { // TODO_easy : check if loaded by extension
-        GLint attrBindings = 0;
-        GLint relOffset = 0;
-        GLint64 elementIndex = 0;
-        GLint labelLength = 0;
-        GLint debugStack = 0;
+    GLint attrBindings = -1;
+    GLint relOffset = -1;
+    GLint64 maxElementIndex = -1;
+    GLint labelLength = -1;
+    GLint debugStack = -1;
 
+#ifndef GL_MAX_VERTEX_ATTRIB_BINDINGS
+    constexpr GLenum GL_MAX_VERTEX_ATTRIB_BINDINGS = 0x82DA;
+#endif
+#ifndef GL_MAX_VERTEX_ATTRIB_RELATIVE_OFFSET
+    constexpr GLenum GL_MAX_VERTEX_ATTRIB_RELATIVE_OFFSET = 0x82D9;
+#endif
+#ifndef GL_MAX_ELEMENT_INDEX
+    constexpr GLenum GL_MAX_ELEMENT_INDEX = 0x8D6B;
+#endif
+#ifndef GL_MAX_LABEL_LENGTH
+    constexpr GLenum GL_MAX_LABEL_LENGTH = 0x82E8;
+#endif
+#ifndef GL_MAX_DEBUG_GROUP_STACK_DEPTH
+    constexpr GLenum GL_MAX_DEBUG_GROUP_STACK_DEPTH = 0x826C;
+#endif
+
+    if (ver >= "4.3" || hasGLExtension("GL_ARB_vertex_attrib_binding")) {
         glGetIntegerv(GL_MAX_VERTEX_ATTRIB_BINDINGS, &attrBindings);
         glGetIntegerv(GL_MAX_VERTEX_ATTRIB_RELATIVE_OFFSET, &relOffset);
-        glGetInteger64v(GL_MAX_ELEMENT_INDEX, &elementIndex);
+    }
+
+    if (ver >= "4.3" || hasGLExtension("GL_ARB_ES3_compatibility")) {
+        glGetInteger64v(GL_MAX_ELEMENT_INDEX, &maxElementIndex);
+    }
+
+    if (ver >= "4.3" || hasGLExtension("GL_KHR_debug")) {
         glGetIntegerv(GL_MAX_LABEL_LENGTH, &labelLength);
         glGetIntegerv(GL_MAX_DEBUG_GROUP_STACK_DEPTH, &debugStack);
-
-        os << "[OpenGL] Vertex Attribute Bindings: " << attrBindings << ", Offset: " << relOffset << ", Index: " << elementIndex << "\n";
-        os << "[OpenGL] Object Label Length: " << labelLength << ", Debug Stack Depth: " << debugStack << "\n";
     }
-#endif
+
+    if (attrBindings != -1)
+        os << "[OpenGL] Vertex Attribute Binding Slots: " << attrBindings << ", Relative Offset Limit: " << relOffset
+           << "\n";
+    if (maxElementIndex != -1)
+        os << "[OpenGL] Max EBO Element Index: " << maxElementIndex << "\n";
+    if (labelLength != -1)
+        os << "[OpenGL] Object Debug Label Length: " << labelLength << ", Debug Group Stack Depth: " << debugStack
+           << "\n";
 }
 } // namespace
 
