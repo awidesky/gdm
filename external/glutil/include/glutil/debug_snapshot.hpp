@@ -42,10 +42,10 @@ struct SnapshotAsyncHandle {
 class Snapshot {
 public:
     explicit Snapshot(bool printAll = true)
-        : m_shaderStatus(printAll), m_shaderUniform(printAll), m_textureInfo(printAll),
-          m_textureIncludeSampler(printAll), m_bufferVAOInfo(printAll), m_bufferIncludeUnbound(false),
+        : m_bufferIncludeUnbound(false), m_alreadyCaptured(false), m_shaderStatus(printAll), m_shaderUniform(printAll),
+          m_textureInfo(printAll), m_textureIncludeSampler(printAll), m_bufferVAOInfo(printAll),
           m_bufferIncludeDisabled(false), m_allVBOInfo(printAll), m_bufferIncludeData(false), m_rendererState(printAll),
-          m_framebufferInfo(printAll), m_boundInfo(printAll), m_Once(true), m_alreadyCaptured(false) {}
+          m_framebufferInfo(printAll), m_boundInfo(printAll), m_Once(true) {}
 
     /// @brief Set whether to output shader program link status and info log
     Snapshot& shaderStatus(bool v) {
