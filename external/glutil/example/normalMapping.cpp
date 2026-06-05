@@ -107,11 +107,11 @@ std::vector<glm::vec3> computeNormals(const glutil::VertexPNT* vertices, size_t 
     return normals;
 }
 
-// Compute tangent and bitangent vectors from position and UV data using Lengyel's method
+// Compute tangent vectors from position and UV data using robust method
 std::vector<glm::vec3> computeTangents(
     const glutil::VertexPNT* vertices, const std::vector<glm::vec3>& normals) {
     std::vector<glm::vec3> tangents(normals.size(), glm::vec3(0.0f));
-    
+
     for (size_t i = 0; i < normals.size(); i += 3) {
         const glutil::VertexPNT& v0 = vertices[i + 0];
         const glutil::VertexPNT& v1 = vertices[i + 1];
@@ -124,19 +124,32 @@ std::vector<glm::vec3> computeTangents(
         glm::vec2 uv0 = glutil::uv(v0);
         glm::vec2 uv1 = glutil::uv(v1);
         glm::vec2 uv2 = glutil::uv(v2);
-        
+
         glm::vec3 edge1 = p1 - p0;
         glm::vec3 edge2 = p2 - p0;
         glm::vec2 dUV1 = uv1 - uv0;
         glm::vec2 dUV2 = uv2 - uv0;
-        
-        float r = 1.0f / (dUV1.x * dUV2.y - dUV1.y * dUV2.x + 1e-6f);
+
+        float det = dUV1.x * dUV2.y - dUV1.y * dUV2.x;
+        if (std::abs(det) < 1e-6f) {
+            tangents[i + 0] = glm::vec3(1.0f, 0.0f, 0.0f);
+            tangents[i + 1] = glm::vec3(1.0f, 0.0f, 0.0f);
+            tangents[i + 2] = glm::vec3(1.0f, 0.0f, 0.0f);
+            continue;
+        }
+
+        float r = 1.0f / det;
         glm::vec3 tangent = (edge1 * dUV2.y - edge2 * dUV1.y) * r;
-        
-        tangents[i + 0] = glm::normalize(tangent);
-        tangents[i + 1] = glm::normalize(tangent);
-        tangents[i + 2] = glm::normalize(tangent);
+
+        for (int j = 0; j < 3; ++j) {
+            glm::vec3 t = tangent;
+            const glm::vec3& n = normals[i + j];
+
+            t = glm::normalize(t - n * glm::dot(n, t));
+            tangents[i + j] = t;
+        }
     }
+
     return tangents;
 }
 
@@ -165,6 +178,7 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat3 uNormalMat;  // inverse(transpose(mat3(uModel)))
 uniform vec3 uLightPos;
+uniform vec3 uViewPos;
 
 out vec2 vUV;
 out vec3 vPos_world;
@@ -191,8 +205,8 @@ void main() {
     vec3 lightDir = normalize(uLightPos - pos_world);
     vLightDir_tangent = TBN * lightDir;
     
-    // Eye direction in tangent space (camera is at origin in view space)
-    vec3 eyeDir = normalize(-pos_world);  // Approximate: camera far away
+    // Eye direction in tangent space
+    vec3 eyeDir = normalize(uViewPos - pos_world);
     vEyeDir_tangent = TBN * eyeDir;
 }
 )";
