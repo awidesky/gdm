@@ -517,7 +517,6 @@ int main(int argc, char** argv) {
         }
 
         if (g_makeGLError) {
-            //TODO : better error. ex) pollute vertex/shader data? something we can figure out via snapshot.
             glBindTexture(9999, 9999);
             g_makeGLError = false;
         }

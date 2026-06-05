@@ -46,6 +46,7 @@ private:
 } // namespace glutil
 
 // Macro definitions for convenient usage
+// TODO_easy : null logger
 #define LOG_WARNING() glutil::Logger::getInstance().warning()
 #define LOG_ERROR() glutil::Logger::getInstance().error()
 #define LOG_INFO() glutil::Logger::getInstance().info()
