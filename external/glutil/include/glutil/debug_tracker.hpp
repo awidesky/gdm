@@ -69,7 +69,7 @@ struct ObjectKeyHash {
 
 class GLObjectRegistry {
 public:
-    // TODO_easy : make the type from string to glenum
+    // TODO_easy : make the key type from string to glenum
     void create(const std::string& type, GLuint id) { objects[{type, id}] = {}; }
     void destroy(const std::string& type, GLuint id) { objects.erase({type, id}); }
     ObjectInfo* get(const std::string& type, GLuint id) {
