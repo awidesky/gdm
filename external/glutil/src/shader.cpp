@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cstdint>
 #include <system_error>
+#include <memory>
 
 namespace glutil {
 
@@ -28,8 +29,6 @@ static bool isGLSLSupportUTF8() {
     return (major > 4) || (major == 4 && minor >= 2);;
 }
 
-// TODO_think : instead of re-writing, in-place substitution to space?
-// TODO_think : possible memory leak senario?
 static GLchar* utf16_to_ascii(const GLchar* data, size_t size, bool littleEndian, size_t& outSize) {
     GLchar* out = new GLchar[(size / 2) + 1];
     size_t out_i = 0;
@@ -109,9 +108,8 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
         return result;
     }
 
-    GLchar* buffer = new GLchar[static_cast<size_t>(fileSize) + 1];
-    if (!file.read(buffer, static_cast<std::streamsize>(fileSize))) {
-        delete[] buffer;
+    std::unique_ptr<GLchar[]> buffer(new GLchar[static_cast<size_t>(fileSize) + 1]);
+    if (!file.read(buffer.get(), static_cast<std::streamsize>(fileSize))) {
         result.error = "failed to read file: " + pr.resolvedPath;
         LOG_ERROR() << "[ShaderLoader] " << result.error;
         return result;
@@ -119,16 +117,16 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
 
     buffer[static_cast<size_t>(fileSize)] = '\0';
 
-    GLchar* converted = buffer;
+    GLchar* converted = buffer.get();
     size_t convertedSize = static_cast<size_t>(fileSize);
 
     if (checkEncoding) {
         LOG_INFO() << "Checking text encoding of file: " << pr.resolvedPath;
         if (fileSize >= 3 &&
-                static_cast<unsigned char>(buffer[0]) == 0xEF &&
-                static_cast<unsigned char>(buffer[1]) == 0xBB &&
-                static_cast<unsigned char>(buffer[2]) == 0xBF) {
-            buffer[0] = buffer[1] = buffer[2] = ' ';
+                static_cast<unsigned char>(buffer.get()[0]) == 0xEF &&
+                static_cast<unsigned char>(buffer.get()[1]) == 0xBB &&
+                static_cast<unsigned char>(buffer.get()[2]) == 0xBF) {
+            buffer.get()[0] = buffer.get()[1] = buffer.get()[2] = ' ';
             LOG_WARNING() << "Detected charset: UTF-8 BOM (replacing BOM to space character...)";
             // In GLSL 4.20+, noo-ASCII character is allowed in comment,
             // as long as the source is UTF-8. So, we don't replace non-ASCII characters.
@@ -140,44 +138,40 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
                 LOG_WARNING() << "Make sure there're no non-ASCII characters outside of comments.";
             } else {
                 LOG_WARNING() << "Current GLSL version allows ASCII only (replacing all non-ASCII to space character if found...)";
-                replaceNonASCIIWithSpace(buffer + 3, fileSize - 3);
+                replaceNonASCIIWithSpace(buffer.get() + 3, fileSize - 3);
             }
         } else if (fileSize >= 4 &&
-                   static_cast<unsigned char>(buffer[0]) == 0xFF &&
-                   static_cast<unsigned char>(buffer[1]) == 0xFE &&
-                   static_cast<unsigned char>(buffer[2]) == 0x00 &&
-                   static_cast<unsigned char>(buffer[3]) == 0x00) {
+                   static_cast<unsigned char>(buffer.get()[0]) == 0xFF &&
+                   static_cast<unsigned char>(buffer.get()[1]) == 0xFE &&
+                   static_cast<unsigned char>(buffer.get()[2]) == 0x00 &&
+                   static_cast<unsigned char>(buffer.get()[3]) == 0x00) {
             LOG_WARNING() << "Detected charset: UTF-32 LE (replacing all non-ASCII to space character...)";
-            converted = utf32_to_ascii(buffer + 4, static_cast<size_t>(fileSize) - 4, true, convertedSize);
-            delete[] buffer;
+            converted = utf32_to_ascii(buffer.get() + 4, static_cast<size_t>(fileSize) - 4, true, convertedSize);
         } else if (fileSize >= 4 &&
-                   static_cast<unsigned char>(buffer[0]) == 0x00 &&
-                   static_cast<unsigned char>(buffer[1]) == 0x00 &&
-                   static_cast<unsigned char>(buffer[2]) == 0xFE &&
-                   static_cast<unsigned char>(buffer[3]) == 0xFF) {
+                   static_cast<unsigned char>(buffer.get()[0]) == 0x00 &&
+                   static_cast<unsigned char>(buffer.get()[1]) == 0x00 &&
+                   static_cast<unsigned char>(buffer.get()[2]) == 0xFE &&
+                   static_cast<unsigned char>(buffer.get()[3]) == 0xFF) {
             LOG_WARNING() << "Detected charset: UTF-32 BE (replacing all non-ASCII to space character...)";
-            converted = utf32_to_ascii(buffer + 4, static_cast<size_t>(fileSize) - 4, false, convertedSize);
-            delete[] buffer;
+            converted = utf32_to_ascii(buffer.get() + 4, static_cast<size_t>(fileSize) - 4, false, convertedSize);
         } else if (fileSize >= 2 &&
-                   static_cast<unsigned char>(buffer[0]) == 0xFF &&
-                   static_cast<unsigned char>(buffer[1]) == 0xFE) {
+                   static_cast<unsigned char>(buffer.get()[0]) == 0xFF &&
+                   static_cast<unsigned char>(buffer.get()[1]) == 0xFE) {
             LOG_WARNING() << "Detected charset: UTF-16 LE (replacing all non-ASCII to space character...)";
-            converted = utf16_to_ascii(buffer + 2, static_cast<size_t>(fileSize) - 2, true, convertedSize);
-            delete[] buffer;
+            converted = utf16_to_ascii(buffer.get() + 2, static_cast<size_t>(fileSize) - 2, true, convertedSize);
         } else if (fileSize >= 2 &&
-                   static_cast<unsigned char>(buffer[0]) == 0xFE &&
-                   static_cast<unsigned char>(buffer[1]) == 0xFF) {
+                   static_cast<unsigned char>(buffer.get()[0]) == 0xFE &&
+                   static_cast<unsigned char>(buffer.get()[1]) == 0xFF) {
             LOG_WARNING() << "Detected charset: UTF-16 BE (replacing all non-ASCII to space character...)";
-            converted = utf16_to_ascii(buffer + 2, static_cast<size_t>(fileSize) - 2, false, convertedSize);
-            delete[] buffer;
+            converted = utf16_to_ascii(buffer.get() + 2, static_cast<size_t>(fileSize) - 2, false, convertedSize);
         } else {
-            if (hasNonASCII(buffer, static_cast<size_t>(fileSize))) {
+            if (hasNonASCII(buffer.get(), static_cast<size_t>(fileSize))) {
                 LOG_WARNING() << "Detected charset: unknown (non-ASCII bytes found!)";
                 if (ShaderLoader::replaceUnknownNonASCII) {
                     LOG_WARNING() << "Replacing non-ASCII(MSB == 1) into space might not work in Shift-JIS/CP932, GBK, Big5, and UTF-16/32 without BOM.";
                     LOG_WARNING() << "If you want to keep the source bytes unchanged, set ShaderLoader::replaceUnknownNonASCII = false.";
                     LOG_WARNING() << "Replacing non-ASCII bytes with spaces...";
-                    replaceNonASCIIWithSpace(buffer, static_cast<size_t>(fileSize));
+                    replaceNonASCIIWithSpace(buffer.get(), static_cast<size_t>(fileSize));
                 } else {
                     LOG_WARNING() << "Replacement disabled: leaving unknown-charset bytes unchanged.";
                     LOG_WARNING() << "Remove non-ASCII text manually if compile errors still occur.";
@@ -188,7 +182,7 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
         }
     }
 
-    result.source = converted;
+    result.source = (converted == buffer.get()) ? buffer.release() : converted;
     result.len = static_cast<GLint>(convertedSize);
     result.ok = true;
     return result;

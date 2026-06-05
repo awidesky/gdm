@@ -47,7 +47,6 @@ struct ShaderLoadResult {
 private:
     friend class ShaderLoader;
 
-    // TODO_think : consider using std::unique_ptr<GLchar[]> in case utf*_to_ascii throws an exception
     GLchar* source = nullptr;
     GLint len = 0;
 
