@@ -4,6 +4,7 @@
 #include <glutil/logging.hpp>
 #include <glutil/glToString.hpp>
 
+#include <cstdint>
 #include <cstring>
 #include <sstream>
 #include <string_view>
@@ -161,7 +162,40 @@ std::string getGLobjectLabel(GLenum identifier, GLuint name) {
 #endif
 }
 
-void init() { initDebugCallbacks(); }
+#if !defined(GDM_HAS_GLFW) && !defined(GDM_HAS_FREEGLUT)
+#if defined(_WIN32)
+#include <wingdi.h>
+#elif defined(__APPLE__)
+#include <OpenGL/CGLCurrent.h>
+#else // Linux / X11
+#include <GL/glx.h>
+#endif
+#endif
+static void* getCurrentContextID() {
+#if defined(GDM_HAS_GLFW)
+    return static_cast<void*>(glfwGetCurrentContext());
+#elif defined(GDM_HAS_FREEGLUT)
+    return reinterpret_cast<void*>(static_cast<intptr_t>(glutGetWindow()));
+#else
+    #if defined(_WIN32)
+        return reinterpret_cast<void*>(wglGetCurrentContext());
+    #elif defined(__APPLE__)
+        return reinterpret_cast<void*>(CGLGetCurrentContext());
+    #else
+        return reinterpret_cast<void*>(glXGetCurrentContext());
+#endif
+#endif
+}
+void init() {
+    static void* lastInitializedContext = nullptr;
+
+    void* currentContext = getCurrentContextID();
+    if (!currentContext || lastInitializedContext == currentContext) return;
+
+    initDebugCallbacks();
+
+    lastInitializedContext = currentContext;
+}
 
 } // namespace glutil::debug
 #endif // GDM_DEBUG

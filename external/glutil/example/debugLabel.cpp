@@ -272,6 +272,5 @@ static GLFWwindow* initGLFWAndContext() {
         return nullptr;
     }
     glutil::debug::setDebugCallbackSeverityThreshold(GL_DEBUG_SEVERITY_LOW);
-    glutil::debug::init();
     return window;
 }
