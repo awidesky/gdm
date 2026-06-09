@@ -861,7 +861,7 @@ void Snapshot::captureTextureInfo(SnapshotSink& out) const {
     }
 
     if (!anyBound)
-        out << "  (no textures tracked)\n";
+        out << "  (No Textures tracked)\n";
 
     glActiveTexture(savedActiveTexture);
 }
@@ -903,7 +903,7 @@ void Snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
     const std::vector<GLuint> vaoIds = sortedObjectIdsByType(allObjects, "VAO");
 
     if (vaoIds.empty()) {
-        out << "  No VAOs tracked\n";
+        out << "  (No VAOs tracked)\n";
         glBindVertexArray(savedVAO);
         glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
         return;
@@ -1102,7 +1102,7 @@ void Snapshot::captureAllVBOInfo(SnapshotSink& out) const {
         }
     }
     if (!bHasVBO)
-        out << "  (no VBOs tracked)\n";
+        out << "  (No VBOs tracked)\n";
     glBindBuffer(GL_ARRAY_BUFFER, savedArrayBuffer);
 }
 void Snapshot::captureRendererState(SnapshotSink& out) const {
