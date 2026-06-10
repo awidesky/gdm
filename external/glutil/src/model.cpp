@@ -76,7 +76,10 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path, bool deduplica
 
         // TODO_later(3): shape에 여러 material이 섞인 경우 material 단위로 MeshData를 분할(submesh)하는 구조로 확장 검토.
         for (int matId : shape.mesh.material_ids) {
-            if (matId < 0 || static_cast<size_t>(matId) >= materials.size()) {
+            // no material (NORMAL CASE)
+            if (matId < 0) continue;
+            // invalid index (ERROR CASE)
+            if (static_cast<size_t>(matId) >= materials.size()) {
                 if (!warnedInvalidMatId) {
                     appendWarn("loadOBJ: invalid material ID in shape '" + shape.name + "': " + std::to_string(matId));
                     warnedInvalidMatId = true;
