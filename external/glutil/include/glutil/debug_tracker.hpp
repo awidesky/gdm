@@ -107,7 +107,7 @@ private:
 
         for (auto& [id, info] : buffers.getAll()) {
             if (!hasLeak) {
-                LOG_INFO() << "\n=== Leak Check ===";
+                LOG_INFO() << "=== Leak Check ===";
                 hasLeak = true;
             }
             const char* role = (info.role == BufferRole::VBO)   ? "VBO"
@@ -121,7 +121,7 @@ private:
        for (auto& [key, info] : objects.getAll()) {
             const auto& [type, id] = key;
             if (!hasLeak) {
-                LOG_INFO() << "\n=== Leak Check ===";
+                LOG_INFO() << "=== Leak Check ===";
                 hasLeak = true;
             }
             LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << type
