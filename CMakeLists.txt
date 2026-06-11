@@ -161,14 +161,50 @@ include(cmake/FetchGlad.cmake)
 
 # CMAKE_PREFIX_PATH append for Windows 
 if(WIN32)
-    if(DEFINED CMAKE_PREFIX_PATH)
-        set(_old_prefix "${CMAKE_PREFIX_PATH}")
-    else()
-        set(_old_prefix "")
+    set(_gdm_prefix_paths "")
+
+    # helper macro
+    macro(gdm_add_prefix_if_exists path)
+        if(EXISTS "${path}")
+            list(APPEND _gdm_prefix_paths "${path}")
+        endif()
+    endmacro()
+
+    if(GDM_WINDOW_BACKEND STREQUAL "glfw")
+        gdm_add_prefix_if_exists("C:/Program Files/GLFW")
+        gdm_add_prefix_if_exists("C:/Program Files (x86)/GLFW")
+    elseif(GDM_WINDOW_BACKEND STREQUAL "freeglut")
+        gdm_add_prefix_if_exists("C:/Program Files/freeglut")
+        gdm_add_prefix_if_exists("C:/Program Files (x86)/freeglut")
+    endif()
+    
+    if(GDM_USE_GLM)
+        gdm_add_prefix_if_exists("C:/Program Files/glm")
+        gdm_add_prefix_if_exists("C:/Program Files (x86)/glm")
+    endif()
+    
+    if(GDM_GL_LOADER STREQUAL "glew" OR GDM_GL_LOADER STREQUAL "glew-glad")
+        gdm_add_prefix_if_exists("C:/Program Files/GLEW")
+        gdm_add_prefix_if_exists("C:/Program Files (x86)/GLEW")
     endif()
 
-    list(APPEND _old_prefix "C:/Program Files" "C:/Program Files (x86)")
-    set(CMAKE_PREFIX_PATH "${_old_prefix}" CACHE PATH "Prefix path for dependencies" FORCE)
+    # apply
+    if(_gdm_prefix_paths)
+        list(REMOVE_DUPLICATES _gdm_prefix_paths)
+        string(JOIN ";" _gdm_prefix_string ${_gdm_prefix_paths})
+
+        if(DEFINED CMAKE_PREFIX_PATH)
+            set(CMAKE_PREFIX_PATH
+                "${CMAKE_PREFIX_PATH};${_gdm_prefix_string}"
+                CACHE PATH "Prefix path" FORCE
+            )
+        else()
+            set(CMAKE_PREFIX_PATH
+                "${_gdm_prefix_string}"
+                CACHE PATH "Prefix path" FORCE
+            )
+        endif()
+    endif()
 endif()
 
 # -----------------------
