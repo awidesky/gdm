@@ -133,13 +133,13 @@ void makeTestVAO2() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    // VBO 1: position → attrib 0
+    // VBO 1: position -> attrib 0
     glBindBuffer(GL_ARRAY_BUFFER, vbo_pos);
     glBufferData(GL_ARRAY_BUFFER, sizeof(positions), positions, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     glEnableVertexAttribArray(0);
 
-    // VBO 2: texcoord → attrib 1
+    // VBO 2: texcoord -> attrib 1
     glBindBuffer(GL_ARRAY_BUFFER, vbo_tex);
     glBufferData(GL_ARRAY_BUFFER, sizeof(texcoords), texcoords, GL_STATIC_DRAW);
     glVertexAttribIPointer(1, 2, GL_INT, 0, (void*)0);

@@ -9,6 +9,8 @@
 #include <stdarg.h>
 #include <vector>
 
+#include "hashing.hpp"
+
 namespace glutil::debug {
 namespace callbacks {
 
@@ -444,15 +446,24 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
 
 static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)apiproc; (void)len_args;
-
     const GLenum err = glad_glGetError();
+
     if (err != GL_NO_ERROR) {
-        LOG_ERROR() << "[GL Error] " << glErrorToString(err) << '(' << err << ')';
+        const ErrorHash hash = hashError(err, name, getCalledGLfunctionName(3));
+        const ErrorReport report = logErrorOccurrence(hash, g_gladCallbackMap);
+
+        if (report.count == 0) return; // Multiple occurrence - accumulating.
+        {
+            auto& logger = LOG_ERROR();
+            logger << "[GL Error] " << glErrorToString(err) << '(' << err << ")";
+            if (report.intervalSec > 0)
+                logger << " occurred " << report.count << " times in " << report.intervalSec << " seconds.";
+        }
         printStackTrace(std::string("In function ") + name);
         LOG_ERROR() << "---- End of \"" << glErrorToString(err) << '(' << err << ')' << " in function " << name << "\"\n\n";
+        
         return; // If error occurred, there's no use of traking or labeling the invalid object
     }
-
 
     gladSetGLPostCallback(checkGLErrorOnlyPostCallback);
     
@@ -493,8 +504,16 @@ static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum s
 
     if (severityThresholdCheck(severity)) return;
 
+    // compute hash based on stable identifiers
+    const ErrorHash hash = hashError(id, source, type, severity);
+    const ErrorReport report = logErrorOccurrence(hash, g_glDebugMessageMap);
+
+    // still accumulating -> skip logging
+    if (report.count == 0) return;
+
     std::ostringstream ss;
     ss << "OpenGL debug message callback invoked!\n";
+    if (report.intervalSec > 0) ss << "[Aggregated] Same error have been occurred " << report.count << " times in " << report.intervalSec << " seconds.\n";
     ss << "---------------------gldebugCallback-start----------------\n";
     ss << "Message: " << message << '\n';
     ss << "ID: " << id << '\n';

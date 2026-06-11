@@ -61,6 +61,7 @@ target_sources(glutil
     src/debug_stacktrace.cpp
     src/debug_info.cpp
     src/debug_snapshot.cpp
+    src/hashing.hpp
 
     src/stb_image.h
     src/dds-ktx.h
