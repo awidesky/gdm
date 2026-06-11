@@ -159,6 +159,18 @@ endif()
 include(cmake/Dependencies.cmake)
 include(cmake/FetchGlad.cmake)
 
+# CMAKE_PREFIX_PATH append for Windows 
+if(WIN32)
+    if(DEFINED CMAKE_PREFIX_PATH)
+        set(_old_prefix "${CMAKE_PREFIX_PATH}")
+    else()
+        set(_old_prefix "")
+    endif()
+
+    list(APPEND _old_prefix "C:/Program Files" "C:/Program Files (x86)")
+    set(CMAKE_PREFIX_PATH "${_old_prefix}" CACHE PATH "Prefix path for dependencies" FORCE)
+endif()
+
 # -----------------------
 # OpenGL (system)
 # -----------------------
