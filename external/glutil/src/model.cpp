@@ -20,6 +20,20 @@ template <size_t Stride> static float safeGet(const std::vector<float>& arr, int
     const auto base = static_cast<size_t>(Stride * static_cast<size_t>(idx) + static_cast<size_t>(component));
     return (base < arr.size()) ? arr[base] : 0.0f;
 }
+static std::string pathToUtf8(const std::filesystem::path& path) {
+#ifdef _WIN32
+    const std::wstring ws = path.native();
+    if (ws.empty()) return {};
+
+    int size = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), static_cast<int>(ws.size()), nullptr, 0, nullptr, nullptr);
+    std::string out(size, '\0');
+
+    WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), static_cast<int>(ws.size()), out.data(), size, nullptr, nullptr);
+    return out;
+#else
+    return path.string();
+#endif
+}
 
 ModelData ModelLoader::loadOBJ(const std::filesystem::path& path, bool deduplicate) {
     ModelData result;
@@ -32,14 +46,15 @@ ModelData ModelLoader::loadOBJ(const std::filesystem::path& path, bool deduplica
     }
 
     const std::filesystem::path objPath(pathResult.resolvedPath);
-    const std::string mtlDir = objPath.parent_path().string();
+    const std::string objPathStr = pathToUtf8(pathResult.resolvedPath);
+    const std::string mtlDir = pathToUtf8(objPath.parent_path());
 
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
 
-    const bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, pathResult.resolvedPath.c_str(),
+    const bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, objPathStr.c_str(),
                                          mtlDir.empty() ? nullptr : mtlDir.c_str(), true);
 
     auto appendWarn = [&result](const std::string& msg) {
