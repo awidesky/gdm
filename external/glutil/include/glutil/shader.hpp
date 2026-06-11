@@ -64,14 +64,14 @@ private:
 };
 
 struct GLShader {
-    bool ok = false;
+    bool ok = false, resetInDtor = true;
     std::string error;
 
     GLuint id = 0;
     GLenum type = 0;
 
     GLShader() = default;
-    ~GLShader() { reset(); }
+    ~GLShader() { if (resetInDtor) reset(); }
 
     GLShader(const GLShader&) = delete;
     GLShader& operator=(const GLShader&) = delete;
@@ -108,13 +108,13 @@ private:
 };
 
 struct GLProgram {
-    bool ok = false;
+    bool ok = false, resetInDtor = true;
     std::string error;
 
     GLuint id = 0;
 
     GLProgram() = default;
-    ~GLProgram() { reset(); }
+    ~GLProgram() { if (resetInDtor) reset(); }
 
     GLProgram(const GLProgram&) = delete;
     GLProgram& operator=(const GLProgram&) = delete;

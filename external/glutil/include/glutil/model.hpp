@@ -36,7 +36,7 @@ struct ModelData {
 };
 
 struct GLMeshData {
-    bool ok = false;
+    bool ok = false, resetInDtor = true;
     std::string error;
 
     std::string name;
@@ -46,7 +46,7 @@ struct GLMeshData {
     GLsizei indexCount = 0;
 
     GLMeshData() = default;
-    ~GLMeshData() { reset(); }
+    ~GLMeshData() { if(resetInDtor) reset(); }
 
     GLMeshData(const GLMeshData&) = delete;
     GLMeshData& operator=(const GLMeshData&) = delete;
@@ -97,14 +97,14 @@ private:
 };
 
 struct GLModelData {
-    bool ok = false;
+    bool ok = false, resetInDtor = true;
     std::string error;
     std::string warn;
 
     std::vector<GLMeshData> meshes;
 
     GLModelData() = default;
-    ~GLModelData() = default;
+    ~GLModelData() { if (resetInDtor) reset();};
 
     GLModelData(const GLModelData&) = delete;
     GLModelData& operator=(const GLModelData&) = delete;

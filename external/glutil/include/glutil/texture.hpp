@@ -122,7 +122,7 @@ private:
 };
 
 struct GLTexture2D {
-    bool ok = false;
+    bool ok = false, resetInDtor = true;
     std::string error;
 
     GLuint id = 0;
@@ -131,7 +131,7 @@ struct GLTexture2D {
     GLenum format = 0;
 
     GLTexture2D() = default;
-    ~GLTexture2D() { reset(); }
+    ~GLTexture2D() { if (resetInDtor) reset(); }
 
     GLTexture2D(const GLTexture2D&) = delete;
     GLTexture2D& operator=(const GLTexture2D&) = delete;
