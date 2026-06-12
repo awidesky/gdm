@@ -158,6 +158,8 @@ public:
                                      const std::filesystem::path& fragmentPath);
 };
 
+bool isGLSLSupportUTF8();
+
 inline static bool hasNonASCII(const char* data, size_t size) {
     constexpr uint64_t HIGH_BIT_MASK = 0x8080808080808080ULL;
 

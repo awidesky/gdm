@@ -1,7 +1,9 @@
 #if GDM_DEBUG
 
 #include <glutil/debug.hpp>
+#include <glutil/inspector.hpp>
 #include <glutil/logging.hpp>
+#include <glutil/shader.hpp>
 
 #include <sstream>
 #include <string>
@@ -41,8 +43,9 @@ enum class GLFunctions {
     DeleteBuffers, DeleteVertexArrays, DeleteTextures,
     DeleteFramebuffers, DeleteShader, DeleteProgram,
     BindBuffer, BindVertexArray, BindTexture, 
-    BufferData, DrawElements, TexImage2D, TexImage3D,
+    BufferData, DrawArrays, DrawElements, TexImage2D, TexImage3D,
     VertexAttribPointer, VertexAttribIPointer, VertexAttribLPointer,
+    ShaderSource,
 
     Unknown
 };
@@ -72,9 +75,11 @@ static GLFunctions classifyGLFunctions(std::string_view fname) {
     if (fname == "glTexImage2D") return GLFunctions::TexImage2D;
     if (fname == "glTexImage3D") return GLFunctions::TexImage3D;
     if (fname == "glDrawElements") return GLFunctions::DrawElements;
+    if (fname == "glDrawArrays") return GLFunctions::DrawArrays;
     if (fname == "glVertexAttribPointer") return GLFunctions::VertexAttribPointer;
     if (fname == "glVertexAttribIPointer") return GLFunctions::VertexAttribIPointer;
     if (fname == "glVertexAttribLPointer") return GLFunctions::VertexAttribLPointer;
+    if (fname == "glShaderSource") return GLFunctions::ShaderSource;
     return GLFunctions::Unknown;
 }
 static GLenum normalizeTextureTarget(GLenum target) {
@@ -442,6 +447,88 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
         default: break;
     }    
 }
+static void autoPostInspcector(void* ret, const char* name, int len_args, va_list args) {
+    if (disableAutoInspcector) return;
+
+    auto func = classifyGLFunctions(name);
+    switch (func) {
+        case GLFunctions::CompileShader: {
+            GLuint shader = va_arg(args, GLuint);
+            auto result = glutil::Inspector::shaderCompileResult(shader);
+
+            if (!result.ok) {
+                std::string label = getGLobjectLabel(GL_SHADER, shader);
+                LOG_ERROR() << "[AutoPostInspcector] Shader #" << shader << "(" << label << ") compile failed :";
+                LOG_ERROR() << result.message;
+            }
+            break;
+        }
+        case GLFunctions::LinkProgram: {
+            GLuint program = va_arg(args, GLuint);
+            auto result = glutil::Inspector::programLinkResult(program);
+
+            if (!result.ok) {
+                std::string label = getGLobjectLabel(GL_PROGRAM, program);
+                LOG_ERROR() << "[AutoPostInspcector] Program #" << program << "(" << label << ") link failed :";
+                LOG_ERROR() << result.message;
+            }
+            break;
+        }
+        case GLFunctions::DrawArrays:
+        case GLFunctions::DrawElements: {
+            GLint currentVAO = GLStateTracker::instance().boundVAO;
+            if (currentVAO == 0) {
+                LOG_ERROR() << "[AutoPostInspcector] No VAO bound for " << name << " (called from "
+                            << getCalledGLfunctionName() << ")";
+            }
+
+            GLint currentProgram = 0;
+            glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+            if (currentProgram == 0) {
+                LOG_ERROR() << "[AutoPostInspcector] No shader program bound for " << name << " (called from "
+                            << getCalledGLfunctionName() << ")";
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+static void autoPreInspcector(const char* name, GLADapiproc apiproc, int len_args, ...) {
+    (void)apiproc;
+    if (!ShaderLoader::checkEncoding) return;
+
+    auto func = classifyGLFunctions(name);
+    switch (func) {
+        case GLFunctions::ShaderSource: {
+            va_list args;
+            va_start(args, len_args);
+            GLuint shader = va_arg(args, GLuint);
+            GLsizei count = va_arg(args, GLsizei);
+            const char** strings = va_arg(args, const char**);
+            (void)va_arg(args, const GLint*);
+            va_end(args);
+
+            if (!strings || count <= 0) break;
+            for (GLsizei i = 0; i < count; ++i) {
+                const char* src = strings[i];
+                if (!src) continue;
+
+                size_t len = strlen(src);
+                if (hasNonASCII(src, len)) {
+                    std::string label = getGLobjectLabel(GL_SHADER, shader);
+                    LOG_WARNING() << "[AutoPreInspector] Shader #" << shader << "(" << label << ") : Source contains non-ASCII text (string[" << i << "])";
+                    LOG_WARNING() << "[AutoPreInspector] Current GLSL version does " << (isGLSLSupportUTF8() ? "" : "NOT")
+                                  << " allow non-ASCII characters in UTF-8 in comments.";
+                }
+            }
+            break;
+        }
+
+        default: break;
+    }
+}
+
 #pragma warning(pop)
 
 static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
@@ -469,11 +556,15 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
     
     va_list args;
     va_start(args, len_args);
-    va_list args_copy;
-    va_copy(args_copy, args);
-    trackGLFunctions(ret, name, len_args, args);
-    autoLabelGLObjects(ret, name, len_args, args_copy);
-    va_end(args_copy);
+    va_list args_copy1;
+    va_copy(args_copy1, args);
+    va_list args_copy2;
+    va_copy(args_copy2, args);
+    trackGLFunctions(ret, name, len_args, args_copy1);
+    autoLabelGLObjects(ret, name, len_args, args_copy2);
+    autoPostInspcector(ret, name, len_args, args);
+    va_end(args_copy2);
+    va_end(args_copy1);
     va_end(args);
 
     gladSetGLPostCallback(checkGLErrorPostCallback);
@@ -558,7 +649,7 @@ static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum s
 static void initGladCallbacks(bool openglDebugExtension) {
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
     LOG_INFO() << "Using GLAD post callback for OpenGL error checking.";
-    gladSetGLPreCallback(callbacks::noopPreCallback);
+    gladSetGLPreCallback(callbacks::autoPreInspcector);
     gladSetGLPostCallback(callbacks::checkGLErrorPostCallback);
 #else
     LOG_INFO() << "GLAD post callback support is not available in this build.";

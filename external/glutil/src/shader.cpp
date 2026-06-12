@@ -14,7 +14,7 @@ namespace glutil {
 
 namespace fs = std::filesystem;
 
-static bool isGLSLSupportUTF8() {
+bool isGLSLSupportUTF8() {
     const GLubyte* glslVersionRaw = glGetString(GL_SHADING_LANGUAGE_VERSION);
     if (glslVersionRaw == 0)
         return false;
@@ -120,7 +120,7 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
     GLchar* converted = buffer.get();
     size_t convertedSize = static_cast<size_t>(fileSize);
 
-    if (checkEncoding) {
+    if (checkEncoding) { // TODO_think : check will be done twice
         LOG_INFO() << "Checking text encoding of file: " << pr.resolvedPath;
         if (fileSize >= 3 &&
                 static_cast<unsigned char>(buffer.get()[0]) == 0xEF &&
@@ -200,7 +200,7 @@ GLShader ShaderLoader::loadShaderToGL(GLenum type, const std::filesystem::path& 
 
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, src.string(), src.lengthPtr());
-    glCompileShader(shader);
+    glCompileShader(shader); //TODO_think : use glad_glCompileShader
 
     const auto compileResult = glutil::Inspector::shaderCompileResult(shader);
     if (!compileResult.ok) {
