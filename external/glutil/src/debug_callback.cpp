@@ -458,8 +458,9 @@ static void autoPostInspcector(void* ret, const char* name, int len_args, va_lis
 
             if (!result.ok) {
                 std::string label = getGLobjectLabel(GL_SHADER, shader);
-                LOG_ERROR() << "[AutoPostInspcector] Shader #" << shader << "(" << label << ") compile failed :";
-                LOG_ERROR() << result.message;
+                if (!label.empty()) label = '('+ label + ')';
+                LOG_ERROR() << "[AutoPostInspcector] Shader #" << shader << label << " compile failed :\n" << result.message;
+                LOG_ERROR() << "[AutoPostInspcector] End of compile error log for Shader #" << shader << " ----\n";
             }
             break;
         }
@@ -469,8 +470,9 @@ static void autoPostInspcector(void* ret, const char* name, int len_args, va_lis
 
             if (!result.ok) {
                 std::string label = getGLobjectLabel(GL_PROGRAM, program);
-                LOG_ERROR() << "[AutoPostInspcector] Program #" << program << "(" << label << ") link failed :";
-                LOG_ERROR() << result.message;
+                if (!label.empty()) label = '('+ label + ')';
+                LOG_ERROR() << "[AutoPostInspcector] Program #" << program << label << " link failed :\n" << result.message;
+                LOG_ERROR() << "[AutoPostInspcector] End of link error log for Program #" << program << " ----\n";
             }
             break;
         }
@@ -496,11 +498,12 @@ static void autoPostInspcector(void* ret, const char* name, int len_args, va_lis
 }
 static void autoPreInspcector(const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)apiproc;
-    if (!ShaderLoader::checkEncoding) return;
+    if (disableAutoInspcector) return;
 
     auto func = classifyGLFunctions(name);
     switch (func) {
         case GLFunctions::ShaderSource: {
+            if (!ShaderLoader::checkEncoding) return;
             va_list args;
             va_start(args, len_args);
             GLuint shader = va_arg(args, GLuint);
@@ -517,7 +520,8 @@ static void autoPreInspcector(const char* name, GLADapiproc apiproc, int len_arg
                 size_t len = strlen(src);
                 if (hasNonASCII(src, len)) {
                     std::string label = getGLobjectLabel(GL_SHADER, shader);
-                    LOG_WARNING() << "[AutoPreInspector] Shader #" << shader << "(" << label << ") : Source contains non-ASCII text (string[" << i << "])";
+                    if (!label.empty()) label = '('+ label + ')';
+                    LOG_WARNING() << "[AutoPreInspector] Shader #" << shader << label << " : Source contains non-ASCII text (string[" << i << "])";
                     LOG_WARNING() << "[AutoPreInspector] Current GLSL version does " << (isGLSLSupportUTF8() ? "" : "NOT")
                                   << " allow non-ASCII characters in UTF-8 in comments.";
                 }
@@ -541,7 +545,7 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
 
         if (report.count == 0) return; // Multiple occurrence - accumulating.
         {
-            auto& logger = LOG_ERROR();
+            auto logger = LOG_ERROR();
             logger << "[GL Error] " << glErrorToString(err) << '(' << err << ")";
             if (report.intervalSec > 0)
                 logger << " occurred " << report.count << " times in " << report.intervalSec << " seconds.";

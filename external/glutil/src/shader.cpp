@@ -200,7 +200,7 @@ GLShader ShaderLoader::loadShaderToGL(GLenum type, const std::filesystem::path& 
 
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, src.string(), src.lengthPtr());
-    glCompileShader(shader); //TODO_think : use glad_glCompileShader
+    glCompileShader(shader);
 
     const auto compileResult = glutil::Inspector::shaderCompileResult(shader);
     if (!compileResult.ok) {

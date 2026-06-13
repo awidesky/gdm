@@ -279,6 +279,8 @@ int main() {
         return 1;
     }
 
+    glutil::debug::disableAutoInspcector = true;
+
     int result33 = runTestWithContext(3, 3);
     std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << std::endl << std::endl;
 
