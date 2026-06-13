@@ -52,6 +52,8 @@ constexpr inline const char* glTextureFormatToString(GLenum fmt) {
         case GL_RG_INTEGER: return "GL_RG_INTEGER";
         case GL_RGB_INTEGER: return "GL_RGB_INTEGER";
         case GL_RGBA_INTEGER: return "GL_RGBA_INTEGER";
+        case GL_BGR_INTEGER: return "GL_BGR_INTEGER";
+        case GL_BGRA_INTEGER: return "GL_BGRA_INTEGER";
 
         // R
         case GL_R8: return "GL_R8";
