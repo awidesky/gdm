@@ -282,7 +282,7 @@ void Snapshot::captureFramebuffer(SnapshotSink& out) const {
     printSeparator(out, "Framebuffer");
 
     const GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    out << "  Status     : " << glutil::glErrorToString(fbStatus) << " (0x" << std::hex << fbStatus << std::dec
+    out << "  Status     : " << glutil::glFramebufferStatusToString(fbStatus) << " (0x" << std::hex << fbStatus << std::dec
         << ")\n";
 
     GLint fbBinding = 0;
@@ -774,10 +774,10 @@ void Snapshot::captureTextureInfo(SnapshotSink& out) const {
         glGetTexParameteriv(target, GL_TEXTURE_WRAP_S, &wrapS);
         glGetTexParameteriv(target, GL_TEXTURE_WRAP_T, &wrapT);
         glGetTexParameteriv(target, GL_TEXTURE_COMPARE_FUNC, &compareFunc);
-        out << indent << "MIN_FILTER=" << glTextureFormatToString(minFilter)
-            << "  MAG_FILTER=" << glTextureFormatToString(magFilter) << "\n"
-            << indent << "WRAP_S=" << glTextureFormatToString(wrapS) << "  WRAP_T=" << glTextureFormatToString(wrapT)
-            << "  COMPARE_FUNC=" << glTextureFormatToString(compareFunc) << "\n";
+        out << indent << "MIN_FILTER=" << glTextureFilterToString(minFilter)
+            << "  MAG_FILTER=" << glTextureFilterToString(magFilter) << "\n"
+            << indent << "WRAP_S=" << glTextureWrapModeToString(wrapS) << "  WRAP_T=" << glTextureWrapModeToString(wrapT)
+            << "  COMPARE_FUNC=" << glCompareFuncToString(compareFunc) << "\n";
     };
 
     bool anyBound = false;
@@ -1121,7 +1121,7 @@ void Snapshot::captureRendererState(SnapshotSink& out) const {
     if (glIsEnabled(GL_CULL_FACE)) {
         GLint cullMode = 0;
         glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
-        out << "   " << glTextureFormatToString(cullMode);
+        out << "   " << glCullFaceModeToString(cullMode);
     }
     out << "\n";
 
@@ -1131,13 +1131,13 @@ void Snapshot::captureRendererState(SnapshotSink& out) const {
     // 세부 설정
     GLint depthFunc = 0;
     glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
-    out << "  Depth Func   : " << glTextureFormatToString(depthFunc) << "\n";
+    out << "  Depth Func   : " << glCompareFuncToString(depthFunc) << "\n";
 
     GLint blendSrc = 0, blendDst = 0;
     glGetIntegerv(GL_BLEND_SRC_ALPHA, &blendSrc);
     glGetIntegerv(GL_BLEND_DST_ALPHA, &blendDst);
-    out << "  Blend Src    : " << glTextureFormatToString(blendSrc) << "\n";
-    out << "  Blend Dst    : " << glTextureFormatToString(blendDst) << "\n";
+    out << "  Blend Src    : " << glBlendFactorToString(blendSrc) << "\n";
+    out << "  Blend Dst    : " << glBlendFactorToString(blendDst) << "\n";
 
     out << "  GPU VRAM     :\n";
     std::stringstream ss;
@@ -1339,8 +1339,7 @@ void Snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &savedArrayBuffer);
 
-    char label[1024];
-    GLsizei labelLen = 0;
+    std::string label;
 
     // ── VBO 파일 저장 ──
     for (auto& [id, info] : tracker.buffers.getAll()) {
@@ -1355,11 +1354,11 @@ void Snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
         if (mapped)
             continue;
 
-        glGetObjectLabel(GL_BUFFER, id, sizeof(label), &labelLen, label);
+        label = getGLobjectLabel(GL_BUFFER, id);
 
         std::ofstream f(dir / (std::to_string(id) + ".vbo"));
         f << "VBO_ID=" << id << "\n";
-        f << "LABEL=" << (labelLen > 0 ? label : "") << "\n";
+        f << "LABEL=" << (label.empty() ? label : "") << "\n";
 
         std::vector<unsigned char> data(size);
         glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());

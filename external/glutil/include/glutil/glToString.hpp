@@ -9,6 +9,7 @@ namespace glutil {
 constexpr inline const char* glTypeToString(GLint type) {
     switch (type) {
         case GL_FLOAT: return "GL_FLOAT";
+        case GL_DOUBLE: return "GL_DOUBLE";
         case GL_UNSIGNED_BYTE: return "GL_UNSIGNED_BYTE";
         case GL_UNSIGNED_SHORT: return "GL_UNSIGNED_SHORT";
         case GL_UNSIGNED_INT: return "GL_UNSIGNED_INT";
@@ -33,78 +34,6 @@ constexpr inline std::size_t glTypeSize(GLenum type) {
     }
 }
 
-/* TODO_easy :  this function has too much coverage.
-It can be used to find  pixel mode, sample mode, internal format, filter mode, wrap mode, compare mode, blend mode, depth func, cull face mode, etc.
-we can split it into multiple functions like glTextureFormatToString, glTextureFilterToString, glTextureWrapModeToString, glDepthFuncToString, glBlendModeToString
-GL_CULL_FACE_MODE
-glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
-glGetIntegerv(GL_BLEND_SRC_ALPHA, &blendSrc);
-glGetIntegerv(GL_BLEND_DST_ALPHA, &blendDst);
-glGetTexParameteriv(target, GL_TEXTURE_MIN_FILTER, &minFilter);
-glGetTexParameteriv(target, GL_TEXTURE_MAG_FILTER, &magFilter);
-glGetTexParameteriv(target, GL_TEXTURE_WRAP_S, &wrapS);
-glGetTexParameteriv(target, GL_TEXTURE_WRAP_T, &wrapT);
-glGetTexParameteriv(target, GL_TEXTURE_COMPARE_FUNC, &compareFunc);
-*/
-constexpr inline const char* glTextureFormatToString(GLint fmt) {
-    switch (fmt) {
-        case GL_RGB8: return "GL_RGB8";
-        case GL_RGBA8: return "GL_RGBA8";
-        case GL_R8: return "GL_R8";
-        case GL_RG8: return "GL_RG8";
-        case GL_RGB16F: return "GL_RGB16F";
-        case GL_RGBA16F: return "GL_RGBA16F";
-        case GL_RGB32F: return "GL_RGB32F";
-        case GL_RGBA32F: return "GL_RGBA32F";
-
-        case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
-        case GL_DEPTH_COMPONENT16: return "GL_DEPTH_COMPONENT16";
-        case GL_DEPTH_COMPONENT24: return "GL_DEPTH_COMPONENT24";
-        case GL_DEPTH_COMPONENT32F: return "GL_DEPTH_COMPONENT32F";
-        case GL_DEPTH_STENCIL: return "GL_DEPTH_STENCIL";
-
-        case GL_COMPRESSED_RGB_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGB_S3TC_DXT1";
-        case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT1";
-        case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT3";
-        case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT5";
-
-        case GL_LINEAR: return "GL_LINEAR";
-        case GL_NEAREST: return "GL_NEAREST";
-        case GL_LINEAR_MIPMAP_LINEAR: return "GL_LINEAR_MIPMAP_LINEAR";
-        case GL_LINEAR_MIPMAP_NEAREST: return "GL_LINEAR_MIPMAP_NEAREST";
-        case GL_NEAREST_MIPMAP_LINEAR: return "GL_NEAREST_MIPMAP_LINEAR";
-        case GL_NEAREST_MIPMAP_NEAREST: return "GL_NEAREST_MIPMAP_NEAREST";
-        case GL_REPEAT: return "GL_REPEAT";
-        case GL_CLAMP_TO_EDGE: return "GL_CLAMP_TO_EDGE";
-        case GL_MIRRORED_REPEAT: return "GL_MIRRORED_REPEAT";
-
-        case GL_LEQUAL: return "GL_LEQUAL";
-        case GL_GEQUAL: return "GL_GEQUAL";
-        case GL_LESS: return "GL_LESS";
-        case GL_GREATER: return "GL_GREATER";
-        case GL_EQUAL: return "GL_EQUAL";
-        case GL_NOTEQUAL: return "GL_NOTEQUAL";
-        case GL_ALWAYS: return "GL_ALWAYS";
-        case GL_NEVER: return "GL_NEVER";
-
-        case GL_ZERO: return "GL_ZERO";
-        case GL_ONE: return "GL_ONE";
-        case GL_SRC_ALPHA: return "GL_SRC_ALPHA";
-        case GL_ONE_MINUS_SRC_ALPHA: return "GL_ONE_MINUS_SRC_ALPHA";
-        case GL_DST_ALPHA: return "GL_DST_ALPHA";
-        case GL_ONE_MINUS_DST_ALPHA: return "GL_ONE_MINUS_DST_ALPHA";
-        case GL_SRC_COLOR: return "GL_SRC_COLOR";
-        case GL_ONE_MINUS_SRC_COLOR: return "GL_ONE_MINUS_SRC_COLOR";
-        case GL_DST_COLOR: return "GL_DST_COLOR";
-        case GL_ONE_MINUS_DST_COLOR: return "GL_ONE_MINUS_DST_COLOR";
-        case GL_BACK: return "GL_BACK";
-        case GL_FRONT: return "GL_FRONT";
-        case GL_FRONT_AND_BACK: return "GL_FRONT_AND_BACK";
-
-
-        default: return "UNKNOWN";
-    }
-}
 constexpr inline const char* glTextureInternalFormatToString(GLenum fmt) {
     switch (fmt) {
         // base formats
@@ -185,11 +114,13 @@ constexpr inline const char* glTextureInternalFormatToString(GLenum fmt) {
         // depth
         case GL_DEPTH_COMPONENT16: return "GL_DEPTH_COMPONENT16";
         case GL_DEPTH_COMPONENT24: return "GL_DEPTH_COMPONENT24";
+        case GL_DEPTH_COMPONENT32: return "GL_DEPTH_COMPONENT32";
         case GL_DEPTH_COMPONENT32F: return "GL_DEPTH_COMPONENT32F";
         case GL_DEPTH24_STENCIL8: return "GL_DEPTH24_STENCIL8";
+        case GL_DEPTH32F_STENCIL8: return "GL_DEPTH32F_STENCIL8";
 
         // compressed S3TC (EXT)
-#ifdef GL_EXT_texture_compression_s3tc
+#ifdef GL_COMPRESSED_RGB_S3TC_DXT1_EXT
         case GL_COMPRESSED_RGB_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGB_S3TC_DXT1";
         case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT1";
         case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: return "GL_COMPRESSED_RGBA_S3TC_DXT3";
@@ -205,7 +136,7 @@ constexpr inline const char* glTextureInternalFormatToString(GLenum fmt) {
         // BPTC (OpenGL 4.2+, optional in 3.3 via extension)
 #if defined(GL_ARB_texture_compression_bptc) || defined(GL_VERSION_4_2)
         case GL_COMPRESSED_RGBA_BPTC_UNORM: return "GL_COMPRESSED_RGBA_BPTC_UNORM";
-        case GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM: return "GL_COMPRESSED_SRGB_ALPHA";
+        case GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM: return "GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM";
         case GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT: return "GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT";
         case GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT: return "GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT";
 #endif
@@ -220,21 +151,135 @@ constexpr inline const char* glTextureInternalFormatToString(GLenum fmt) {
         default: return "UNKNOWN_INTERNAL_FORMAT";
     }
 }
+
+constexpr inline const char* glTextureFilterToString(GLenum v) {
+    switch (v) {
+        case GL_NEAREST: return "GL_NEAREST";
+        case GL_LINEAR: return "GL_LINEAR";
+
+        case GL_NEAREST_MIPMAP_NEAREST: return "GL_NEAREST_MIPMAP_NEAREST";
+        case GL_LINEAR_MIPMAP_NEAREST: return "GL_LINEAR_MIPMAP_NEAREST";
+        case GL_NEAREST_MIPMAP_LINEAR: return "GL_NEAREST_MIPMAP_LINEAR";
+        case GL_LINEAR_MIPMAP_LINEAR: return "GL_LINEAR_MIPMAP_LINEAR";
+
+        default: return "UNKNOWN";
+    }
+}
+
+constexpr inline const char* glTextureWrapModeToString(GLenum v) {
+    switch (v) {
+        case GL_REPEAT: return "GL_REPEAT";
+        case GL_MIRRORED_REPEAT: return "GL_MIRRORED_REPEAT";
+        case GL_CLAMP_TO_EDGE: return "GL_CLAMP_TO_EDGE";
+        case GL_CLAMP_TO_BORDER: return "GL_CLAMP_TO_BORDER";
+
+#ifdef GL_MIRROR_CLAMP_TO_EDGE
+        case GL_MIRROR_CLAMP_TO_EDGE: return "GL_MIRROR_CLAMP_TO_EDGE";
+#endif
+#ifdef GL_MIRROR_CLAMP_TO_EDGE_EXT
+        case GL_MIRROR_CLAMP_TO_EDGE_EXT: return "GL_MIRROR_CLAMP_TO_EDGE_EXT";
+#endif
+
+        default: return "UNKNOWN";
+    }
+}
+
+constexpr inline const char* glCompareFuncToString(GLenum v) {
+    switch (v) {
+        case GL_NEVER: return "GL_NEVER";
+        case GL_LESS: return "GL_LESS";
+        case GL_EQUAL: return "GL_EQUAL";
+        case GL_LEQUAL: return "GL_LEQUAL";
+        case GL_GREATER: return "GL_GREATER";
+        case GL_NOTEQUAL: return "GL_NOTEQUAL";
+        case GL_GEQUAL: return "GL_GEQUAL";
+        case GL_ALWAYS: return "GL_ALWAYS";
+
+        default: return "UNKNOWN";
+    }
+}
+
+constexpr inline const char* glBlendFactorToString(GLenum v) {
+    switch (v) {
+        case GL_ZERO: return "GL_ZERO";
+        case GL_ONE: return "GL_ONE";
+
+        case GL_SRC_COLOR: return "GL_SRC_COLOR";
+        case GL_ONE_MINUS_SRC_COLOR: return "GL_ONE_MINUS_SRC_COLOR";
+        case GL_DST_COLOR: return "GL_DST_COLOR";
+        case GL_ONE_MINUS_DST_COLOR: return "GL_ONE_MINUS_DST_COLOR";
+
+        case GL_SRC_ALPHA: return "GL_SRC_ALPHA";
+        case GL_ONE_MINUS_SRC_ALPHA: return "GL_ONE_MINUS_SRC_ALPHA";
+        case GL_DST_ALPHA: return "GL_DST_ALPHA";
+        case GL_ONE_MINUS_DST_ALPHA: return "GL_ONE_MINUS_DST_ALPHA";
+
+        case GL_CONSTANT_COLOR: return "GL_CONSTANT_COLOR";
+        case GL_ONE_MINUS_CONSTANT_COLOR: return "GL_ONE_MINUS_CONSTANT_COLOR";
+        case GL_CONSTANT_ALPHA: return "GL_CONSTANT_ALPHA";
+        case GL_ONE_MINUS_CONSTANT_ALPHA: return "GL_ONE_MINUS_CONSTANT_ALPHA";
+
+        case GL_SRC_ALPHA_SATURATE: return "GL_SRC_ALPHA_SATURATE";
+
+#ifdef GL_SRC1_COLOR
+        case GL_SRC1_COLOR: return "GL_SRC1_COLOR";
+        case GL_ONE_MINUS_SRC1_COLOR: return "GL_ONE_MINUS_SRC1_COLOR";
+        case GL_SRC1_ALPHA: return "GL_SRC1_ALPHA";
+        case GL_ONE_MINUS_SRC1_ALPHA: return "GL_ONE_MINUS_SRC1_ALPHA";
+#endif
+
+        default: return "UNKNOWN";
+    }
+}
+
+constexpr inline const char* glCullFaceModeToString(GLenum v) {
+    switch (v) {
+        case GL_FRONT: return "GL_FRONT";
+        case GL_BACK: return "GL_BACK";
+        case GL_FRONT_AND_BACK: return "GL_FRONT_AND_BACK";
+
+        default: return "UNKNOWN";
+    }
+}
+
 constexpr inline const char* glTextureTargetToShortString(GLenum target) {
     switch (target){
         case GL_TEXTURE_1D: return "Tex1D";
         case GL_TEXTURE_2D: return "Tex2D";
         case GL_TEXTURE_3D: return "Tex3D";
         case GL_TEXTURE_CUBE_MAP: return "TexCubemap";
+#ifdef GL_TEXTURE_1D_ARRAY
+        case GL_TEXTURE_1D_ARRAY: return "Tex1DArr";
+        case GL_TEXTURE_2D_ARRAY: return "Tex2DArr";
+        case GL_TEXTURE_RECTANGLE: return "TexRect";
+#endif
+#ifdef GL_TEXTURE_CUBE_MAP_ARRAY
+        case GL_TEXTURE_CUBE_MAP_ARRAY: return "TexCubeArr";
+        case GL_TEXTURE_2D_MULTISAMPLE: return "Tex2DMS";
+        case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: return "Tex2DMSArr";
+        case GL_TEXTURE_BUFFER: return "TexBuffer";
+#endif
         default: return "UNKNOWN";
     }
 }
+
 constexpr inline const char* glTextureTargetToString(GLenum target) {
     switch (target){
         case GL_TEXTURE_1D: return "GL_TEXTURE_1D";
         case GL_TEXTURE_2D: return "GL_TEXTURE_2D";
         case GL_TEXTURE_3D: return "GL_TEXTURE_3D";
         case GL_TEXTURE_CUBE_MAP: return "GL_TEXTURE_CUBE_MAP";
+#ifdef GL_TEXTURE_1D_ARRAY
+        case GL_TEXTURE_1D_ARRAY: return "GL_TEXTURE_1D_ARRAY";
+        case GL_TEXTURE_2D_ARRAY: return "GL_TEXTURE_2D_ARRAY";
+        case GL_TEXTURE_RECTANGLE: return "GL_TEXTURE_RECTANGLE";
+#endif
+#ifdef GL_TEXTURE_CUBE_MAP_ARRAY
+        case GL_TEXTURE_CUBE_MAP_ARRAY: return "GL_TEXTURE_CUBE_MAP_ARRAY";
+        case GL_TEXTURE_2D_MULTISAMPLE: return "GL_TEXTURE_2D_MULTISAMPLE";
+        case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: return "GL_TEXTURE_2D_MULTISAMPLE_ARRAY";
+        case GL_TEXTURE_BUFFER: return "GL_TEXTURE_BUFFER";
+#endif
         default: return "UNKNOWN";
     }
 }
@@ -242,7 +287,7 @@ constexpr inline const char* glTextureTargetToString(GLenum target) {
 constexpr inline const char* glShaderTypeToShortString(GLenum type) {
     switch (type) {
     case GL_VERTEX_SHADER: return "vs";
-    case GL_FRAGMENT_SHADER: return "fv";
+    case GL_FRAGMENT_SHADER: return "fs";
 #ifdef GL_GEOMETRY_SHADER
     case GL_GEOMETRY_SHADER: return "gs";
 #endif
@@ -253,7 +298,7 @@ constexpr inline const char* glShaderTypeToShortString(GLenum type) {
     case GL_TESS_EVALUATION_SHADER: return "tes";
 #endif
 #ifdef GL_COMPUTE_SHADER
-    case GL_COMPUTE_SHADER: return "ct";
+    case GL_COMPUTE_SHADER: return "cs";
 #endif
     default: return "UNKNOWN_SHADER_TYPE";
     }
@@ -284,10 +329,20 @@ constexpr inline const char* glErrorToString(GLenum err) {
         case GL_INVALID_ENUM: return "GL_INVALID_ENUM";
         case GL_INVALID_VALUE: return "GL_INVALID_VALUE";
         case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION";
-        case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY";
         case GL_INVALID_FRAMEBUFFER_OPERATION: return "GL_INVALID_FRAMEBUFFER_OPERATION";
+        case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY";
+        case GL_STACK_OVERFLOW: return "GL_STACK_OVERFLOW";
+        case GL_STACK_UNDERFLOW: return "GL_STACK_UNDERFLOW";
+        default: return "UNKNOWN_ERROR";
+    }
+}
+
+constexpr inline const char* glFramebufferStatusToString(GLenum status) {
+    switch (status) {
         case GL_FRAMEBUFFER_COMPLETE: return "GL_FRAMEBUFFER_COMPLETE";
+#ifdef GL_FRAMEBUFFER_UNDEFINED
         case GL_FRAMEBUFFER_UNDEFINED: return "GL_FRAMEBUFFER_UNDEFINED";
+#endif
         case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
         case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
@@ -295,7 +350,13 @@ constexpr inline const char* glErrorToString(GLenum err) {
         case GL_FRAMEBUFFER_UNSUPPORTED: return "GL_FRAMEBUFFER_UNSUPPORTED";
         case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
         case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
-        default: return "UNKNOWN_ERROR";
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS
+        case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS: return "GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS";
+#endif
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_FORMATS
+        case GL_FRAMEBUFFER_INCOMPLETE_FORMATS: return "GL_FRAMEBUFFER_INCOMPLETE_FORMATS";
+#endif
+        default: return "UNKNOWN_FRAMEBUFFER_STATUS";
     }
 }
 
@@ -320,13 +381,15 @@ constexpr inline const char* glBufferTypeToString(GLenum target) {
         case GL_ATOMIC_COUNTER_BUFFER: return "GL_ATOMIC_COUNTER_BUFFER";
         case GL_COPY_READ_BUFFER: return "GL_COPY_READ_BUFFER";
         case GL_COPY_WRITE_BUFFER: return "GL_COPY_WRITE_BUFFER";
+#ifdef GL_DISPATCH_INDIRECT_BUFFER
         case GL_DISPATCH_INDIRECT_BUFFER: return "GL_DISPATCH_INDIRECT_BUFFER";
+        case GL_QUERY_BUFFER: return "GL_QUERY_BUFFER";
+        case GL_SHADER_STORAGE_BUFFER: return "GL_SHADER_STORAGE_BUFFER";
+#endif
         case GL_DRAW_INDIRECT_BUFFER: return "GL_DRAW_INDIRECT_BUFFER";
         case GL_ELEMENT_ARRAY_BUFFER: return "GL_ELEMENT_ARRAY_BUFFER";
         case GL_PIXEL_PACK_BUFFER: return "GL_PIXEL_PACK_BUFFER";
         case GL_PIXEL_UNPACK_BUFFER: return "GL_PIXEL_UNPACK_BUFFER";
-        case GL_QUERY_BUFFER: return "GL_QUERY_BUFFER";
-        case GL_SHADER_STORAGE_BUFFER: return "GL_SHADER_STORAGE_BUFFER";
         case GL_TEXTURE_BUFFER: return "GL_TEXTURE_BUFFER";
         case GL_TRANSFORM_FEEDBACK_BUFFER: return "GL_TRANSFORM_FEEDBACK_BUFFER";
         case GL_UNIFORM_BUFFER: return "GL_UNIFORM_BUFFER";
@@ -340,13 +403,15 @@ constexpr inline const char* glBufferTypeToShortString(GLenum target) {
         case GL_ATOMIC_COUNTER_BUFFER: return "ACB";
         case GL_COPY_READ_BUFFER: return "CRB";
         case GL_COPY_WRITE_BUFFER: return "CWB";
+#ifdef GL_DISPATCH_INDIRECT_BUFFER
         case GL_DISPATCH_INDIRECT_BUFFER: return "DIB";
+        case GL_QUERY_BUFFER: return "QB";
+        case GL_SHADER_STORAGE_BUFFER: return "SSBO";
+#endif
         case GL_DRAW_INDIRECT_BUFFER: return "DrIB";
         case GL_ELEMENT_ARRAY_BUFFER: return "EBO";
         case GL_PIXEL_PACK_BUFFER: return "PPB";
         case GL_PIXEL_UNPACK_BUFFER: return "PUB";
-        case GL_QUERY_BUFFER: return "QB";
-        case GL_SHADER_STORAGE_BUFFER: return "SSBO";
         case GL_TEXTURE_BUFFER: return "TBO";
         case GL_TRANSFORM_FEEDBACK_BUFFER: return "TFB";
         case GL_UNIFORM_BUFFER: return "UBO";
