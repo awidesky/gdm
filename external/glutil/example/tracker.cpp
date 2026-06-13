@@ -94,7 +94,7 @@ int main() {
 
     for (auto& [key, info] : tracker.objects.getAll()) {
         const auto& [type, id] = key;
-        LOG_INFO() << "Object id=" << id << " type=" << type;
+        LOG_INFO() << "Object id=" << id << " type=" << glutil::glLabelObjectTypeToString(type);
     }
 
     glDeleteVertexArrays(1, &VAO);
@@ -111,7 +111,7 @@ int main() {
     }
     for (auto& [key, info] : tracker.objects.getAll()) {
         const auto& [type, id] = key;
-        LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << type
+        LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << glutil::glLabelObjectTypeToString(type)
                     << " label=" << (info.label.empty() ? "(none)" : info.label);
     }
 
