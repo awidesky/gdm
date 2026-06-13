@@ -42,7 +42,7 @@ bool ImageLoader::isDDS(const std::filesystem::path& path) {
     return ext == ".dds";
 }
 
-TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flipV) {
+TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flipV, int desiredChannels) {
     TextureImage result;
 
     // [PathResolve]
@@ -56,45 +56,45 @@ TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flip
     stbi_set_flip_vertically_on_load(flipV ? 1 : 0);
 
     int w = 0, h = 0, c = 0;
-    unsigned char* raw = stbi_load(pr.resolvedPath.c_str(), &w, &h, &c, 0);
+    unsigned char* raw = stbi_load(pr.resolvedPath.c_str(), &w, &h, &c, desiredChannels);
     if (!raw) {
         result.error = stbi_failure_reason() ? stbi_failure_reason() : "unknown stb_image error";
         LOG_ERROR() << "[TextureImage] Load failed: " << pr.resolvedPath << " (" << result.error << ")";
         return result;
     }
-
-    // TODO_easy : there are many other types like RG, BRG, etc.
-    //              add format parameter to let user choose. if user didn't specify(=0),
-    //              use default GL format will be guess based on channel count like below.
-    GLenum fmt = 0;
-    GLint internalFmt = 0;
-    switch (c) {
+    
+    const int channels = desiredChannels != 0 ? desiredChannels : c;
+    switch (channels) {
         case 1:
-            fmt = GL_RED;
-            internalFmt = GL_R8;
+            result.fmt = GL_RED;
+            result.internalFmt = GL_R8;
+            break;
+        case 2:
+            result.fmt = GL_RG;
+            result.internalFmt = GL_RG8;
             break;
         case 3:
-            fmt = GL_RGB;
-            internalFmt = GL_RGB8;
+            result.fmt = GL_RGB;
+            result.internalFmt = GL_RGB8;
             break;
         case 4:
-            fmt = GL_RGBA;
-            internalFmt = GL_RGBA8;
+            result.fmt = GL_RGBA;
+            result.internalFmt = GL_RGBA8;
             break;
         default:
-            result.error = "Unsupported number of channels: " + std::to_string(c);
+            result.error = "Unsupported number of channels: " + std::to_string(channels);
             LOG_ERROR() << "[TextureImage] " << result.error;
             stbi_image_free(raw);
             return result;
     }
 
-    const int rowBytes = w * c;
+    const int rowBytes = w * channels;
     GLint unpackAlignment = 0;
     glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
     if ((unpackAlignment > 0) && (rowBytes % unpackAlignment) != 0) {
         LOG_WARNING() << "[TextureImage] Potential GL_UNPACK_ALIGNMENT issue detected.";
         LOG_WARNING() << "[TextureImage] Texture row size is not 4-byte aligned: " << rowBytes << " bytes per row"
-                      << " (width=" << w << ", channels=" << c << ")";
+                      << " (width=" << w << ", channels=" << (channels) << ")";
         LOG_WARNING() << "[TextureImage] Current GL_UNPACK_ALIGNMENT = " << unpackAlignment;
         LOG_WARNING() << "[TextureImage] If texture appears diagonally skewed or torn,";
         LOG_WARNING() << "[TextureImage] ensure GL_UNPACK_ALIGNMENT is set to 1 before glTexImage2D:";
@@ -105,15 +105,13 @@ TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flip
 
     // stbi_load internally uses malloc.
     // Copy to new memory and then immediately free with stbi_image_free. Destructor deletes new memory with delete[].
-    const size_t sz = static_cast<size_t>(w * h * c);
+    const size_t sz = static_cast<size_t>(w * h * channels);
     result.pixels = new unsigned char[sz];
     std::memcpy(result.pixels, raw, sz);
     stbi_image_free(raw);
 
     result.w = static_cast<GLsizei>(w);
     result.h = static_cast<GLsizei>(h);
-    result.fmt = fmt;
-    result.internalFmt = internalFmt;
     result.ok = true;
 
     LOG_INFO() << "[TextureImage] Load succeeded: " << pr.resolvedPath;
@@ -342,10 +340,10 @@ TextureDDS ImageLoader::loadDDS(const std::filesystem::path& path, bool flipV) {
     return result;
 }
 
-GLTexture2D ImageLoader::loadImageToGL(const std::filesystem::path& path, bool flipV) {
+GLTexture2D ImageLoader::loadImageToGL(const std::filesystem::path& path, bool flipV, int desiredChannels) {
     GLTexture2D out;
 
-    TextureImage image = loadImage(path, flipV);
+    TextureImage image = loadImage(path, flipV, desiredChannels);
     if (!image.ok) {
         out.error = image.error;
         return out;
@@ -356,9 +354,12 @@ GLTexture2D ImageLoader::loadImageToGL(const std::filesystem::path& path, bool f
     int channels = 0;
     switch (image.format()) {
         case GL_RED: channels = 1; break;
+        case GL_RG: channels = 2; break;
         case GL_RGB: channels = 3; break;
         case GL_RGBA: channels = 4; break;
-        default: break;
+        default: 
+            out.error = std::string("Unexpected image format from stb_image : ") + glTextureFormatToString(image.format());
+            return out;
     }
     const int rowBytes = image.width() * channels;
     const bool needsTightAlignment = (channels > 0) && (unpackAlignment > 0) && ((rowBytes % unpackAlignment) != 0);

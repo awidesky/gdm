@@ -176,10 +176,10 @@ private:
 class ImageLoader {
 public:
     static bool isDDS(const std::filesystem::path& path);
-    static TextureImage loadImage(const std::filesystem::path& path, bool flipV = true);
+    static TextureImage loadImage(const std::filesystem::path& path, bool flipV = true, int desiredChannels = 0);
     static TextureDDS loadDDS(const std::filesystem::path& path, bool flipV = true);
 
-    static GLTexture2D loadImageToGL(const std::filesystem::path& path, bool flipV = true);
+    static GLTexture2D loadImageToGL(const std::filesystem::path& path, bool flipV = true, int desiredChannels = 0);
     static GLTexture2D loadDDSToGL(const std::filesystem::path& path, bool flipV = true);
 };
 

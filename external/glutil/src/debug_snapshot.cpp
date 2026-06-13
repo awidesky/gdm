@@ -303,7 +303,7 @@ void Snapshot::captureFramebuffer(SnapshotSink& out) const {
             glGetTexLevelParameteriv(GL_TEXTURE_2D, mipLevel, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
             out << "  Color Att0 : Texture ID=" << texId;
             appendObjectLabel(out, GL_TEXTURE, texId);
-            out << "  mip=" << mipLevel << "  Format=" << glTextureInternalFormatToString(internalFmt) << "\n";
+            out << "  mip=" << mipLevel << "  Format=" << glTextureFormatToString(internalFmt) << "\n";
 
         } else if (objType == GL_RENDERBUFFER) {
             GLint rbId = 0;
@@ -804,7 +804,7 @@ void Snapshot::captureTextureInfo(SnapshotSink& out) const {
             appendObjectLabel(out, GL_TEXTURE, texId);
             out << "\n";
             if (t.hasSize)
-                out << indent << "Size=" << w << "x" << h << "  Format=" << glTextureInternalFormatToString(fmt) << '\n';
+                out << indent << "Size=" << w << "x" << h << "  Format=" << glTextureFormatToString(fmt) << '\n';
 
             if (m_textureIncludeSampler && t.hasSampler)
                 printSamplerInfo(t.target);
@@ -854,7 +854,7 @@ void Snapshot::captureTextureInfo(SnapshotSink& out) const {
             out << "  [UNBOUND]  [" << centerName(foundName, std::strlen(foundName) + 2) << "]"
                 << "  ID : " << texId;
             appendObjectLabel(out, GL_TEXTURE, texId);
-            out << '\n' << indent << "Size=" << w << "x" << h << "  Format=" << glTextureInternalFormatToString(fmt) << "\n";
+            out << '\n' << indent << "Size=" << w << "x" << h << "  Format=" << glTextureFormatToString(fmt) << "\n";
 
             if (m_textureIncludeSampler && hasSampler)
                 printSamplerInfo(foundTarget);

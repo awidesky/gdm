@@ -34,7 +34,7 @@ constexpr inline std::size_t glTypeSize(GLenum type) {
     }
 }
 
-constexpr inline const char* glTextureInternalFormatToString(GLenum fmt) {
+constexpr inline const char* glTextureFormatToString(GLenum fmt) {
     switch (fmt) {
         // base formats
         case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
@@ -43,6 +43,15 @@ constexpr inline const char* glTextureInternalFormatToString(GLenum fmt) {
         case GL_RG: return "GL_RG";
         case GL_RGB: return "GL_RGB";
         case GL_RGBA: return "GL_RGBA";
+        case GL_STENCIL_INDEX: return "GL_STENCIL_INDEX";
+#ifdef GL_BGR
+        case GL_BGR: return "GL_BGR";
+        case GL_BGRA: return "GL_BGRA";
+#endif
+        case GL_RED_INTEGER: return "GL_RED_INTEGER";
+        case GL_RG_INTEGER: return "GL_RG_INTEGER";
+        case GL_RGB_INTEGER: return "GL_RGB_INTEGER";
+        case GL_RGBA_INTEGER: return "GL_RGBA_INTEGER";
 
         // R
         case GL_R8: return "GL_R8";
@@ -148,7 +157,7 @@ constexpr inline const char* glTextureInternalFormatToString(GLenum fmt) {
         case GL_COMPRESSED_SRGB: return "GL_COMPRESSED_SRGB";
         case GL_COMPRESSED_SRGB_ALPHA: return "GL_COMPRESSED_SRGB_ALPHA";
 
-        default: return "UNKNOWN_INTERNAL_FORMAT";
+        default: return "UNKNOWN_TEXTURE_FORMAT";
     }
 }
 

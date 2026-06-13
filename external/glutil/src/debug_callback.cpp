@@ -424,7 +424,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             GLuint id = tracker.boundTextures[normalizeTextureTarget(target)];
             std::stringstream ss;
             ss << glTextureTargetToShortString(target) << '#' << std::to_string(id) << '[' << std::to_string(width)
-               << 'x' << std::to_string(height) << ' ' << glTextureInternalFormatToString(internalFormat) << ']';
+               << 'x' << std::to_string(height) << ' ' << glTextureFormatToString(internalFormat) << ']';
             labelGLobject(GL_TEXTURE, id, ss.str());
             break;
         }
@@ -439,7 +439,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             std::stringstream ss;
             ss << glTextureTargetToShortString(target) << '#' << std::to_string(id) << '[' << std::to_string(width)
                << 'x' << std::to_string(height) << 'x' << std::to_string(depth) << ' '
-               << glTextureInternalFormatToString(internalFormat) << ']';
+               << glTextureFormatToString(internalFormat) << ']';
             labelGLobject(GL_TEXTURE, id,ss.str());
             break;
         }
