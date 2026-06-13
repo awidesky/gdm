@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <glutil/gl.hpp>
+#include <glutil/glToString.hpp>
 #include <glutil/logging.hpp>
 
 namespace glutil::debug {
@@ -48,9 +49,6 @@ private:
     std::unordered_map<GLuint, BufferInfo> buffers;
 };
 
- 
-// "VAO", "Texture", "Shader", "Program", "FBO",
-
 struct ObjectInfo {
     std::string label;
     // Not just "has a non-empty label": this tracks whether auto-labeling was already attempted,
@@ -58,10 +56,10 @@ struct ObjectInfo {
     bool autoLabeled = false;
 };
 
-using ObjectKey = std::pair<std::string, GLuint>;
+using ObjectKey = std::pair<GLenum, GLuint>;
 struct ObjectKeyHash {
     std::size_t operator()(const ObjectKey& key) const noexcept {
-        const std::size_t h1 = std::hash<std::string>{}(key.first);
+        const std::size_t h1 = std::hash<GLenum>{}(key.first);
         const std::size_t h2 = std::hash<GLuint>{}(key.second);
         return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
     }
@@ -69,10 +67,9 @@ struct ObjectKeyHash {
 
 class GLObjectRegistry {
 public:
-    // TODO_easy : make the key type from string to glenum
-    void create(const std::string& type, GLuint id) { objects[{type, id}] = {}; }
-    void destroy(const std::string& type, GLuint id) { objects.erase({type, id}); }
-    ObjectInfo* get(const std::string& type, GLuint id) {
+    void create(GLenum type, GLuint id) { objects[{type, id}] = {}; }
+    void destroy(GLenum type, GLuint id) { objects.erase({type, id}); }
+    ObjectInfo* get(GLenum type, GLuint id) {
         auto it = objects.find({type, id});
         if (it == objects.end())
             return nullptr;
@@ -124,7 +121,7 @@ private:
                 LOG_INFO() << "=== Leak Check ===";
                 hasLeak = true;
             }
-            LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << type
+            LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << glLabelObjectTypeToString(type)
                         << " label=" << (info.label.empty() ? "(none)" : info.label);
         }
 

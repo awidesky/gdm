@@ -103,22 +103,16 @@ static void syncTrackerLabel(GLenum identifier, GLuint name, const std::string& 
             if (auto* info = tracker.buffers.get(name)) info->label = label;
             break;
         case GL_VERTEX_ARRAY:
-            if (auto* info = tracker.objects.get("VAO", name)) {
+            if (auto* info = tracker.objects.get(identifier, name)) {
                 info->label = label;
                 if (isValidGLobject(identifier, name)) info->autoLabeled = true;
             }
             break;
         case GL_TEXTURE:
-            if (auto* info = tracker.objects.get("Texture", name)) info->label = label;
-            break;
         case GL_SHADER:
-            if (auto* info = tracker.objects.get("Shader", name)) info->label = label;
-            break;
         case GL_PROGRAM:
-            if (auto* info = tracker.objects.get("Program", name)) info->label = label;
-            break;
         case GL_FRAMEBUFFER:
-            if (auto* info = tracker.objects.get("FBO", name)) info->label = label;
+            if (auto* info = tracker.objects.get(identifier, name)) info->label = label;
             break;
         default:
             break;

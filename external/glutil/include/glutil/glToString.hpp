@@ -375,6 +375,28 @@ constexpr inline const char* usageToString(GLint usage) {
     }
 }
 
+inline const char* glLabelObjectTypeToString(GLenum type) {
+    switch (type) {
+        case GL_BUFFER: return "GL_BUFFER";
+        case GL_SHADER: return "GL_SHADER";
+        case GL_PROGRAM: return "GL_PROGRAM";
+        case GL_VERTEX_ARRAY: return "GL_VERTEX_ARRAY";
+        case GL_QUERY: return "GL_QUERY";
+        case GL_TEXTURE: return "GL_TEXTURE";
+        case GL_RENDERBUFFER: return "GL_RENDERBUFFER";
+        case GL_FRAMEBUFFER: return "GL_FRAMEBUFFER";
+        case GL_SAMPLER: return "GL_SAMPLER";
+#ifdef GL_PROGRAM_PIPELINE
+        case GL_PROGRAM_PIPELINE: return "GL_PROGRAM_PIPELINE";
+#endif
+#ifdef GL_TRANSFORM_FEEDBACK
+        case GL_TRANSFORM_FEEDBACK: return "GL_TRANSFORM_FEEDBACK";
+#endif
+
+        default: return "(UNKNOWN_OBJECT_TYPE)";
+    }
+}
+
 constexpr inline const char* glBufferTypeToString(GLenum target) {
     switch (target) {
         case GL_ARRAY_BUFFER: return "GL_ARRAY_BUFFER";

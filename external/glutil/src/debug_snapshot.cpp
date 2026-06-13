@@ -227,7 +227,7 @@ static std::vector<GLuint> sortedMapIds(const std::unordered_map<GLuint, ObjectI
 }
 
 static std::vector<GLuint> sortedObjectIdsByType(const std::unordered_map<ObjectKey, ObjectInfo, ObjectKeyHash>& objects,
-                                                 const std::string& type) {
+                                                 GLenum type) {
     std::vector<GLuint> ids;
     for (const auto& [key, info] : objects) {
         if (key.first == type)
@@ -813,7 +813,7 @@ void Snapshot::captureTextureInfo(SnapshotSink& out) const {
 
     auto& tracker = GLStateTracker::instance();
     const auto& allObjects = tracker.objects.getAll();
-    for (GLuint texId : sortedObjectIdsByType(allObjects, "Texture")) {
+    for (GLuint texId : sortedObjectIdsByType(allObjects, GL_TEXTURE)) {
             bool isBound = false;
             for (int i = 0; i < maxUnits && !isBound; i++) {
                 glActiveTexture(GL_TEXTURE0 + i);
@@ -900,7 +900,7 @@ void Snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
     // Get All VAO
     auto& tracker = GLStateTracker::instance();
     const auto& allObjects = tracker.objects.getAll();
-    const std::vector<GLuint> vaoIds = sortedObjectIdsByType(allObjects, "VAO");
+    const std::vector<GLuint> vaoIds = sortedObjectIdsByType(allObjects, GL_VERTEX_ARRAY);
 
     if (vaoIds.empty()) {
         out << "  (No VAOs tracked)\n";
@@ -1373,7 +1373,7 @@ void Snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
 
     // ── VAO 파일 저장 ──
     const auto& allObjects = tracker.objects.getAll();
-    for (GLuint vaoId : sortedObjectIdsByType(allObjects, "VAO")) {
+    for (GLuint vaoId : sortedObjectIdsByType(allObjects, GL_VERTEX_ARRAY)) {
         std::ofstream f(dir / (std::to_string(vaoId) + ".vao"));
         SnapshotSink sink(f);
         saveVAOInfoToFile(sink, vaoId);

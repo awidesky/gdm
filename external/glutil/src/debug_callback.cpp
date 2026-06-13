@@ -112,13 +112,13 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             GLsizei count = va_arg(args, GLsizei);
             GLuint* ids = va_arg(args, GLuint*);
 
-            std::string type;
+            GLenum type;
             if (func == GLFunctions::GenVertexArrays || func == GLFunctions::CreateVertexArrays)
-                type = "VAO";
+                type = GL_VERTEX_ARRAY;
             else if (func == GLFunctions::GenTextures)
-                type = "Texture";
+                type = GL_TEXTURE;
             else if (func == GLFunctions::GenFramebuffers || func == GLFunctions::CreateFramebuffers)
-                type = "FBO";
+                type = GL_FRAMEBUFFER;
 
             for (GLsizei i = 0; i < count; i++) {
                 if (func == GLFunctions::GenBuffers || func == GLFunctions::CreateBuffers)
@@ -131,13 +131,13 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
 
         case GLFunctions::CreateShader: {
             GLuint id = *static_cast<GLuint*>(ret);
-            tracker.objects.create("Shader", id);
+            tracker.objects.create(GL_SHADER, id);
             break;
         }
 
         case GLFunctions::CreateProgram: {
             GLuint id = *static_cast<GLuint*>(ret);
-            tracker.objects.create("Program", id);
+            tracker.objects.create(GL_PROGRAM, id);
             break;
         }
 
@@ -146,7 +146,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             GLsizei count = va_arg(args, GLsizei);
             GLuint* ids = va_arg(args, GLuint*);
             for (GLsizei i = 0; i < count; i++)
-                tracker.objects.create("Texture", ids[i]);
+                tracker.objects.create(GL_TEXTURE, ids[i]);
             break;
         }
 
@@ -163,7 +163,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             GLsizei count = va_arg(args, GLsizei);
             const GLuint* ids = va_arg(args, const GLuint*);
             for (GLsizei i = 0; i < count; i++)
-                tracker.objects.destroy("VAO", ids[i]);
+                tracker.objects.destroy(GL_VERTEX_ARRAY, ids[i]);
             break;
         }
 
@@ -171,7 +171,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             GLsizei count = va_arg(args, GLsizei);
             const GLuint* ids = va_arg(args, const GLuint*);
             for (GLsizei i = 0; i < count; i++)
-                tracker.objects.destroy("Texture", ids[i]);
+                tracker.objects.destroy(GL_TEXTURE, ids[i]);
             break;
         }
 
@@ -179,19 +179,19 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             GLsizei count = va_arg(args, GLsizei);
             const GLuint* ids = va_arg(args, const GLuint*);
             for (GLsizei i = 0; i < count; i++)
-                tracker.objects.destroy("FBO", ids[i]);
+                tracker.objects.destroy(GL_FRAMEBUFFER, ids[i]);
             break;
         }
 
         case GLFunctions::DeleteShader: {
             GLuint id = va_arg(args, GLuint);
-            tracker.objects.destroy("Shader", id);
+            tracker.objects.destroy(GL_SHADER, id);
             break;
         }
 
         case GLFunctions::DeleteProgram: {
             GLuint id = va_arg(args, GLuint);
-            tracker.objects.destroy("Program", id);
+            tracker.objects.destroy(GL_PROGRAM, id);
             break;
         }
 
@@ -371,7 +371,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             for (GLsizei i = 0; i < count; i++) {
                 const bool labeled = labelGLobject(identifier, ids[i], shortType + '#' + std::to_string(ids[i]) + codeline);
                 if (func == GLFunctions::GenVertexArrays && labeled)
-                    tracker.objects.get("VAO", ids[i])->autoLabeled = true;
+                    tracker.objects.get(GL_VERTEX_ARRAY, ids[i])->autoLabeled = true;
             }
             break;
         }
@@ -394,7 +394,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             GLuint id = va_arg(args, GLuint);
             if (id == 0) break;
 
-            auto* info = tracker.objects.get("VAO", id);
+            auto* info = tracker.objects.get(GL_VERTEX_ARRAY, id);
             if (info != nullptr && info->autoLabeled) break;
 
             (void)labelGLobject(GL_VERTEX_ARRAY, id, "VAO#" + std::to_string(id) + '(' + getCalledGLfunctionName() + ')');
@@ -406,7 +406,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
             GLuint id = va_arg(args, GLuint);
             if (id == 0) break;
 
-            auto* info = tracker.objects.get("Texture", id);
+            auto* info = tracker.objects.get(GL_TEXTURE, id);
             if (info != nullptr && info->autoLabeled) break;
 
             (void)labelGLobject(GL_TEXTURE, id, std::string(glTextureTargetToShortString(target)) + '#' + std::to_string(id)
