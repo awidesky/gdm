@@ -2,7 +2,7 @@
 #define GLUTIL_GLUTIL
 
 #define GLUTIL_VERSION_MAJOR    1
-#define GLUTIL_VERSION_MINOR    0
+#define GLUTIL_VERSION_MINOR    1
 #define GLUTIL_VERSION_REVISION 0
 
 #include <glutil/path.hpp>
