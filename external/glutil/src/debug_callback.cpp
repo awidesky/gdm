@@ -544,9 +544,9 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
             GLuint texture = va_arg(args, GLuint);
             auto label = getGLobjectLabel(GL_TEXTURE, texture);
             std::cerr << '\n';
-            LOG_ERROR() << "[errorSnapshot] You tried to bind texture #" << texture << ", Label : "
+            LOG_ERROR() << "[ErrorSnapshot] You tried to bind texture #" << texture << ", Label : "
                         << (label.empty() ? "(none)" : label) << " to target " << glTextureTargetToString(target);
-            LOG_ERROR() << "[errorSnapshot] Check following snapshot to see loaded/bound texture(s)";
+            LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see loaded/bound texture(s)";
             Snapshot(false).textureInfo(true, false).boundInfo(true).capture().wait();
             break;
         }
@@ -562,18 +562,18 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
                 std::cerr << '\n';
                 { // block scope for logger
                     auto logger = LOG_ERROR();
-                    logger << "[errorSnapshot] You tried to enable vertex attribute from ";
+                    logger << "[ErrorSnapshot] You tried to enable vertex attribute from ";
                     if (func == GLFunctions::EnableVertexArrayAttrib) {
                         auto label = getGLobjectLabel(GL_VERTEX_ARRAY, vaobj);
                         logger << "VAO #" << vaobj << ", Label : " << (label.empty() ? "(none)" : label);
                     } else logger << "the currently bound VAO.";
                 }
-                LOG_ERROR() << "[errorSnapshot] Check following snapshot to see all existing VAO(s)";
+                LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see all existing VAO(s)";
                 Snapshot(false).bufferVAOInfo(true, true, true, true).boundInfo(true).capture().wait();
             } else {
                 GLint maxAttributes;
                 glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttributes);
-                LOG_ERROR() << "[errorSnapshot] The index parameter " << index
+                LOG_ERROR() << "[ErrorSnapshot] The index parameter " << index
                             << " is greater than or equal to GL_MAX_VERTEX_ATTRIBS(" << maxAttributes << ')';
             }
             break;
@@ -583,10 +583,10 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
             GLuint buffer = va_arg(args, GLuint);
             auto label = getGLobjectLabel(GL_BUFFER, buffer);
             std::cerr << '\n';
-            LOG_ERROR() << "[errorSnapshot] You tried to bind buffer #" << buffer
+            LOG_ERROR() << "[ErrorSnapshot] You tried to bind buffer #" << buffer
                         << ", Label : " << (label.empty() ? "(none)" : label) << ") to target "
                         << glBufferTypeToString(target);
-            LOG_ERROR() << "[errorSnapshot] Check following snapshot to see loaded/bound buffer(s)";
+            LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see loaded/bound buffer(s)";
             Snapshot(false).allVBOInfo(true).capture().wait();
             break;
         }
@@ -599,14 +599,14 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
                 auto ss = Snapshot(false).boundInfo(true);
                 { // block scope for logger
                     auto logger = LOG_ERROR();
-                    logger << "[errorSnapshot] You tried to upload buffer data to ";
+                    logger << "[ErrorSnapshot] You tried to upload buffer data to ";
                     if (func == GLFunctions::NamedBufferData) {
                         auto label = getGLobjectLabel(GL_BUFFER, buffer);
                         logger << "Buffer #" << buffer << ", Label : " << (label.empty() ? "(none)" : label);
                         ss.bufferVAOInfo(true, true, true, true).allVBOInfo(true);
                     } else logger << "the currently bound Buffer.";
                 }
-                LOG_ERROR() << "[errorSnapshot] Check following snapshot to see related info";
+                LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see related info";
                 ss.capture().wait();
             }
             break;
