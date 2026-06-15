@@ -43,8 +43,9 @@ enum class GLFunctions {
     DeleteBuffers, DeleteVertexArrays, DeleteTextures,
     DeleteFramebuffers, DeleteShader, DeleteProgram,
     BindBuffer, BindVertexArray, BindTexture, 
-    BufferData, DrawArrays, DrawElements, TexImage2D, TexImage3D,
+    BufferData, NamedBufferData, DrawArrays, DrawElements, TexImage2D, TexImage3D,
     VertexAttribPointer, VertexAttribIPointer, VertexAttribLPointer,
+    EnableVertexAttribArray, EnableVertexArrayAttrib,
     ShaderSource,
 
     Unknown
@@ -72,6 +73,7 @@ static GLFunctions classifyGLFunctions(std::string_view fname) {
     if (fname == "glBindVertexArray") return GLFunctions::BindVertexArray;
     if (fname == "glBindTexture") return GLFunctions::BindTexture;
     if (fname == "glBufferData") return GLFunctions::BufferData;
+    if (fname == "glNamedBufferData") return GLFunctions::NamedBufferData;
     if (fname == "glTexImage2D") return GLFunctions::TexImage2D;
     if (fname == "glTexImage3D") return GLFunctions::TexImage3D;
     if (fname == "glDrawElements") return GLFunctions::DrawElements;
@@ -79,6 +81,8 @@ static GLFunctions classifyGLFunctions(std::string_view fname) {
     if (fname == "glVertexAttribPointer") return GLFunctions::VertexAttribPointer;
     if (fname == "glVertexAttribIPointer") return GLFunctions::VertexAttribIPointer;
     if (fname == "glVertexAttribLPointer") return GLFunctions::VertexAttribLPointer;
+    if (fname == "glEnableVertexArrayAttrib") return GLFunctions::EnableVertexArrayAttrib;
+    if (fname == "glEnableVertexAttribArray") return GLFunctions::EnableVertexAttribArray;
     if (fname == "glShaderSource") return GLFunctions::ShaderSource;
     return GLFunctions::Unknown;
 }
@@ -532,7 +536,84 @@ static void autoPreInspcector(const char* name, GLADapiproc apiproc, int len_arg
         default: break;
     }
 }
-
+static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args, va_list args) {
+    auto func = classifyGLFunctions(name);
+    switch (func) {
+        case GLFunctions::BindTexture: {
+            GLenum target = va_arg(args, GLenum);
+            GLuint texture = va_arg(args, GLuint);
+            auto label = getGLobjectLabel(GL_TEXTURE, texture);
+            std::cerr << '\n';
+            LOG_ERROR() << "[errorSnapshot] You tried to bind texture #" << texture << ", Label : "
+                        << (label.empty() ? "(none)" : label) << " to target " << glTextureTargetToString(target);
+            LOG_ERROR() << "[errorSnapshot] Check following snapshot to see loaded/bound texture(s)";
+            Snapshot(false).textureInfo(true, false).boundInfo(true).capture().wait();
+            break;
+        }
+        case GLFunctions::EnableVertexArrayAttrib:
+        case GLFunctions::EnableVertexAttribArray: {
+            GLuint vaobj, index;
+            index = va_arg(args, GLuint);
+            if (func == GLFunctions::EnableVertexArrayAttrib) {
+                vaobj = index;
+                index = va_arg(args, GLuint);
+            }
+            if (GL_INVALID_OPERATION) {
+                std::cerr << '\n';
+                { // block scope for logger
+                    auto logger = LOG_ERROR();
+                    logger << "[errorSnapshot] You tried to enable vertex attribute from ";
+                    if (func == GLFunctions::EnableVertexArrayAttrib) {
+                        auto label = getGLobjectLabel(GL_VERTEX_ARRAY, vaobj);
+                        logger << "VAO #" << vaobj << ", Label : " << (label.empty() ? "(none)" : label);
+                    } else logger << "the currently bound VAO.";
+                }
+                LOG_ERROR() << "[errorSnapshot] Check following snapshot to see all existing VAO(s)";
+                Snapshot(false).bufferVAOInfo(true, true, true, true).boundInfo(true).capture().wait();
+            } else {
+                GLint maxAttributes;
+                glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttributes);
+                LOG_ERROR() << "[errorSnapshot] The index parameter " << index
+                            << " is greater than or equal to GL_MAX_VERTEX_ATTRIBS(" << maxAttributes << ')';
+            }
+            break;
+        }
+        case GLFunctions::BindBuffer: {
+            GLenum target = va_arg(args, GLenum);
+            GLuint buffer = va_arg(args, GLuint);
+            auto label = getGLobjectLabel(GL_BUFFER, buffer);
+            std::cerr << '\n';
+            LOG_ERROR() << "[errorSnapshot] You tried to bind buffer #" << buffer
+                        << ", Label : " << (label.empty() ? "(none)" : label) << ") to target "
+                        << glBufferTypeToString(target);
+            LOG_ERROR() << "[errorSnapshot] Check following snapshot to see loaded/bound buffer(s)";
+            Snapshot(false).allVBOInfo(true).capture().wait();
+            break;
+        }
+        case GLFunctions::BufferData:
+        case GLFunctions::NamedBufferData: {
+            GLuint buffer;
+            if (func == GLFunctions::NamedBufferData) buffer = va_arg(args, GLuint);
+            if (GL_INVALID_OPERATION) { // wrong buffer
+                std::cerr << '\n';
+                auto ss = Snapshot(false).boundInfo(true);
+                { // block scope for logger
+                    auto logger = LOG_ERROR();
+                    logger << "[errorSnapshot] You tried to upload buffer data to ";
+                    if (func == GLFunctions::NamedBufferData) {
+                        auto label = getGLobjectLabel(GL_BUFFER, buffer);
+                        logger << "Buffer #" << buffer << ", Label : " << (label.empty() ? "(none)" : label);
+                        ss.bufferVAOInfo(true, true, true, true).allVBOInfo(true);
+                    } else logger << "the currently bound Buffer.";
+                }
+                LOG_ERROR() << "[errorSnapshot] Check following snapshot to see related info";
+                ss.capture().wait();
+            }
+            break;
+        }
+        default: break;
+    }
+}
 #pragma warning(pop)
 
 static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
@@ -544,13 +625,16 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
         const ErrorReport report = logErrorOccurrence(hash, g_gladCallbackMap);
 
         if (report.count == 0) return; // Multiple occurrence - accumulating.
-        {
+        { // block scope for logger
             auto logger = LOG_ERROR();
             logger << "[GL Error] " << glErrorToString(err) << '(' << err << ")";
             if (report.intervalSec > 0)
                 logger << " occurred " << report.count << " times in " << report.intervalSec << " seconds.";
         }
         printStackTrace(std::string("In function ") + name);
+        va_list args;
+        va_start(args, len_args);
+        errorSnapshot(err, ret, name, len_args, args);
         LOG_ERROR() << "---- End of \"" << glErrorToString(err) << '(' << err << ')' << " in function " << name << "\"\n\n";
         
         return; // If error occurred, there's no use of traking or labeling the invalid object

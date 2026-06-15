@@ -517,7 +517,7 @@ int main(int argc, char** argv) {
         }
 
         if (g_makeGLError) {
-            glBindTexture(9999, 9999);
+            glBindTexture(GL_TEXTURE_2D, 5);
             g_makeGLError = false;
         }
         

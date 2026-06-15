@@ -1091,7 +1091,7 @@ void Snapshot::captureAllVBOInfo(SnapshotSink& out) const {
         if (!mapped) {
             out << "\n    ";
             if (buffer.associatedVaos.empty()) {
-                out << "Not Bound to VAO";
+                out << "Not Bound to VAO\n";
             } else {
                 out << "Bound VAO ID : ";
                 for (auto vao : sortedIds(buffer.associatedVaos)) {
