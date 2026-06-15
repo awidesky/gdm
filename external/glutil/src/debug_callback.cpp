@@ -211,7 +211,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
                 LOG_WARNING() << "[glBindBuffer] Unknown buffer binding target : " << glBufferTypeToString(target);
                 break;
             }
-            if (auto* info = tracker.buffers.get(id))
+            if (auto* info = tracker.buffers.get(id)) // TODO_think : there are many buffer types. maybe use GLenum than BufferRole?
                 info->role = (target == GL_ARRAY_BUFFER) ? BufferRole::VBO : BufferRole::EBO;
 
             break;
@@ -546,7 +546,7 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
             std::cerr << '\n';
             LOG_ERROR() << "[ErrorSnapshot] You tried to bind texture #" << texture << ", Label : "
                         << (label.empty() ? "(none)" : label) << " to target " << glTextureTargetToString(target);
-            LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see loaded/bound texture(s)";
+            LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see loaded/bound texture(s).";
             Snapshot(false).textureInfo(true, false).boundInfo(true).capture().wait();
             break;
         }
@@ -568,13 +568,13 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
                         logger << "VAO #" << vaobj << ", Label : " << (label.empty() ? "(none)" : label);
                     } else logger << "the currently bound VAO.";
                 }
-                LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see all existing VAO(s)";
+                LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see all existing VAO(s).";
                 Snapshot(false).bufferVAOInfo(true, true, true, true).boundInfo(true).capture().wait();
             } else {
                 GLint maxAttributes;
                 glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttributes);
                 LOG_ERROR() << "[ErrorSnapshot] The index parameter " << index
-                            << " is greater than or equal to GL_MAX_VERTEX_ATTRIBS(" << maxAttributes << ')';
+                            << " is greater than or equal to GL_MAX_VERTEX_ATTRIBS(" << maxAttributes << ')!';
             }
             break;
         }
@@ -584,9 +584,9 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
             auto label = getGLobjectLabel(GL_BUFFER, buffer);
             std::cerr << '\n';
             LOG_ERROR() << "[ErrorSnapshot] You tried to bind buffer #" << buffer
-                        << ", Label : " << (label.empty() ? "(none)" : label) << ") to target "
+                        << ", Label : " << (label.empty() ? "(none)" : label) << " to target "
                         << glBufferTypeToString(target);
-            LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see loaded/bound buffer(s)";
+            LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see loaded/bound buffer(s).";
             Snapshot(false).allVBOInfo(true).capture().wait();
             break;
         }
@@ -596,18 +596,16 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
             if (func == GLFunctions::NamedBufferData) buffer = va_arg(args, GLuint);
             if (GL_INVALID_OPERATION) { // wrong buffer
                 std::cerr << '\n';
-                auto ss = Snapshot(false).boundInfo(true);
                 { // block scope for logger
                     auto logger = LOG_ERROR();
                     logger << "[ErrorSnapshot] You tried to upload buffer data to ";
                     if (func == GLFunctions::NamedBufferData) {
                         auto label = getGLobjectLabel(GL_BUFFER, buffer);
                         logger << "Buffer #" << buffer << ", Label : " << (label.empty() ? "(none)" : label);
-                        ss.bufferVAOInfo(true, true, true, true).allVBOInfo(true);
                     } else logger << "the currently bound Buffer.";
                 }
-                LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see related info";
-                ss.capture().wait();
+                LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see related info.";
+                Snapshot(false).boundInfo(true).allVBOInfo(true).capture().wait();
             }
             break;
         }
@@ -675,6 +673,10 @@ static bool severityThresholdCheck(GLenum severity) {
         }
     };
     return SeverityRank(severity) < SeverityRank(debugCallbackSeverityThreshold);
+}
+static void noopDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
+                                 const GLchar* message, const void* userParam) {
+    (void)source; (void)type; (void)id; (void)severity; (void)length; (void)message; (void)length; (void)userParam;
 }
 static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                                  const GLchar* message, const void* userParam) {
@@ -782,6 +784,31 @@ static bool initOpenGLDebugExtension() {
 void initDebugCallbacks() {
     bool openglDebugExtension = initOpenGLDebugExtension();
     initGladCallbacks(openglDebugExtension);
+}
+
+void disableDebugCallbacks(bool disable) {
+#if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
+    if (disable) {
+        LOG_INFO() << "Disabling GLAD/OpenGL debug callbacks.";
+
+        gladSetGLPreCallback(callbacks::noopPreCallback);
+        gladSetGLPostCallback(callbacks::noopPostCallback);
+
+        if (!isGL_KHR_debugSupported()) return;
+
+// this guard is needed in case the glDebugMessageCallback does not exist.
+    #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
+        // disable OpenGL debug output
+        glDebugMessageCallback(noopDebugMessageCallback, nullptr);
+        //glDisable(GL_DEBUG_OUTPUT);
+        //glDisable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    #endif
+
+    } else initDebugCallbacks();
+
+#else
+    LOG_INFO() << "GLAD post callback support is not available in this build.";
+#endif
 }
 
 } // namespace glutil

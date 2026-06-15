@@ -9,10 +9,17 @@ namespace glutil::debug {
 
 void initDebugCallbacks();
 
+/*
+The debug callbacks are automatically enabled in initDebugCallbacks(), use this function to toggle the feature.
+Passing false as the parameter will have same effect as calling initDebugCallbacks()
+*/
+void disableDebugCallbacks(bool disable = true);
+
 void setDebugCallbackSeverityThreshold(GLenum debugCallbackSeverityThreshold);
 
 #else
 inline constexpr void initDebugCallbacks() noexcept {}
+inline constexpr void disableDebugCallbacks(bool disable = true) noexcept { (void)disable; }
 inline constexpr void setDebugCallbackSeverityThreshold(GLenum) noexcept {};
 #endif
 } // namespace glutil::debug

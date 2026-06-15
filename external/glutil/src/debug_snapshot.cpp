@@ -1358,7 +1358,7 @@ void Snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
 
         std::ofstream f(dir / (std::to_string(id) + ".vbo"));
         f << "VBO_ID=" << id << "\n";
-        f << "LABEL=" << (label.empty() ? label : "") << "\n";
+        f << "LABEL=" << (label.empty() ? "" : label) << "\n";
 
         std::vector<unsigned char> data(size);
         glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());
