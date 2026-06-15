@@ -596,16 +596,18 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
             if (func == GLFunctions::NamedBufferData) buffer = va_arg(args, GLuint);
             if (GL_INVALID_OPERATION) { // wrong buffer
                 std::cerr << '\n';
+                auto ss = Snapshot(false).boundInfo(true);
                 { // block scope for logger
                     auto logger = LOG_ERROR();
                     logger << "[ErrorSnapshot] You tried to upload buffer data to ";
                     if (func == GLFunctions::NamedBufferData) {
                         auto label = getGLobjectLabel(GL_BUFFER, buffer);
                         logger << "Buffer #" << buffer << ", Label : " << (label.empty() ? "(none)" : label);
+                        ss.allVBOInfo(true);
                     } else logger << "the currently bound Buffer.";
                 }
                 LOG_ERROR() << "[ErrorSnapshot] Check following snapshot to see related info.";
-                Snapshot(false).boundInfo(true).allVBOInfo(true).capture().wait();
+                ss.capture().wait();
             }
             break;
         }
