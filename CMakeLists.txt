@@ -659,6 +659,22 @@ string(TIMESTAMP END_TIME "%s" UTC)
 math(EXPR ELAPSED_TIME "${END_TIME} - ${START_TIME}")
 message(STATUS "[GDM] Resolving dependencies took ${ELAPSED_TIME} seconds")
 
+# compile-time definitions
+add_library(gdm_defs INTERFACE)
+
+target_compile_definitions(gdm_defs INTERFACE
+    ${_gdm_defs}
+
+    $<${_gdm_dbg}:GDM_DEBUG=1>
+    $<$<NOT:${_gdm_dbg}>:GDM_DEBUG=0>
+
+    # Build type as macro
+    $<$<CONFIG:Debug>:GDM_BUILD_TYPE_DEBUG>
+    $<$<CONFIG:Release>:GDM_BUILD_TYPE_RELEASE>
+    $<$<CONFIG:RelWithDebInfo>:GDM_BUILD_TYPE_RELWITHDEBINFO>
+    $<$<CONFIG:MinSizeRel>:GDM_BUILD_TYPE_MINSIZEREL>
+)
+
 # -----------------------
 # deps
 # -----------------------
@@ -667,6 +683,7 @@ add_library(gdm::deps ALIAS gdm_deps)
 
 target_link_libraries(gdm_deps
     INTERFACE
+        gdm_defs
         OpenGL::GL
         gdm::window
         gdm::loader
@@ -681,6 +698,7 @@ set_property(TARGET gdm_deps PROPERTY INTERFACE_COMPILE_DEFINITIONS "")
 if (GDM_USE_GLUTIL)
     add_subdirectory(external/glutil)
     target_link_libraries(glutil PRIVATE $<${_gdm_dbg}:cpptrace::cpptrace>)
+    target_link_libraries(glutil PUBLIC gdm_defs)
     list(APPEND _gdm_defs GDM_HAS_GLUTIL)
 
     target_compile_definitions(glutil PUBLIC
@@ -694,18 +712,6 @@ if (GDM_USE_GLUTIL)
     endif()
 endif()
 
-target_compile_definitions(gdm_deps INTERFACE
-    ${_gdm_defs}
-
-    $<${_gdm_dbg}:GDM_DEBUG=1>
-    $<$<NOT:${_gdm_dbg}>:GDM_DEBUG=0>
-
-    # Build type as macro
-    $<$<CONFIG:Debug>:GDM_BUILD_TYPE_DEBUG>
-    $<$<CONFIG:Release>:GDM_BUILD_TYPE_RELEASE>
-    $<$<CONFIG:RelWithDebInfo>:GDM_BUILD_TYPE_RELWITHDEBINFO>
-    $<$<CONFIG:MinSizeRel>:GDM_BUILD_TYPE_MINSIZEREL>
-)
 if (GDM_GL_LOADER STREQUAL "glew-glad")
     target_compile_definitions(gdm_glew_glad PRIVATE ${_gdm_defs})
 endif()
