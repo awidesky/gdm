@@ -1100,6 +1100,7 @@ void Snapshot::captureAllVBOInfo(SnapshotSink& out) const {
                 }
             }
         }
+        out << '\n';
     }
     if (!bHasVBO)
         out << "  (No VBOs tracked)\n";
