@@ -10,30 +10,51 @@
 
 namespace glutil {
 
+/**
+ * Represents a single mipmap level inside a texture (typically DDS/BC formats).
+ * Offset is relative to the start of the raw file buffer (fileData).
+ * Size is the byte size of the mip level.
+ */
 struct MipLevel {
-    // offset : size_t - for fileData pointer arithmetic (data() + offset). platform's pointer size
+    // Offset from base file buffer (used for pointer arithmetic: fileData + offset)
     size_t  offset;
-    // size --> glCompressedTexImage2D(GLsizei imageSize)
+    // Size in bytes of this mip level (used for GL compressed upload)
     GLsizei size;
-    // width --> glCompressedTexImage2D(GLsizei width)
     GLsizei width;
-    // height --> glCompressedTexImage2D(GLsizei height)
     GLsizei height;
 };
 
+/**
+ * CPU-side uncompressed texture image.
+ *
+ * Ownership:
+ * - pixels is heap allocated and owned by this object
+ * - freed on destroy() or move
+ */
 struct TextureImage {
     bool ok = false;
     std::string error;
 
+    /**
+     * Raw pixel pointer (owned).
+     * Format depends on loader (stb_image).
+     */
     const void* data() const { return pixels; }
-    // width(), height() --> glTexImage2D(GLsizei width/height)
+    /** Image width in pixels. */
     GLsizei width() const { return w; }
+    /** Image height in pixels. */
     GLsizei height() const { return h; }
-    // format() --> glTexImage2D(GLenum format)
-    // format() already encodes channel information
-    // GL_RED=1ch, GL_RGB=3ch, GL_RGBA=4ch
+    /**
+     * Pixel format for glTexImage2D.
+     *
+     * Encodes channel count is typically determined by stb_image like:
+     * - GL_RED   (1 channel)
+     * - GL_RG    (2 channels)
+     * - GL_RGB   (3 channels)
+     * - GL_RGBA  (4 channels)
+     */
     GLenum format() const { return fmt; }
-    // internalFormat() --> glTexImage2D(GLint internalFormat) 
+    /** OpenGL internal format used for texture storage. */
     GLint internalFormat() const { return internalFmt; }
 
     ~TextureImage() { destroy(); }
@@ -49,17 +70,19 @@ struct TextureImage {
 private:
     friend class ImageLoader;
 
-    // stb_image parses file to pixel data only.
-    unsigned char* pixels = nullptr; // new[], delete[] in destroy()
+    /** Raw pixel buffer allocated by image loader (stb_image). */
+    unsigned char* pixels = nullptr;
     GLsizei w = 0, h = 0;
     GLenum fmt = 0;
     GLint internalFmt = 0;
 
+    /** Releases owned pixel memory and resets state. */
     void destroy() noexcept {
         delete[] pixels; pixels = nullptr;
         w = h = 0; fmt = 0; internalFmt = 0;
         ok = false; error.clear();
     }
+    /** Moves ownership of pixel buffer and metadata. */
     void moveFrom(TextureImage&& o) noexcept {
         ok = o.ok; error = std::move(o.error);
         pixels = o.pixels; w = o.w; h = o.h;
@@ -69,19 +92,30 @@ private:
     }
 };
 
-// dds-ktx parses DDS file to compressed block data.
-// toGLFormat() only allows BC1/BC2/BC3 (all compressed) and returns error for others.
-// Since, format is always compressed.
+/**
+ * CPU-side DDS/KTX compressed texture container.
+ *
+ * Important ownership rule:
+ * - fileData must remain valid while mipLevels reference its memory.
+ * - mipLevels store offsets into fileData (no separate allocation per mip).
+ */
 struct TextureDDS {
     bool ok = false;
     std::string error;
 
+    /** Raw DDS/KTX file buffer (owned). */
     const unsigned char* data() const { return fileData; }
-    // width(), height() return type --> glCompressedTexImage2D(GLsizei width/height)
+    /** Base texture width. */
     GLsizei width() const { return w; }
+    /** Base texture height. */
     GLsizei height() const { return h; }
-    // format() --> glCompressedTexImage2D(GLenum internalformat)
+    /**
+     * Compressed internal format (BC1/BC2/BC3 only).
+     *
+     * Used directly with glCompressedTexImage2D.
+     */
     GLenum format() const { return fmt; }
+    /** Mipmap chain description. */
     const std::vector<MipLevel>& mips() const { return mipLevels; }
 
     ~TextureDDS() { destroy(); }
@@ -97,21 +131,24 @@ struct TextureDDS {
 private:
     friend class ImageLoader;
 
-    // dds-ktx is a no-allocation library.
-    // sub_data.buff returned by ddsktx_get_sub() is a pointer inside original buffer (fileData).
-    // MipLevel.offset is calculated as sub_data.buff - fileData.
-    // fileData must be kept until destructor so that dds.data() + mip.offset remains valid.
-    unsigned char* fileData  = nullptr; // new[], delete[] in destroy()
+    /**
+     * Raw DDS file buffer.
+     * All mip data pointers are offsets into this buffer.
+     */
+    unsigned char* fileData  = nullptr;
     GLsizei w = 0, h = 0;
     GLenum fmt = 0;
+    /** Mipmap levels referencing fileData via offset. */
     std::vector<MipLevel> mipLevels;
 
+    /** Frees file buffer and clears mip metadata. */
     void destroy() noexcept {
         delete[] fileData; fileData = nullptr;
         w = h = 0; fmt = 0;
         mipLevels.clear();
         ok = false; error.clear();
     }
+    /** Moves ownership of DDS buffer and mip metadata. */
     void moveFrom(TextureDDS&& o) noexcept {
         ok = o.ok; error = std::move(o.error);
         fileData = o.fileData; w = o.w; h = o.h;
@@ -121,14 +158,19 @@ private:
     }
 };
 
+/**
+ * GPU-side 2D texture wrapper.
+ *
+ * Manages OpenGL texture object lifetime (RAII).
+ */
 struct GLTexture2D {
     bool ok = false, resetInDtor = true;
     std::string error;
 
-    GLuint id = 0;
-    GLsizei w = 0;
-    GLsizei h = 0;
-    GLenum format = 0;
+    GLuint id = 0;       // OpenGL texture object
+    GLsizei w = 0;       // width
+    GLsizei h = 0;       // height
+    GLenum format = 0;   // pixel/internal format
 
     GLTexture2D() = default;
     ~GLTexture2D() { if (resetInDtor) reset(); }
@@ -145,6 +187,7 @@ struct GLTexture2D {
         return *this;
     }
 
+    /** Deletes OpenGL texture object. */
     void reset() noexcept {
         if (id != 0) {
             glDeleteTextures(1, &id);
@@ -156,6 +199,7 @@ struct GLTexture2D {
     }
 
 private:
+    /** Moves OpenGL texture ownership. */
     void moveFrom(GLTexture2D&& other) noexcept {
         ok = other.ok;
         error = std::move(other.error);
@@ -173,6 +217,13 @@ private:
     }
 };
 
+/**
+ * Image loading utility.
+ *
+ * Supports:
+ * - standard image formats (stb_image)
+ * - DDS compressed textures (BC formats)
+ */
 class ImageLoader {
 public:
     static bool isDDS(const std::filesystem::path& path);

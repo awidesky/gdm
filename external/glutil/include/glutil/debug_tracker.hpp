@@ -12,27 +12,39 @@
 
 namespace glutil::debug {
 
-// ──────────────────────────────────────────────
-// Buffer (VBO / EBO)
-// ──────────────────────────────────────────────
-
+/**
+ * Buffer classification used by debug tracking.
+ */
 enum class BufferRole {
     Unknown,
     VBO,
     EBO,
 };
 
+/**
+ * Debug-tracked metadata for a GL buffer object.
+ *
+ * This structure does not own GPU memory.
+ * It mirrors runtime state for debugging and leak detection.
+ */
 struct BufferInfo {
     BufferRole role = BufferRole::Unknown;
-    GLenum dataType = 0; 
-    GLsizeiptr size = 0; 
+    /** Last recorded GL data type for this buffer. */
+    GLenum dataType = 0;
+    /** Last recorded buffer size in bytes. */
+    GLsizeiptr size = 0;
+    /** VAO IDs associated with this buffer. */
     std::unordered_set<GLuint> associatedVaos;
+    /** Debug label assigned to this buffer. */
     std::string label;
     // Not just "has a non-empty label": this tracks whether auto-labeling was already attempted,
     // so we avoid repeated attempts even when labeling is unsupported and the attempt fails.
     bool autoLabeled = false;
 };
 
+/**
+ * Registry of buffer objects for debug tracking.
+ */
 class BufferRegistry {
 public:
     void create(GLuint id) { buffers[id] = {}; }
@@ -49,6 +61,9 @@ private:
     std::unordered_map<GLuint, BufferInfo> buffers;
 };
 
+/**
+ * Debug metadata for a generic GL object.
+ */
 struct ObjectInfo {
     std::string label;
     // Not just "has a non-empty label": this tracks whether auto-labeling was already attempted,
@@ -56,7 +71,9 @@ struct ObjectInfo {
     bool autoLabeled = false;
 };
 
+/** Key type for GL object registry (type + id). */
 using ObjectKey = std::pair<GLenum, GLuint>;
+/** Hash function for GL object keys. */
 struct ObjectKeyHash {
     std::size_t operator()(const ObjectKey& key) const noexcept {
         const std::size_t h1 = std::hash<GLenum>{}(key.first);
@@ -65,6 +82,7 @@ struct ObjectKeyHash {
     }
 };
 
+/** Registry of all tracked GL objects (debug-only metadata). */
 class GLObjectRegistry {
 public:
     void create(GLenum type, GLuint id) { objects[{type, id}] = {}; }
@@ -81,6 +99,11 @@ private:
     std::unordered_map<ObjectKey, ObjectInfo, ObjectKeyHash> objects;
 };
 
+/**
+ * Global OpenGL state + object tracker (debug singleton).
+ *
+ * Stores mirrored binding state and registered GL objects.
+ */
 class GLStateTracker {
 public:
     static GLStateTracker& instance() {
@@ -91,14 +114,19 @@ public:
     BufferRegistry buffers;
     GLObjectRegistry objects;
 
+    /** Currently bound VAO. */
     GLuint boundVAO = 0;
+    /** Currently bound GL_ARRAY_BUFFER. */
     GLuint boundArrayBuffer = 0;
+    /** Currently bound GL_ELEMENT_ARRAY_BUFFER. */
     GLuint boundElementArrayBuffer = 0;
+    /** Currently bound textures by target. */
     std::unordered_map<GLenum, GLuint> boundTextures;
 
 private:
     GLStateTracker() = default;
 #if GDM_DEBUG
+    /** Debug-only destructor that reports remaining tracked GL objects. */
     ~GLStateTracker() {
         bool hasLeak = false;
 
@@ -115,7 +143,7 @@ private:
                         << " label=" << (info.label.empty() ? "(none)" : info.label);
         }
 
-       for (auto& [key, info] : objects.getAll()) {
+        for (auto& [key, info] : objects.getAll()) {
             const auto& [type, id] = key;
             if (!hasLeak) {
                 LOG_INFO() << "=== Leak Check ===";
@@ -129,7 +157,7 @@ private:
             LOG_INFO() << "=== No Leaks Detected ===";
     }
 #else
-        ~GLStateTracker() = default;
+    ~GLStateTracker() = default;
 #endif // GDM_DEBUG
 };
 

@@ -9,18 +9,20 @@
 
 namespace glutil::debug {
 
+/** Stable 64-bit identifier for deduplicating error events. */
 using ErrorHash = uint64_t;
-using ErrorTime = uint32_t; // seconds
+/** Timestamp in seconds (epoch-based). */
+using ErrorTime = uint32_t;
 
 struct ErrorStat {
-    ErrorTime firstOccurrence = 0;
-    uint32_t count = 0;
+    ErrorTime firstOccurrence = 0; /** Timestamp of first error in current burst window. */
+    uint32_t count = 0;            /** Number of occurrences in current burst window. */
 };
 
-using ErrorMap = std::unordered_map<ErrorHash, ErrorStat>;
+using ErrorMap = std::unordered_map<ErrorHash, ErrorStat>; /** Hash -> aggregated error statistics map. */
 
-inline ErrorMap g_glDebugMessageMap;
-inline ErrorMap g_gladCallbackMap;
+inline ErrorMap g_glDebugMessageMap; /** Global aggregation map for OpenGL debug message callback errors. */
+inline ErrorMap g_gladCallbackMap;   /** Global aggregation map for GLAD callback error tracking. */
 
 // FNV-1a 64bit hash
 inline constexpr ErrorHash combineHash(ErrorHash seed, ErrorHash value) {
@@ -40,11 +42,14 @@ inline constexpr ErrorHash hashString(std::string_view str) {
 }
 
 template <typename T> inline ErrorHash hashValue(const T& value) {
-    return static_cast<ErrorHash>(value); // GLenum, GLuint, int, etc..
+    return static_cast<ErrorHash>(value); // Generic fallback hash for integral-like GLenum, GLuint, int, etc..
 }
 
+/** Hash C-string safely. */
 inline ErrorHash hashValue(const char* str) { return hashString(str ? str : ""); }
+/** Hash string view. */
 inline ErrorHash hashValue(std::string_view str) { return hashString(str); }
+/** Hash std::string. */
 inline ErrorHash hashValue(const std::string& str) { return hashString(str); }
 
 
@@ -56,8 +61,8 @@ template <typename... Args> inline ErrorHash hashError(const Args&... args) {
 
 // Return structure
 struct ErrorReport {
-    int32_t intervalSec; // seconds elapsed since first occurrence
-    uint32_t count;      // number of occurrences
+    int32_t intervalSec; /** Time elapsed since first occurrence in current burst window. */
+    uint32_t count;      /** Number of occurrences within the burst window. */
 };
 /*
     Log an error occurrence.
@@ -91,7 +96,7 @@ inline ErrorReport logErrorOccurrence(ErrorHash hash, ErrorMap& map, ErrorTime i
         // reported very recently, ignore
         stat.firstOccurrence = now;
         stat.count = 1;
-        return ErrorReport{0, 0};
+        return ErrorReport{0, 0}; /** Suppressed duplicate within short interval. */
     }
 
     ++stat.count;
@@ -99,12 +104,13 @@ inline ErrorReport logErrorOccurrence(ErrorHash hash, ErrorMap& map, ErrorTime i
     // 3. multiple occurrences within intervalSec seconds -> report
     if (now - stat.firstOccurrence >= intervalSec) {
         ErrorReport result{static_cast<int32_t>(now - stat.firstOccurrence), stat.count};
+        /** Reset burst counter after reporting. */
         stat.count = 0; // reset for next burst
         return result;
     }
 
     // 4. still accumulating
-    return ErrorReport{0, 0};
+    return ErrorReport{0, 0}; /** Accumulating errors within current window. */
 }
 
 } // namespace glutil::debug

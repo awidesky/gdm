@@ -6,18 +6,27 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <utility>
-#include <filesystem>
 
 namespace glutil {
 
+/**
+ * Container for loaded shader source data.
+ *
+ * Owns dynamically allocated shader source buffer.
+ * Move-only type; used as intermediate representation before OpenGL compilation.
+ */
 struct ShaderLoadResult {
     bool ok = false;
     std::string error;
 
+    /** Pointer to internal GLchar* source buffer (OpenGL-compatible layout). */
     GLchar** string() { return &source; }
+    /** Pointer to source length (used for glShaderSource). */
     const GLint* lengthPtr() const { return &len; }
+    /** Returns source length in bytes. */
     GLint length() const { return len; }
 
     void destroy() {
@@ -63,11 +72,19 @@ private:
     }
 };
 
+/**
+ * RAII wrapper for an OpenGL shader object.
+ *
+ * Manages lifetime of GL shader handle.
+ * Automatically deletes shader in destructor unless resetInDtor is false.
+ */
 struct GLShader {
     bool ok = false, resetInDtor = true;
     std::string error;
 
+    /** OpenGL shader object handle (glCreateShader result). */
     GLuint id = 0;
+    /** Shader stage type (e.g. GL_VERTEX_SHADER, GL_FRAGMENT_SHADER). */
     GLenum type = 0;
 
     GLShader() = default;
@@ -85,6 +102,7 @@ struct GLShader {
         return *this;
     }
 
+    /** Deletes OpenGL shader object if valid. */
     void reset() noexcept {
         if (id != 0) {
             glDeleteShader(id);
@@ -107,10 +125,16 @@ private:
     }
 };
 
+/**
+ * RAII wrapper for an OpenGL program object.
+ *
+ * Manages lifecycle of linked shader program.
+ */
 struct GLProgram {
     bool ok = false, resetInDtor = true;
     std::string error;
 
+    /** OpenGL program object handle (glCreateProgram result). */
     GLuint id = 0;
 
     GLProgram() = default;
@@ -128,6 +152,7 @@ struct GLProgram {
         return *this;
     }
 
+    /** Deletes OpenGL program object if valid. */
     void reset() noexcept {
         if (id != 0) {
             glDeleteProgram(id);
@@ -146,20 +171,78 @@ private:
         other.id = 0;
     }
 };
-
+/**
+ * Shader loading, encoding processing, and OpenGL compilation utility API.
+ */
 class ShaderLoader {
 public:
     static bool checkEncoding;
     static bool replaceUnknownNonASCII;
+
+    /**
+     * Loads a shader source file from disk and returns a heap-allocated source buffer.
+     *
+     * Behavior includes:
+     * - Resolving input file path
+     * - Reading file as binary
+     * - Detecting and handling BOM (UTF-8 / UTF-16 / UTF-32)
+     * - Converting non-ASCII encodings to ASCII where required
+     * - Optionally replacing unknown non-ASCII bytes
+     *
+     * Ownership:
+     * Returned ShaderLoadResult owns the allocated source buffer.
+     */
     static ShaderLoadResult loadFile(const std::filesystem::path& inputPath);
 
+    /**
+     * Loads a shader source file and compiles it into an OpenGL shader object.
+     *
+     * Pipeline:
+     * - loadFile() for source acquisition
+     * - glCreateShader for object creation
+     * - glShaderSource to upload source
+     * - glCompileShader for compilation
+     * - compilation validation via Inspector
+     *
+     * Ownership:
+     * Returns GLShader which owns the OpenGL shader handle.
+     */
     static GLShader loadShaderToGL(GLenum type, const std::filesystem::path& inputPath);
+
+    /**
+     * Loads vertex and fragment shaders, links them into an OpenGL program.
+     *
+     * Pipeline:
+     * - loadShaderToGL(vertex)
+     * - loadShaderToGL(fragment)
+     * - glCreateProgram
+     * - glAttachShader (vertex + fragment)
+     * - glLinkProgram
+     * - glDetachShader after linking
+     * - validation via Inspector
+     *
+     * Ownership:
+     * Returns GLProgram which owns the linked program object.
+     */
     static GLProgram loadProgramToGL(const std::filesystem::path& vertexPath,
                                      const std::filesystem::path& fragmentPath);
 };
 
+/**
+ * Returns whether current OpenGL context supports UTF-8 GLSL source strings.
+ * Basically queries if the GLSL version is >= 4.2
+ */
 bool isGLSLSupportUTF8();
 
+/**
+ * Checks whether the input buffer contains any non-ASCII byte (MSB = 1).
+ *
+ * Uses 64-bit block scanning for performance optimization.
+ *
+ * @param data Input byte buffer
+ * @param size Buffer size in bytes
+ * @return true if any non-ASCII byte exists
+ */
 inline static bool hasNonASCII(const char* data, size_t size) {
     constexpr uint64_t HIGH_BIT_MASK = 0x8080808080808080ULL;
 
@@ -181,6 +264,11 @@ inline static bool hasNonASCII(const char* data, size_t size) {
     return false;
 }
 
+/**
+ * Replaces all non-ASCII bytes in the buffer with space characters.
+ *
+ * Operates in 8-byte chunks for performance optimization.
+ */
 inline static void replaceNonASCIIWithSpace(char* data, size_t size) {
     constexpr uint64_t HIGH_BIT_MASK = 0x8080808080808080ULL;
 

@@ -187,9 +187,6 @@ constexpr inline const char* glTextureWrapModeToString(GLenum v) {
 #ifdef GL_MIRROR_CLAMP_TO_EDGE
         case GL_MIRROR_CLAMP_TO_EDGE: return "GL_MIRROR_CLAMP_TO_EDGE";
 #endif
-#ifdef GL_MIRROR_CLAMP_TO_EDGE_EXT
-        case GL_MIRROR_CLAMP_TO_EDGE_EXT: return "GL_MIRROR_CLAMP_TO_EDGE_EXT";
-#endif
 
         default: return "UNKNOWN";
     }

@@ -20,7 +20,16 @@
 namespace glutil {
 
 namespace fs = std::filesystem;
-
+/**
+ * Returns the directory containing the currently running executable.
+ *
+ * Platform behavior:
+ * - Windows: GetModuleFileNameA
+ * - macOS: _NSGetExecutablePath + canonicalization
+ * - Linux: /proc/self/exe symlink resolution
+ *
+ * Returns empty path if resolution fails.
+ */
 std::filesystem::path getExecutableDirectory() {
 #ifdef _WIN32
     char buffer[MAX_PATH];

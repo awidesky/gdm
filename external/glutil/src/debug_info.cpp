@@ -228,10 +228,6 @@ if (ver >= "3.0") {
     os << "===============================\n";
 }
 
-void printRuntimeInfo(bool verbose) {
-    printRuntimeInfo(std::cout, verbose);
-}
-
 GLVersion getOpenGLVersion() {
     const char* versionStr = reinterpret_cast<const char*>(glGetString(GL_VERSION));
     if (versionStr == nullptr) return GLVersion{};

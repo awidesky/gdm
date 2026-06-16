@@ -2,6 +2,15 @@
 
 namespace glutil {
 
+/**
+ * Retrieves the compilation result of an OpenGL shader.
+ *
+ * Queries:
+ * - GL_COMPILE_STATUS (success/failure)
+ * - GL_SHADER_INFO_LOG (compiler log message)
+ *
+ * If no log is available, message will be empty.
+ */
 InspectResult Inspector::shaderCompileResult(GLuint shader) {
     InspectResult result;
 
@@ -28,6 +37,15 @@ InspectResult Inspector::shaderCompileResult(GLuint shader) {
     return result;
 }
 
+/**
+ * Retrieves the link result of an OpenGL program.
+ *
+ * Queries:
+ * - GL_LINK_STATUS (success/failure)
+ * - GL_PROGRAM_INFO_LOG (linker log message)
+ *
+ * If no log is available, message will be empty.
+ */
 InspectResult Inspector::programLinkResult(GLuint program) {
     InspectResult result;
 

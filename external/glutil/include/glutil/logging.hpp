@@ -7,6 +7,11 @@
 
 namespace glutil {
 
+/**
+ * Logger utility providing stream-style logging with severity levels.
+ *
+ * Supports separate stdout/stderr log sinks and RAII-based message flushing.
+ */
 class Logger {
 public:
     inline static Logger& stdoutLogger() {
@@ -18,9 +23,18 @@ public:
         return instance;
     }
 
+    /**
+     * RAII log stream that buffers output and flushes on destruction.
+     * Prefixes messages with a log level (INFO/WARNING/ERROR).
+     */
     class LogStream {
     public:
         LogStream(std::ostream* out, const char* level, bool enabled) : out(out), level(level), enabled(enabled) {}
+
+        /**
+         * Flushes buffered log message on destruction.
+         * Output format: [LEVEL] message
+         */
         ~LogStream() {
             if (!enabled || !out) return;
 
@@ -49,11 +63,12 @@ public:
             if (enabled) buffer << std::forward<T>(value);
             return *this;
         }
+
     private:
-        std::ostream* out = nullptr;
-        const char* level = "";
-        bool enabled = true;
-        std::ostringstream buffer;
+        std::ostream* out = nullptr; // Output stream target
+        const char* level = "";      // Log level label
+        bool enabled = true;         // Whether logging is enabled
+        std::ostringstream buffer;   // Internal message buffer
     };
 
     LogStream warning() const { return LogStream(stream, "WARNING", enabled); }
@@ -70,6 +85,9 @@ private:
     bool enabled = true;
 };
 
+/**
+ * Enables or disables all global loggers (stdout and stderr).
+ */
 inline void enableAllLoggers(bool enable) {
     Logger::stdoutLogger().enable(enable);
     Logger::stderrLogger().enable(enable);

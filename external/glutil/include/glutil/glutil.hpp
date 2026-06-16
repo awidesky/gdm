@@ -1,12 +1,15 @@
 ﻿#ifndef GLUTIL_GLUTIL
 #define GLUTIL_GLUTIL
 
+/** The version number macro */
 #define GLUTIL_VERSION_MAJOR    1
 #define GLUTIL_VERSION_MINOR    1
 #define GLUTIL_VERSION_REVISION 0
 
+/** Includes all glutil headders */
 #include <glutil/path.hpp>
 #include <glutil/gl.hpp>
+#include <glutil/glToString.hpp>
 #include <glutil/inspector.hpp>
 #include <glutil/logging.hpp>
 #include <glutil/math.hpp>

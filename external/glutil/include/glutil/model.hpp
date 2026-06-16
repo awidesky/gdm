@@ -4,22 +4,29 @@
 #include <glutil/gl.hpp>
 #include <glutil/math.hpp>
 
-#include <string>
-#include <vector>
 #include <filesystem>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace glutil {
 
+/**
+ * CPU-side mesh data container.
+ * Stores vertex and index data along with basic metadata and load status.
+ *
+ * DiffuseTexturePath is resolved per mesh but only a single diffuse texture is selected 
+ * if multiple materials exist in the source shape.
+ */
 struct MeshData {
-    bool ok = false;
-    std::string error;
+    bool ok = false;   // Indicates whether loading succeeded
+    std::string error; // Error message if loading failed
 
-    std::string name;
-    std::string diffuseTexturePath;
+    std::string name;// Mesh name
+    std::string diffuseTexturePath; // Path to selected diffuse texture (if any)
 
-    std::vector<VertexPNT> vertices;
-    std::vector<unsigned int> indices;
+    std::vector<VertexPNT> vertices;   // Vertex buffer data
+    std::vector<unsigned int> indices; // Index buffer data
 
     const VertexPNT* vertexData() const { return vertices.data(); }
     const unsigned int* indexData() const { return indices.data(); }
@@ -27,23 +34,31 @@ struct MeshData {
     size_t indexCount() const { return indices.size(); }
 };
 
+/**
+ * CPU-side model data container.
+ * Contains multiple meshes and global load status information.
+ */
 struct ModelData {
-    bool ok = false;
-    std::string error;
-    std::string warn;
+    bool ok = false;   // Indicates whether loading succeeded
+    std::string error; // Error message if loading failed
+    std::string warn;  // Accumulated warnings from loader
 
-    std::vector<MeshData> meshes;
+    std::vector<MeshData> meshes; // List of meshes in the model
 };
 
+/**
+ * GPU-side mesh data container.
+ * Manages OpenGL resources (VAO, VBO, EBO) and their lifecycle via RAII.
+ */
 struct GLMeshData {
-    bool ok = false, resetInDtor = true;
-    std::string error;
+    bool ok = false, resetInDtor = true; // Status and destructor cleanup flag
+    std::string error;// Error message
 
-    std::string name;
-    GLuint vao = 0;
-    GLuint vbo = 0;
-    GLuint ebo = 0;
-    GLsizei indexCount = 0;
+    std::string name;       // Mesh name
+    GLuint vao = 0;         // Vertex Array Object
+    GLuint vbo = 0;         // Vertex Buffer Object
+    GLuint ebo = 0;         // Element Buffer Object
+    GLsizei indexCount = 0; // Number of indices
 
     GLMeshData() = default;
     ~GLMeshData() { if(resetInDtor) reset(); }
@@ -60,6 +75,10 @@ struct GLMeshData {
         return *this;
     }
 
+    /**
+     * Releases OpenGL resources (VAO/VBO/EBO).
+     * Safe to call multiple times.
+     */
     void reset() noexcept {
         if (ebo != 0) {
             glDeleteBuffers(1, &ebo);
@@ -77,6 +96,11 @@ struct GLMeshData {
     }
 
 private:
+    /**
+     * Moves OpenGL resource ownership from another instance.
+     *
+     * After move, other is reset to null state, and ownership of VAO/VBO/EBO is transferred.
+     */
     void moveFrom(GLMeshData&& other) noexcept {
         ok = other.ok;
         error = std::move(other.error);
@@ -96,12 +120,16 @@ private:
     }
 };
 
+/**
+ * GPU-side model container.
+ * Holds multiple GL meshes and manages their lifecycle.
+ */
 struct GLModelData {
-    bool ok = false, resetInDtor = true;
-    std::string error;
-    std::string warn;
+    bool ok = false, resetInDtor = true; // Status and destructor cleanup flag
+    std::string error;                   // Error message
+    std::string warn;                    // Warning messages from CPU loading stage
 
-    std::vector<GLMeshData> meshes;
+    std::vector<GLMeshData> meshes; // GPU mesh list
 
     GLModelData() = default;
     ~GLModelData() { if (resetInDtor) reset();};
@@ -111,12 +139,40 @@ struct GLModelData {
     GLModelData(GLModelData&&) noexcept = default;
     GLModelData& operator=(GLModelData&&) noexcept = default;
 
+    /**
+     * Releases all GPU mesh resources by clearing the mesh container.
+     */
     void reset() noexcept { meshes.clear(); }
 };
 
+/**
+ * Model loading utility.
+ * Provides functions to load OBJ files into CPU or GPU representations.
+ *
+ * loadOBJ performs parsing, mesh construction, deduplication (optional),
+ * and material interpretation. loadOBJtoGL first builds CPU representation, then uploads to GPU.
+ */
 class ModelLoader {
 public:
+    /**
+     * Loads an OBJ file into CPU-side model data.
+     *
+     * @param path File path to OBJ model
+     * @param deduplicate If true, identical vertices are merged
+     */
     static ModelData loadOBJ(const std::filesystem::path& path, bool deduplicate = false);
+
+    /**
+     * Loads an OBJ file and uploads it into GPU-side model data.
+     *
+     * This performs:
+     * - CPU loading (loadOBJ)
+     * - GPU buffer creation (VAO/VBO/EBO)
+     * - fixed vertex attribute layout (pos/normal/uv)
+     *
+     * @param path File path to OBJ model
+     * @param deduplicate If true, identical vertices are merged before upload
+     */
     static GLModelData loadOBJtoGL(const std::filesystem::path& path, bool deduplicate = true);
 };
 
