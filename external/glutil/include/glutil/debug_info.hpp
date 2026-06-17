@@ -20,7 +20,7 @@ bool hasGLExtension(const char* extName);
  * @param os output stream
  * @param verbose if true, prints extended capability limits
  */
-void printRuntimeInfo(std::ostream& os = std::cout, bool verbose = false);
+void printRuntimeInfo(bool verbose = false, std::ostream& os = std::cout);
 /** Query GPU memory information using vendor-specific extensions or system interfaces */
 bool printGpuMemoryInfo(std::ostream& os);
 

@@ -4,6 +4,7 @@ project(GDM
 	LANGUAGES C CXX
 	HOMEPAGE_URL "https://github.com/awidesky/gdm"
 )
+set(GDM_VERSION ${PROJECT_VERSION})
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -661,8 +662,29 @@ string(TIMESTAMP END_TIME "%s" UTC)
 math(EXPR ELAPSED_TIME "${END_TIME} - ${START_TIME}")
 message(STATUS "[GDM] Resolving dependencies took ${ELAPSED_TIME} seconds")
 
+# -----------------------
+# GLUtil (internal, optional)
+# -----------------------
+if (GDM_USE_GLUTIL)
+    add_subdirectory(external/glutil)
+    target_link_libraries(glutil PRIVATE $<${_gdm_dbg}:cpptrace::cpptrace>)
+    target_link_libraries(glutil PUBLIC gdm_defs)
+    list(APPEND _gdm_defs GDM_HAS_GLUTIL)
+
+    target_compile_definitions(glutil PUBLIC
+        GLUTIL_DISABLE_LOG_ON_RELEASE=$<BOOL:${GLUTIL_DISABLE_LOG_ON_RELEASE}>
+    )
+    add_library(gdm_glutil INTERFACE)
+    add_library(gdm::glutil ALIAS gdm_glutil)
+    target_link_libraries(gdm_glutil INTERFACE glutil)
+    if (GDM_GL_LOADER STREQUAL "glew-glad")
+        target_link_libraries(gdm_glew_glad PRIVATE glutil)
+    endif()
+endif()
+
 # compile-time definitions
 add_library(gdm_defs INTERFACE)
+add_library(gdm::defs ALIAS gdm_defs)
 
 target_compile_definitions(gdm_defs INTERFACE
     ${_gdm_defs}
@@ -685,34 +707,12 @@ add_library(gdm::deps ALIAS gdm_deps)
 
 target_link_libraries(gdm_deps
     INTERFACE
-        gdm_defs
+        gdm::defs
         OpenGL::GL
         gdm::window
         gdm::loader
         gdm::math
 )
-
-set_property(TARGET gdm_deps PROPERTY INTERFACE_COMPILE_DEFINITIONS "")
-
-# -----------------------
-# GLUtil (internal, optional)
-# -----------------------
-if (GDM_USE_GLUTIL)
-    add_subdirectory(external/glutil)
-    target_link_libraries(glutil PRIVATE $<${_gdm_dbg}:cpptrace::cpptrace>)
-    target_link_libraries(glutil PUBLIC gdm_defs)
-    list(APPEND _gdm_defs GDM_HAS_GLUTIL)
-
-    target_compile_definitions(glutil PUBLIC
-        GLUTIL_DISABLE_LOG_ON_RELEASE=$<BOOL:${GLUTIL_DISABLE_LOG_ON_RELEASE}>
-    )
-    add_library(gdm_glutil INTERFACE)
-    add_library(gdm::glutil ALIAS gdm_glutil)
-    target_link_libraries(gdm_glutil INTERFACE glutil)
-    if (GDM_GL_LOADER STREQUAL "glew-glad")
-        target_link_libraries(gdm_glew_glad PRIVATE glutil)
-    endif()
-endif()
 
 if (GDM_GL_LOADER STREQUAL "glew-glad")
     target_compile_definitions(gdm_glew_glad PRIVATE ${_gdm_defs})

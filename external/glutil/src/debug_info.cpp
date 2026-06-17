@@ -145,7 +145,7 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
 }
 } // namespace
 
-void printRuntimeInfo(std::ostream& os, bool verbose) {
+void printRuntimeInfo(bool verbose, std::ostream& os) {
     os << "=== Runtime Dependency Info ===\n";
     GLVersion ver = getOpenGLVersion();
 

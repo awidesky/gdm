@@ -1,7 +1,7 @@
 # glutil - OpenGL utilities library
 cmake_minimum_required(VERSION 3.24)
 project(glutil
-	VERSION 1.1.0 
+	VERSION ${GDM_VERSION}
 	LANGUAGES C CXX
 	HOMEPAGE_URL "https://github.com/awidesky/gdm"
 )
@@ -79,18 +79,6 @@ target_link_libraries(glutil PRIVATE
 
 # C++ standard
 target_compile_features(glutil PRIVATE cxx_std_17)
-
-target_compile_definitions(glutil PUBLIC
-    $<$<CONFIG:Debug>:GLUTIL_DEBUG=1>
-    $<$<NOT:$<CONFIG:Debug>>:GLUTIL_DEBUG=0>
-    
-    # Build type as macro
-    $<$<CONFIG:Debug>:GLUTIL_BUILD_TYPE_DEBUG>
-    $<$<CONFIG:Release>:GLUTIL_BUILD_TYPE_RELEASE>
-    $<$<CONFIG:RelWithDebInfo>:GLUTIL_BUILD_TYPE_RELWITHDEBINFO>
-    $<$<CONFIG:MinSizeRel>:GLUTIL_BUILD_TYPE_MINSIZEREL>
-)
-    
 
 function(add_glutil_example TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
