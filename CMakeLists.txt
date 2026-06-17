@@ -46,6 +46,8 @@ if (GDM_BUILD_TESTS)
     enable_testing()
 endif()
 
+message(STATUS "[GDM] Version: ${PROJECT_VERSION}")
+
 # Dependency providers
 set(GDM_WINDOW_BACKEND "glfw" CACHE STRING
     "Window backend: none, glfw, or freeglut")
