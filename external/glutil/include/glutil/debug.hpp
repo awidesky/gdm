@@ -38,7 +38,7 @@ bool labelGLobject(GLenum identifier, GLuint name, const std::string& label);
 std::string getGLobjectLabel(GLenum identifier, GLuint name);
 
 /** Initialize debug system for current OpenGL context (callbacks, tracking, etc.). */
-void init();
+void init(bool printInfo = true);
 
 #else
 // always returns null in release build.
@@ -50,7 +50,7 @@ inline constexpr bool labelGLobject(GLenum, GLuint, const std::string&) noexcept
 // always returns empty string in release build.
 inline std::string getGLobjectLabel(GLenum, GLuint) noexcept { return ""; };
 // does nothing in release build.
-inline constexpr void init() noexcept {};
+inline constexpr void init(bool) noexcept {};
 #endif // GDM_DEBUG
 
 } // namespace glutil::debug
