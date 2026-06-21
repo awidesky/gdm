@@ -30,7 +30,6 @@ static const char* profileMaskToString() {
     return "Unknown";
 }
 
-
 static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
     os << "[OpenGL Capability Maximum Limits]\n";
 
@@ -176,6 +175,175 @@ static void checkOpenGLDebugExtension(std::ostream& os) {
     }
 #endif
 }
+
+static const char* maxDefinedGLVersionSymbol() {
+#if defined(GL_VERSION_4_6)
+    return "GL_VERSION_4_6";
+#elif defined(GL_VERSION_4_5)
+    return "GL_VERSION_4_5";
+#elif defined(GL_VERSION_4_4)
+    return "GL_VERSION_4_4";
+#elif defined(GL_VERSION_4_3)
+    return "GL_VERSION_4_3";
+#elif defined(GL_VERSION_4_2)
+    return "GL_VERSION_4_2";
+#elif defined(GL_VERSION_4_1)
+    return "GL_VERSION_4_1";
+#elif defined(GL_VERSION_4_0)
+    return "GL_VERSION_4_0";
+#elif defined(GL_VERSION_3_3)
+    return "GL_VERSION_3_3";
+#elif defined(GL_VERSION_3_2)
+    return "GL_VERSION_3_2";
+#elif defined(GL_VERSION_3_1)
+    return "GL_VERSION_3_1";
+#elif defined(GL_VERSION_3_0)
+    return "GL_VERSION_3_0";
+#elif defined(GL_VERSION_2_1)
+    return "GL_VERSION_2_1";
+#elif defined(GL_VERSION_2_0)
+    return "GL_VERSION_2_0";
+#elif defined(GL_VERSION_1_5)
+    return "GL_VERSION_1_5";
+#elif defined(GL_VERSION_1_4)
+    return "GL_VERSION_1_4";
+#elif defined(GL_VERSION_1_3)
+    return "GL_VERSION_1_3";
+#elif defined(GL_VERSION_1_2)
+    return "GL_VERSION_1_2";
+#elif defined(GL_VERSION_1_1)
+    return "GL_VERSION_1_1";
+#elif defined(GL_VERSION_1_0)
+    return "GL_VERSION_1_0";
+#else
+    return "GL_VERSION_UNKNOWN";
+#endif
+}
+
+#if defined(GDM_HAS_GLEW)
+static const char* maxLoadedGLVersion_glew() {
+#if defined(GL_VERSION_4_6)
+    if (GLEW_VERSION_4_6) return "GLEW_VERSION_4_6";
+#endif
+#if defined(GL_VERSION_4_5)
+    if (GLEW_VERSION_4_5) return "GLEW_VERSION_4_5";
+#endif
+#if defined(GL_VERSION_4_4)
+    if (GLEW_VERSION_4_4) return "GLEW_VERSION_4_4";
+#endif
+#if defined(GL_VERSION_4_3)
+    if (GLEW_VERSION_4_3) return "GLEW_VERSION_4_3";
+#endif
+#if defined(GL_VERSION_4_2)
+    if (GLEW_VERSION_4_2) return "GLEW_VERSION_4_2";
+#endif
+#if defined(GL_VERSION_4_1)
+    if (GLEW_VERSION_4_1) return "GLEW_VERSION_4_1";
+#endif
+#if defined(GL_VERSION_4_0)
+    if (GLEW_VERSION_4_0) return "GLEW_VERSION_4_0";
+#endif
+#if defined(GL_VERSION_3_3)
+    if (GLEW_VERSION_3_3) return "GLEW_VERSION_3_3";
+#endif
+#if defined(GL_VERSION_3_2)
+    if (GLEW_VERSION_3_2) return "GLEW_VERSION_3_2";
+#endif
+#if defined(GL_VERSION_3_1)
+    if (GLEW_VERSION_3_1) return "GLEW_VERSION_3_1";
+#endif
+#if defined(GL_VERSION_3_0)
+    if (GLEW_VERSION_3_0) return "GLEW_VERSION_3_0";
+#endif
+#if defined(GL_VERSION_2_1)
+    if (GLEW_VERSION_2_1) return "GLEW_VERSION_2_1";
+#endif
+#if defined(GL_VERSION_2_0)
+    if (GLEW_VERSION_2_0) return "GLEW_VERSION_2_0";
+#endif
+#if defined(GL_VERSION_1_5)
+    if (GLEW_VERSION_1_5) return "GLEW_VERSION_1_5";
+#endif
+#if defined(GL_VERSION_1_4)
+    if (GLEW_VERSION_1_4) return "GLEW_VERSION_1_4";
+#endif
+#if defined(GL_VERSION_1_3)
+    if (GLEW_VERSION_1_3) return "GLEW_VERSION_1_3";
+#endif
+#if defined(GL_VERSION_1_2)
+    if (GLEW_VERSION_1_2) return "GLEW_VERSION_1_2";
+#endif
+#if defined(GL_VERSION_1_1)
+    if (GLEW_VERSION_1_1) return "GLEW_VERSION_1_1";
+#endif
+#if defined(GL_VERSION_1_0)
+    if (GLEW_VERSION_1_0) return "GLEW_VERSION_1_0";
+#endif
+    return "UNKNOWN";
+}
+#endif
+#if defined(GDM_HAS_GLAD)
+static const char* maxLoadedGLVersion_glad() {
+#if defined(GL_VERSION_4_6)
+    if (GLAD_GL_VERSION_4_6) return "GLAD_GL_VERSION_4_6";
+#endif
+#if defined(GL_VERSION_4_5)
+    if (GLAD_GL_VERSION_4_5) return "GLAD_GL_VERSION_4_5";
+#endif
+#if defined(GL_VERSION_4_4)
+    if (GLAD_GL_VERSION_4_4) return "GLAD_GL_VERSION_4_4";
+#endif
+#if defined(GL_VERSION_4_3)
+    if (GLAD_GL_VERSION_4_3) return "GLAD_GL_VERSION_4_3";
+#endif
+#if defined(GL_VERSION_4_2)
+    if (GLAD_GL_VERSION_4_2) return "GLAD_GL_VERSION_4_2";
+#endif
+#if defined(GL_VERSION_4_1)
+    if (GLAD_GL_VERSION_4_1) return "GLAD_GL_VERSION_4_1";
+#endif
+#if defined(GL_VERSION_4_0)
+    if (GLAD_GL_VERSION_4_0) return "GLAD_GL_VERSION_4_0";
+#endif
+#if defined(GL_VERSION_3_3)
+    if (GLAD_GL_VERSION_3_3) return "GLAD_GL_VERSION_3_3";
+#endif
+#if defined(GL_VERSION_3_2)
+    if (GLAD_GL_VERSION_3_2) return "GLAD_GL_VERSION_3_2";
+#endif
+#if defined(GL_VERSION_3_1)
+    if (GLAD_GL_VERSION_3_1) return "GLAD_GL_VERSION_3_1";
+#endif
+#if defined(GL_VERSION_3_0)
+    if (GLAD_GL_VERSION_3_0) return "GLAD_GL_VERSION_3_0";
+#endif
+#if defined(GL_VERSION_2_1)
+    if (GLAD_GL_VERSION_2_1) return "GLAD_GL_VERSION_2_1";
+#endif
+#if defined(GL_VERSION_2_0)
+    if (GLAD_GL_VERSION_2_0) return "GLAD_GL_VERSION_2_0";
+#endif
+#if defined(GL_VERSION_1_5)
+    if (GLAD_GL_VERSION_1_5) return "GLAD_GL_VERSION_1_5";
+#endif
+#if defined(GL_VERSION_1_4)
+    if (GLAD_GL_VERSION_1_4) return "GLAD_GL_VERSION_1_4";
+#endif
+#if defined(GL_VERSION_1_3)
+    if (GLAD_GL_VERSION_1_3) return "GLAD_GL_VERSION_1_3";
+#endif
+#if defined(GL_VERSION_1_2)
+    if (GLAD_GL_VERSION_1_2) return "GLAD_GL_VERSION_1_2";
+#endif
+#if defined(GL_VERSION_1_1)
+    if (GLAD_GL_VERSION_1_1) return "GLAD_GL_VERSION_1_1";
+#endif
+#if defined(GL_VERSION_1_0)
+    if (GLAD_GL_VERSION_1_0) return "GLAD_GL_VERSION_1_0";
+#endif
+    return "UNKNOWN";
+}
+#endif
 } // namespace
 
 void printRuntimeInfo(bool verbose, std::ostream& os) {
@@ -202,6 +370,8 @@ void printRuntimeInfo(bool verbose, std::ostream& os) {
 #ifdef GDM_HAS_GLEW
     const GLubyte* glewVer = glewGetString(GLEW_VERSION);
     os << "[GLEW] Version: " << (glewVer ? reinterpret_cast<const char*>(glewVer) : "(null)") << "\n";
+    os << "\n[GLEW] Defined GL Version: " << maxDefinedGLVersionSymbol();
+    os << ", Loaded GL Version: " << maxLoadedGLVersion_glew() << '\n';
 #endif
 
 #ifdef GDM_HAS_GLAD
@@ -211,7 +381,8 @@ void printRuntimeInfo(bool verbose, std::ostream& os) {
 #else
        << "OFF";
 #endif
-    os << "\n";
+    os << "\n[GLAD] Defined GL Version: " << maxDefinedGLVersionSymbol();
+    os << ", Loaded GL Version: " << maxLoadedGLVersion_glad() << '\n';
 #endif
 
 #ifdef GDM_HAS_GLM
