@@ -143,6 +143,39 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
         os << "[OpenGL] Object Debug Label Length: " << labelLength << ", Debug Group Stack Depth: " << debugStack
            << "\n";
 }
+
+static void checkOpenGLDebugExtension(std::ostream& os) {
+    const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
+    os << "[OpenGL] Debug output API available at compile time : " << (support.compiledIn ? "YES" : "NO") << "\n";
+    if (!support.compiledIn) return;
+
+// this guard is needed in case the glDebugMessageCallback does not exist.
+#if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
+    os << "[OpenGL] Debug output supported by the current context: " << (support ? "YES" : "NO") << '\n';
+    if (support) {
+        const GLboolean debugOutputEnabled = glIsEnabled(GL_DEBUG_OUTPUT);
+        const GLboolean debugOutputSyncEnabled = glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
+        os << "[OpenGL] GL_DEBUG_OUTPUT=" << (debugOutputEnabled ? "Enabled" : "Disabled")
+           << ", GL_DEBUG_OUTPUT_SYNCHRONOUS=" << (debugOutputSyncEnabled ? "Enabled" : "Disabled") << '\n';
+    } else {
+        os << "[OpenGL] glDebugMessageCallback=" << support.glDebugMessageCallbackPtr << ", "
+        #if defined(GDM_HAS_GLAD) && !defined(GDM_HAS_GLEW_GLAD)
+            << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3 << ", GLAD_GL_KHR_debug=" 
+            #if defined(GL_KHR_debug)
+              << GLAD_GL_KHR_debug
+            #else
+              << "undefined"
+            #endif
+        #elif defined(GDM_HAS_GLAD)
+            << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3
+        #elif defined(GDM_HAS_GLEW)
+            << "GLEW_KHR_debug=" << GLEW_KHR_debug << ", GLEW_VERSION_4_3=" << GLEW_VERSION_4_3
+        #endif
+            << ", GL_EXTENSION \"GL_KHR_debug\"=" << glutil::debug::hasGLExtension("GL_KHR_debug") << '\n';
+    }
+#endif
+}
 } // namespace
 
 void printRuntimeInfo(bool verbose, std::ostream& os) {
@@ -220,6 +253,8 @@ if (ver >= "3.0") {
     #endif
 }
 #endif
+
+    checkOpenGLDebugExtension(os);
 
     if (verbose) {
         os <<  "\n";

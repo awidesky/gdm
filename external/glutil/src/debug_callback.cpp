@@ -740,44 +740,23 @@ static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum s
 
 static void initGladCallbacks(bool openglDebugExtension) {
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
-    LOG_INFO() << "Using GLAD post callback for OpenGL error checking.";
     gladSetGLPreCallback(callbacks::autoPreInspcector);
     gladSetGLPostCallback(callbacks::checkGLErrorPostCallback);
-#else
-    LOG_INFO() << "GLAD post callback support is not available in this build.";
 #endif
 }
 
 static bool initOpenGLDebugExtension() {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
-    if (!support.compiledIn) {
-            LOG_INFO() << "OpenGL debug output not available at compile time (GL_VERSION_4_3 or GL_KHR_debug not defined).";
-            return false;
-    }
+    if (!support.compiledIn) return false;
+    
 // this guard is needed in case the glDebugMessageCallback does not exist.
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
     if (support) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(debugMessageCallback, nullptr);
-        LOG_INFO() << "OpenGL glDebugMessageCallback enabled.";
         return true;
     } else {
-        LOG_WARNING() << "OpenGL debug output is available at compile time, but not supported by the current context!";
-        LOG_WARNING() << "glDebugMessageCallback=" << support.glDebugMessageCallbackPtr << ", "
-        #if defined(GDM_HAS_GLAD) && !defined(GDM_HAS_GLEW_GLAD)
-            << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3 << ", GLAD_GL_KHR_debug=" 
-            #if defined(GL_KHR_debug)
-              << GLAD_GL_KHR_debug
-            #else
-              << "undefined"
-            #endif
-        #elif defined(GDM_HAS_GLAD)
-            << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3
-        #elif defined(GDM_HAS_GLEW)
-            << "GLEW_KHR_debug=" << GLEW_KHR_debug << ", GLEW_VERSION_4_3=" << GLEW_VERSION_4_3
-        #endif
-            << ", GL_EXTENSION \"GL_KHR_debug\"=" << glutil::debug::hasGLExtension("GL_KHR_debug");
         return false;
     }
 #endif
@@ -802,8 +781,8 @@ void disableDebugCallbacks(bool disable) {
     #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
         // disable OpenGL debug output
         glDebugMessageCallback(noopDebugMessageCallback, nullptr);
-        //glDisable(GL_DEBUG_OUTPUT);
-        //glDisable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDisable(GL_DEBUG_OUTPUT);
+        glDisable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     #endif
 
     } else initDebugCallbacks();
