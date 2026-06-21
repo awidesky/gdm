@@ -181,11 +181,7 @@ static void* getCurrentContextID() {
 #endif
 #endif
 }
-void init(bool printInfo) {
-    const bool out = glutil::Logger::stdoutLogger().isEnabled();
-    const bool err = glutil::Logger::stderrLogger().isEnabled();
-    if(!printInfo) glutil::enableAllLoggers(false);
-
+void init() {
     static void* lastInitializedContext = nullptr;
 
     void* currentContext = getCurrentContextID();
@@ -194,11 +190,6 @@ void init(bool printInfo) {
     initDebugCallbacks();
 
     lastInitializedContext = currentContext;
-
-    if (!printInfo) {
-        glutil::Logger::stdoutLogger().enable(out);
-        glutil::Logger::stderrLogger().enable(err);
-    } 
 }
 
 } // namespace glutil::debug

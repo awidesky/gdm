@@ -43,7 +43,7 @@ extern "C" GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void) {
         return GLEW_ERROR_NO_GL_VERSION;
     }
 
-    glutil::debug::init(false);
+    glutil::debug::init();
 
     return GLEW_OK;
 }

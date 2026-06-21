@@ -77,7 +77,6 @@ public:
 
     void setOutput(std::ostream* os) { stream = os; }
     void enable(bool v) { enabled = v; }
-    bool isEnabled() const { return enabled; }
 
 private:
     Logger(std::ostream* os) : stream(os) {}
