@@ -574,7 +574,7 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
                 GLint maxAttributes;
                 glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttributes);
                 LOG_ERROR() << "[ErrorSnapshot] The index parameter " << index
-                            << " is greater than or equal to GL_MAX_VERTEX_ATTRIBS(" << maxAttributes << ')!';
+                            << " is greater than or equal to GL_MAX_VERTEX_ATTRIBS(" << maxAttributes << ")!";
             }
             break;
         }
