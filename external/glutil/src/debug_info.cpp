@@ -88,12 +88,13 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
         glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &texBufferSize);
         glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &uboBindings);
         glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &uboBlockSize);
+        glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboAlign);
         glGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES, &colorSamples);
         glGetIntegerv(GL_MAX_DEPTH_TEXTURE_SAMPLES, &depthSamples);
 
         os << "[OpenGL] MSAA Samples: " << maxSamples << "\n";
         os << "[OpenGL] Renderbuffer Size: " << maxRenderbufferSize << ", Texture Buffer Size: " << texBufferSize << "\n";
-        os << "[OpenGL] UBO Bindings: " << uboBindings << ", Block Size: " << uboBlockSize << "\n";
+        os << "[OpenGL] UBO Bindings: " << uboBindings << ", Block Size: " << uboBlockSize << ", Offset Alignment: " << uboAlign << "\n";
         os << "[OpenGL] Color Texture Samples: " << colorSamples << ", Depth Texture Samples: " << depthSamples << "\n";
     }
 #endif

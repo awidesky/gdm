@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -213,15 +214,6 @@ static void printSubSeparator(SnapshotSink& out, const std::string& title) {
 template <class Container>
 static std::vector<GLuint> sortedIds(const Container& ids) {
     std::vector<GLuint> sorted(ids.begin(), ids.end());
-    std::sort(sorted.begin(), sorted.end());
-    return sorted;
-}
-
-static std::vector<GLuint> sortedMapIds(const std::unordered_map<GLuint, ObjectInfo>& ids) {
-    std::vector<GLuint> sorted;
-    sorted.reserve(ids.size());
-    for (auto& [id, info] : ids)
-        sorted.push_back(id);
     std::sort(sorted.begin(), sorted.end());
     return sorted;
 }
@@ -757,13 +749,13 @@ void Snapshot::captureTextureInfo(SnapshotSink& out) const {
     const int samplerIndent = 29;
     const std::string indent(samplerIndent, ' ');
 
-    auto centerName = [](const char* name, int width) -> std::string {
+    auto centerName = [](const char* name, std::size_t width) -> std::string {
         std::string s(name);
-        if ((int)s.size() >= width)
+        if (s.size() >= width)
             return s;
-        int total = width - (int)s.size();
-        int left = total / 2;
-        int right = total - left;
+        std::size_t total = width - s.size();
+        std::size_t left = total / 2;
+        std::size_t right = total - left;
         return std::string(left, ' ') + s + std::string(right, ' ');
     };
 
@@ -971,11 +963,11 @@ void Snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
                 GLint mapped = 0;
                 glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &mapped);
                 if (!mapped) {
-                    int typeSize = glTypeSize(type);
-                    int actualStride = stride == 0 ? size * typeSize : stride;
-                    int numVerts = actualStride > 0 ? curBufSize / actualStride : 0;
-                    int printNum = std::min(numVerts, 10);
-                    size_t readSize = printNum * actualStride;
+                    std::size_t typeSize = glTypeSize(type);
+                    std::size_t actualStride = stride == 0 ? size * typeSize : stride;
+                    std::size_t numVerts = actualStride > 0 ? curBufSize / actualStride : 0;
+                    std::size_t printNum = std::min(numVerts, (std::size_t)10);
+                    std::size_t readSize = printNum * actualStride;
 
                     std::vector<unsigned char> data(readSize);
                     glGetBufferSubData(GL_ARRAY_BUFFER, 0, readSize, data.data());
@@ -1012,7 +1004,6 @@ void Snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
                 if (!mapped) {
                     // tracker에서 dataType 읽기
                     GLenum indexType = GL_UNSIGNED_INT; // fallback
-                    auto& tracker = GLStateTracker::instance();
                     if (auto* info = tracker.buffers.get(static_cast<GLuint>(ebo))) {
                         if (info->dataType != 0)
                             indexType = info->dataType;
@@ -1294,9 +1285,12 @@ SnapshotAsyncHandle Snapshot::capture(const std::filesystem::path& dir, bool dum
         return m_lastAsyncHandle;
 
     auto now = std::chrono::system_clock::now();
-    auto time = std::chrono::system_clock::to_time_t(now);
+    std::time_t time = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+    std::tm tm{};
+    localtime_s(&tm, &time);
     std::ostringstream filename;
-    filename << std::put_time(std::localtime(&time), "%Y%m%d_%H%M%S") << ".txt";
+    filename << std::put_time(&tm, "%Y%m%d_%H%M%S") << '_' << std::setw(3) << std::setfill('0') << ms.count() << ".txt";
 
     SnapshotAsyncHandle handle;
     if (printAsync) {
@@ -1515,9 +1509,9 @@ void Snapshot::saveVAOInfoToFile(SnapshotSink& out, GLuint vaoId) const
         for (auto& a : attribs) {
             if (!vboData.count(a.vboId))
                 continue;
-            int typeSize = glTypeSize(a.type);
-            int actualStride = a.stride == 0 ? a.size * typeSize : a.stride;
-            size_t byteOffset = (size_t)idx * actualStride + a.offset;
+            std::size_t typeSize = glTypeSize(a.type);
+            std::size_t actualStride = a.stride == 0 ? a.size * typeSize : a.stride;
+            std::size_t byteOffset = idx * actualStride + a.offset;
 
             if (byteOffset + a.size * typeSize > (size_t)vboSizes[a.vboId]) {
                 for (int c = 0; c < a.size; c++)
