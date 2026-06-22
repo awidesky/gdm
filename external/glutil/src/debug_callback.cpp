@@ -23,7 +23,7 @@ static void noopPreCallback(const char* name, GLADapiproc apiproc, int len_args,
 static void noopPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)name; (void)apiproc; (void)len_args;
 }
-static void checkGLErrorOnlyPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
+static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)apiproc; (void)len_args;
     const GLenum err = glad_glGetError();
     if (err != GL_NO_ERROR) {
@@ -655,7 +655,7 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
 #pragma warning(pop)
 #endif
 
-static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
+static void fullPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)apiproc; (void)len_args;
     const GLenum err = glad_glGetError();
 
@@ -679,7 +679,7 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
         return; // If error occurred, there's no use of traking or labeling the invalid object
     }
 
-    gladSetGLPostCallback(checkGLErrorOnlyPostCallback);
+    setGladDebugCallbacks(GladDebugCallbacksMode::errorCheck);
     
     va_list args;
     va_start(args, len_args);
@@ -694,7 +694,7 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
     va_end(args_copy1);
     va_end(args);
 
-    gladSetGLPostCallback(checkGLErrorPostCallback);
+    setGladDebugCallbacks(GladDebugCallbacksMode::full);
 }
 #endif
 } // namespace callbacks
@@ -776,12 +776,29 @@ static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum s
 }
 #endif
 
+static GladDebugCallbacksMode current = GladDebugCallbacksMode::noop;
+GladDebugCallbacksMode setGladDebugCallbacks(GladDebugCallbacksMode mode) {
+    GladDebugCallbacksMode ret = current;
+#if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
+    if (mode == GladDebugCallbacksMode::noop) {
+        gladSetGLPreCallback(callbacks::noopPreCallback);
+        gladSetGLPostCallback(callbacks::noopPostCallback);
+    } else if (mode == GladDebugCallbacksMode::errorCheck) {
+        gladSetGLPreCallback(callbacks::noopPreCallback);
+        gladSetGLPostCallback(callbacks::checkGLErrorPostCallback);
+    } else if (mode == GladDebugCallbacksMode::full) {
+        gladSetGLPreCallback(callbacks::autoPreInspcector);
+        gladSetGLPostCallback(callbacks::fullPostCallback);
+    } else {
+        LOG_ERROR() << "Unknown GladDebugCallbacksMode: " << mode;
+    }
+    current = mode;
+#endif
+    return ret;
+}
 
 static void initGladCallbacks() {
-#if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
-    gladSetGLPreCallback(callbacks::autoPreInspcector);
-    gladSetGLPostCallback(callbacks::checkGLErrorPostCallback);
-#endif
+    setGladDebugCallbacks(GladDebugCallbacksMode::full);
 }
 
 static bool initOpenGLDebugExtension() {
@@ -810,9 +827,8 @@ void disableDebugCallbacks(bool disable) {
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
     if (disable) {
         LOG_INFO() << "Disabling GLAD/OpenGL debug callbacks.";
-
-        gladSetGLPreCallback(callbacks::noopPreCallback);
-        gladSetGLPostCallback(callbacks::noopPostCallback);
+        
+        setGladDebugCallbacks(GladDebugCallbacksMode::noop);
 
         if (!isGL_KHR_debugSupported()) return;
 

@@ -1207,6 +1207,8 @@ void Snapshot::captureInternal(SnapshotSink& sink) const {
         return;
     insideSnapshot = true;
 
+    const auto previousMode = setGladDebugCallbacks(GladDebugCallbacksMode::errorCheck);
+
     GLStateGuard guard;
     ScopeTimer wholeTime("Entire Snapshot took", m_enableTiming, sink);
 
@@ -1253,6 +1255,8 @@ void Snapshot::captureInternal(SnapshotSink& sink) const {
     sink << "                     Snapshot end                      \n";
     sink << "========================================================\n\n";
     sink.flush();
+
+    setGladDebugCallbacks(previousMode);
 
     insideSnapshot = false;
 }
