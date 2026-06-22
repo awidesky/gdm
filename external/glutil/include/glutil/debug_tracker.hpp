@@ -118,10 +118,12 @@ public:
     GLuint boundVAO = 0;
     /** Currently bound GL_ARRAY_BUFFER. */
     GLuint boundArrayBuffer = 0;
-    /** Currently bound GL_ELEMENT_ARRAY_BUFFER. */
+    /** Currently bound GL_ELEMENT_ARRAY_BUFFER by glBindBuffer. */
     GLuint boundElementArrayBuffer = 0;
     /** Currently bound textures by target. */
     std::unordered_map<GLenum, GLuint> boundTextures;
+    /** VAO with connected EBO. */
+    std::unordered_map<GLuint, GLuint> vaoToElementBuffer;
 
 private:
     GLStateTracker() = default;

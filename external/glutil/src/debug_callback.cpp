@@ -42,7 +42,7 @@ enum class GLFunctions {
     CreateShader, CompileShader, CreateProgram, LinkProgram,
     DeleteBuffers, DeleteVertexArrays, DeleteTextures,
     DeleteFramebuffers, DeleteShader, DeleteProgram,
-    BindBuffer, BindVertexArray, BindTexture, 
+    BindBuffer, BindVertexArray, BindTexture, VertexArrayElementBuffer,
     BufferData, NamedBufferData, DrawArrays, DrawElements, TexImage2D, TexImage3D,
     VertexAttribPointer, VertexAttribIPointer, VertexAttribLPointer,
     EnableVertexAttribArray, EnableVertexArrayAttrib,
@@ -81,6 +81,7 @@ static GLFunctions classifyGLFunctions(std::string_view fname) {
     if (fname == "glVertexAttribPointer") return GLFunctions::VertexAttribPointer;
     if (fname == "glVertexAttribIPointer") return GLFunctions::VertexAttribIPointer;
     if (fname == "glVertexAttribLPointer") return GLFunctions::VertexAttribLPointer;
+    if (fname == "glVertexArrayElementBuffer") return GLFunctions::VertexArrayElementBuffer;
     if (fname == "glEnableVertexArrayAttrib") return GLFunctions::EnableVertexArrayAttrib;
     if (fname == "glEnableVertexAttribArray") return GLFunctions::EnableVertexAttribArray;
     if (fname == "glShaderSource") return GLFunctions::ShaderSource;
@@ -98,9 +99,12 @@ static GLenum normalizeTextureTarget(GLenum target) {
         default: return target;
     }
 }
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 6269)
+#endif
 static void trackGLFunctions(void* ret, const char* name, int len_args, va_list args) {
+    (void)len_args;
     auto& tracker = GLStateTracker::instance();
 
     GLFunctions func = classifyGLFunctions(name);
@@ -116,7 +120,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             GLsizei count = va_arg(args, GLsizei);
             GLuint* ids = va_arg(args, GLuint*);
 
-            GLenum type;
+            GLenum type = GL_NONE;
             if (func == GLFunctions::GenVertexArrays || func == GLFunctions::CreateVertexArrays)
                 type = GL_VERTEX_ARRAY;
             else if (func == GLFunctions::GenTextures)
@@ -158,24 +162,40 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
         case GLFunctions::DeleteBuffers: {
             GLsizei count = va_arg(args, GLsizei);
             const GLuint* ids = va_arg(args, const GLuint*);
-            for (GLsizei i = 0; i < count; i++)
-                tracker.buffers.destroy(ids[i]);
+            for (GLsizei i = 0; i < count; i++) {
+                GLuint id = ids[i];
+                if (tracker.boundArrayBuffer == id) tracker.boundArrayBuffer = 0;
+                if (tracker.boundElementArrayBuffer == id) tracker.boundElementArrayBuffer = 0;
+                if(tracker.buffers.get(id)->role == BufferRole::EBO)
+                    for (auto& [vao, ebo] : tracker.vaoToElementBuffer) if (ebo == id) ebo = 0;
+                tracker.buffers.destroy(id);
+            }
             break;
         }
 
         case GLFunctions::DeleteVertexArrays: {
             GLsizei count = va_arg(args, GLsizei);
             const GLuint* ids = va_arg(args, const GLuint*);
-            for (GLsizei i = 0; i < count; i++)
-                tracker.objects.destroy(GL_VERTEX_ARRAY, ids[i]);
+            for (GLsizei i = 0; i < count; i++) {
+                GLuint id = ids[i];
+                if (tracker.boundVAO == id) tracker.boundVAO = 0;
+                tracker.vaoToElementBuffer.erase(id);
+                tracker.objects.destroy(GL_VERTEX_ARRAY, id);
+            }
             break;
         }
 
         case GLFunctions::DeleteTextures: {
             GLsizei count = va_arg(args, GLsizei);
             const GLuint* ids = va_arg(args, const GLuint*);
-            for (GLsizei i = 0; i < count; i++)
-                tracker.objects.destroy(GL_TEXTURE, ids[i]);
+            for (GLsizei i = 0; i < count; i++) {
+                const GLuint id = ids[i];
+                tracker.objects.destroy(GL_TEXTURE, id);
+                for (auto& [target, boundTex] : tracker.boundTextures) {
+                    if (boundTex == id) boundTex = 0;
+                }
+            }
+
             break;
         }
 
@@ -205,9 +225,10 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             GLuint id = va_arg(args, GLuint);
             if (target == GL_ARRAY_BUFFER)
                 tracker.boundArrayBuffer = id;
-            else if (target == GL_ELEMENT_ARRAY_BUFFER)
+            else if (target == GL_ELEMENT_ARRAY_BUFFER) {
                 tracker.boundElementArrayBuffer = id;
-            else {
+                if (tracker.boundVAO != 0) tracker.vaoToElementBuffer[tracker.boundVAO] = id;
+            } else {
                 LOG_WARNING() << "[glBindBuffer] Unknown buffer binding target : " << glBufferTypeToString(target);
                 break;
             }
@@ -220,6 +241,13 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
         case GLFunctions::BindVertexArray: {
             GLuint id = va_arg(args, GLuint);
             tracker.boundVAO = id;
+            if (id == 0) {
+                tracker.boundElementArrayBuffer = 0;
+                break;
+            }
+
+            const auto it = tracker.vaoToElementBuffer.find(id);
+            tracker.boundElementArrayBuffer = (it != tracker.vaoToElementBuffer.end()) ? it->second : 0;
             break;
         }
 
@@ -227,6 +255,14 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             GLenum target = va_arg(args, GLenum);
             GLuint id = va_arg(args, GLuint);
             tracker.boundTextures[normalizeTextureTarget(target)] = id;
+            break;
+        }
+
+        case GLFunctions::VertexArrayElementBuffer: {
+            GLuint vao = va_arg(args, GLuint);
+            GLuint ebo = va_arg(args, GLuint);
+            tracker.vaoToElementBuffer[vao] = ebo;
+            if (tracker.boundVAO == vao) tracker.boundElementArrayBuffer = ebo;
             break;
         }
 
@@ -255,11 +291,9 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             va_arg(args, GLenum);  // mode ignore
             va_arg(args, GLsizei); // count ignore
             GLenum type = va_arg(args, GLenum);
-
             GLuint id = tracker.boundElementArrayBuffer;
-            if (auto* info = tracker.buffers.get(id)) {
-                info->dataType = type;
-            }
+
+            if (auto* info = tracker.buffers.get(id)) info->dataType = type;
             break;
         }
 
@@ -280,6 +314,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
     }
 }
 static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_list args) {
+    (void)len_args;
     if (disableAutoLabelGLObjects) return;
 
     auto& tracker = GLStateTracker::instance();
@@ -452,6 +487,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
     }    
 }
 static void autoPostInspcector(void* ret, const char* name, int len_args, va_list args) {
+    (void)len_args; (void)ret;
     if (disableAutoInspcector) return;
 
     auto func = classifyGLFunctions(name);
@@ -537,6 +573,7 @@ static void autoPreInspcector(const char* name, GLADapiproc apiproc, int len_arg
     }
 }
 static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args, va_list args) {
+    (void)len_args; (void)ret;
     auto func = classifyGLFunctions(name);
     switch (func) {
         case GLFunctions::BindTexture: {
@@ -552,13 +589,13 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
         }
         case GLFunctions::EnableVertexArrayAttrib:
         case GLFunctions::EnableVertexAttribArray: {
-            GLuint vaobj, index;
-            index = va_arg(args, GLuint);
+            GLuint vaobj = GLStateTracker::instance().boundVAO;
+            GLuint index = va_arg(args, GLuint);
             if (func == GLFunctions::EnableVertexArrayAttrib) {
                 vaobj = index;
                 index = va_arg(args, GLuint);
             }
-            if (GL_INVALID_OPERATION) {
+            if (err == GL_INVALID_OPERATION) {
                 std::cerr << '\n';
                 { // block scope for logger
                     auto logger = LOG_ERROR();
@@ -592,11 +629,11 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
         }
         case GLFunctions::BufferData:
         case GLFunctions::NamedBufferData: {
-            GLuint buffer;
+            GLuint buffer = 0;
             if (func == GLFunctions::NamedBufferData) buffer = va_arg(args, GLuint);
-            if (GL_INVALID_OPERATION) { // wrong buffer
+            if (err == GL_INVALID_OPERATION) { // wrong buffer
                 std::cerr << '\n';
-                auto ss = Snapshot(false).boundInfo(true);
+                Snapshot ss = Snapshot(false).boundInfo(true);
                 { // block scope for logger
                     auto logger = LOG_ERROR();
                     logger << "[ErrorSnapshot] You tried to upload buffer data to ";
@@ -614,7 +651,9 @@ static void errorSnapshot(GLenum err, void* ret, const char* name, int len_args,
         default: break;
     }
 }
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
 static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)apiproc; (void)len_args;
@@ -738,7 +777,7 @@ static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum s
 #endif
 
 
-static void initGladCallbacks(bool openglDebugExtension) {
+static void initGladCallbacks() {
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
     gladSetGLPreCallback(callbacks::autoPreInspcector);
     gladSetGLPostCallback(callbacks::checkGLErrorPostCallback);
@@ -763,8 +802,8 @@ static bool initOpenGLDebugExtension() {
 }
 
 void initDebugCallbacks() {
-    bool openglDebugExtension = initOpenGLDebugExtension();
-    initGladCallbacks(openglDebugExtension);
+    initOpenGLDebugExtension();
+    initGladCallbacks();
 }
 
 void disableDebugCallbacks(bool disable) {
