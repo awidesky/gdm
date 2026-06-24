@@ -972,7 +972,7 @@ void Snapshot::captureBufferVAOInfo(SnapshotSink& out) const {
                     std::vector<unsigned char> data(readSize);
                     glGetBufferSubData(GL_ARRAY_BUFFER, 0, readSize, data.data());
 
-                    for (int v = 0; v < printNum; v++) {
+                    for (std::size_t v = 0; v < printNum; v++) {
                         const unsigned char* ptr = data.data() + v * actualStride + off;
                         out << "      vertex[" << v << "] : " << formatVertex(ptr, type, size) << "\n";
                     }
