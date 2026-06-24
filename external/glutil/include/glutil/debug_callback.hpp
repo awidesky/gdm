@@ -5,7 +5,20 @@
 
 namespace glutil::debug {
 
-enum GladDebugCallbacksMode { noop, errorCheck, full };
+/** Debug callback modes */
+enum GladDebugCallbacksMode {
+    /** Register no-op pre/post callbacks. */
+    noop,
+    /** Register only error checking post callback. pre-callback is no-op */
+    errorCheck,
+    /**
+     * Register full debug callbacks. 
+     * Includes pre-callback for pre-inspection
+     * and post-callback for error checking, GL tracking, Object auto-labeling,
+     * and post-inspection.
+     */
+    full
+};
 
 #if GDM_DEBUG
 
@@ -19,7 +32,8 @@ void initDebugCallbacks();
 */
 void disableDebugCallbacks(bool disable = true);
 /**
- * set GLAD callback modes TODO_easy
+ * Set GLAD callback modes.
+ * @see GladDebugCallbacksMode for available modes.
  */
 GladDebugCallbacksMode setGladDebugCallbacks(GladDebugCallbacksMode mode);
 /** 
