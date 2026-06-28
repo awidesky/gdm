@@ -19,9 +19,9 @@ function(use_or_fetch_package)
         ${ARGN}
     )
 
-    if (NOT PKG_NAME OR NOT PKG_VERSION)
+    if (NOT PKG_NAME OR NOT PKG_VERSION OR NOT PKG_CANDIDATE_TARGETS)
         message(FATAL_ERROR
-            "[${PROJECT_NAME}] use_or_fetch_package requires NAME, and VERSION"
+            "[${PROJECT_NAME}] use_or_fetch_package requires NAME, VERSION, and CANDIDATE_TARGETS"
         )
     endif()
 
@@ -151,6 +151,16 @@ function(use_or_fetch_package)
         message(STATUS "[${PROJECT_NAME}] Download+extract for ${PKG_NAME} completed in ${_pkg_elapsed_time}s")
 
     endif()
+
+    # Set IMPORTED_GLOBAL to true, so that the parent project can see the original target.
+    foreach(candidate IN LISTS PKG_CANDIDATE_TARGETS)
+        if (TARGET ${candidate})
+            get_target_property(_gdm_candidate_imported ${candidate} IMPORTED)
+            if (_gdm_candidate_imported)
+                set_property(TARGET ${candidate} PROPERTY IMPORTED_GLOBAL TRUE)
+            endif()
+        endif()
+    endforeach()
 
     # Set target name (alias)
     if (PKG_ALIAS_TARGET)

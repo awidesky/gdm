@@ -214,8 +214,23 @@ endif()
 # OpenGL (system)
 # -----------------------
 find_package(OpenGL REQUIRED)
-set(_gdm_defs GDM_HAS_OPENGL)
+add_library(gdm_opengl INTERFACE)
+add_library(gdm::opengl ALIAS gdm_opengl)
+if(TARGET OpenGL::GL)
+    target_link_libraries(gdm_opengl INTERFACE OpenGL::GL)
+elseif(TARGET OpenGL::OpenGL)
+    target_link_libraries(gdm_opengl INTERFACE OpenGL::OpenGL)
+else()
+    message(FATAL_ERROR "[GDM] No usable OpenGL target found!")
+endif()
 
+foreach(target
+    OpenGL::GL OpenGL::GLU OpenGL::OpenGL OpenGL::GLX OpenGL::EGL OpenGL::GLES2 OpenGL::GLES3)
+    if(TARGET ${target})
+        set_property(TARGET ${target} PROPERTY IMPORTED_GLOBAL TRUE)
+    endif()
+endforeach()
+set(_gdm_defs GDM_HAS_OPENGL)
 
 # measure start time for dependency fetching and generation
 string(TIMESTAMP START_TIME "%s" UTC)
@@ -243,7 +258,7 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "glfw")
         GIT_REPOSITORY https://github.com/glfw/glfw
         GIT_TAG ${GDM_GLFW_GIT_TAG}
         ALIAS_TARGET gdm::window
-        CANDIDATE_TARGETS glfw glfw3
+        CANDIDATE_TARGETS glfw glfw3 glfw::glfw
     )
 
     if (MSVC)
@@ -635,6 +650,7 @@ if (GDM_USE_GLM)
         VERSION ${GDM_GLM_VERSION}
         GIT_REPOSITORY https://github.com/g-truc/glm
         GIT_TAG ${GDM_GLM_VERSION}
+        CANDIDATE_TARGETS glm::glm
     )
 
     add_library(gdm_math INTERFACE)
@@ -708,7 +724,7 @@ add_library(gdm::deps ALIAS gdm_deps)
 target_link_libraries(gdm_deps
     INTERFACE
         gdm::defs
-        OpenGL::GL
+        gdm::opengl
         gdm::window
         gdm::loader
         gdm::math
