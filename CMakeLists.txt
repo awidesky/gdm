@@ -84,37 +84,21 @@ if (GDM_USE_GLM)
 endif()
 
 if (GDM_GL_LOADER STREQUAL "glad")
-    set(GDM_GLAD_VERSION "2.0.6" CACHE STRING "GLAD version")
     set(GDM_GLAD_API "4.6" CACHE STRING "GLAD GL API version (e.g. 4.6)")
     set(GDM_GLAD_PROFILE "core" CACHE STRING "GLAD GL profile")
     set_property(CACHE GDM_GLAD_PROFILE PROPERTY STRINGS core compatibility)
 
-    set(_GDM_GLAD_EXT_DEFAULT_LT43
-        "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
-    )
-    set(_GDM_GLAD_EXT_DEFAULT_GE43
+    set(_GDM_GLAD_EXTENSION_DEFAULT
         "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
     )
 
-    if (GDM_GLAD_API VERSION_LESS "4.3")
-        set(_GDM_GLAD_EXTENSION_DEFAULT "${_GDM_GLAD_EXT_DEFAULT_LT43}")
-    else()
-        set(_GDM_GLAD_EXTENSION_DEFAULT "${_GDM_GLAD_EXT_DEFAULT_GE43}")
-    endif()
-
-    # Auto-update default when API version changes,
-    # but keep user-custom extension list untouched.
-    if (NOT DEFINED GDM_GLAD_EXTENSION
-        OR GDM_GLAD_EXTENSION STREQUAL ""
-        OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXT_DEFAULT_LT43}"
-        OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXT_DEFAULT_GE43}")
+    if (NOT DEFINED GDM_GLAD_EXTENSION OR GDM_GLAD_EXTENSION STREQUAL ""
+        OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXTENSION_DEFAULT}")
         set(GDM_GLAD_EXTENSION "${_GDM_GLAD_EXTENSION_DEFAULT}" CACHE STRING
             "Additional GL extensions for glad (semicolon-separated list)" FORCE
         )
     endif()
 
-    unset(_GDM_GLAD_EXT_DEFAULT_LT43)
-    unset(_GDM_GLAD_EXT_DEFAULT_GE43)
     unset(_GDM_GLAD_EXTENSION_DEFAULT)
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
@@ -141,7 +125,6 @@ if (NOT GDM_USE_GLM)
 endif()
 
 if (NOT GDM_GL_LOADER STREQUAL "glad")
-    unset(GDM_GLAD_VERSION CACHE)
     unset(GDM_GLAD_API CACHE)
     unset(GDM_GLAD_PROFILE CACHE)
     unset(GDM_GLAD_EXTENSION CACHE)
