@@ -1,15 +1,49 @@
 # GDM
 
 OpenGL Dependency Manager (GDM) is a CMake-first dependency aggregator for OpenGL projects.
-It resolves and wires together:
+It resolves and links together:
 
 - window backend (`glfw`, `freeglut`, or `none`)
 - OpenGL loader (`glad`, `glew`, `glew-glad`, or `none`)
 - optional math support (`glm`)
 - optional debugging utility module (`glutil`)
 
-The main value is a small set of interface targets that carry link dependencies and compile definitions so application code can switch providers without changing includes or link lines.
+After you specified the desired library and versions, `GDM` will search for installed libraries, download the source if installed package not existes, and provide targets that resolves to specified dependency.  
+The main value is a small set of interface targets that carry link dependencies and compile definitions so application code can resolve OpenGL dependencies through all environment, and switch providers without changing includes or link lines.
 
+## Usage Example
+
+Following example
+```
+# Specify OpenGL libraries
+set(GDM_WINDOW_BACKEND "glfw" CACHE STRING "" FORCE)
+set(GDM_GL_LOADER "glad" CACHE STRING "" FORCE)
+set(GDM_USE_GLM ON CACHE BOOL "" FORCE)
+set(GDM_USE_GLUTIL ON CACHE BOOL "" FORCE)
+
+# Version variables are set to the latest by default, so it's not guaranteed
+set(GDM_GLFW_VERSION "3.4.0" CACHE STRING "" FORCE)
+set(GDM_GLM_VERSION "1.0.3" CACHE STRING "" FORCE)
+
+set(GDM_GLAD_EXTENSION
+    # These are the default extensions. Remove this part if following extensions is enough for you
+    "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
+    CACHE STRING "" FORCE
+)
+
+# Fetch gdm
+include(FetchContent)
+FetchContent_Declare(
+    gdm
+    GIT_REPOSITORY https://github.com/awidesky/gdm.git
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+    GIT_REMOTE_UPDATE_STRATEGY CHECKOUT
+    SOURCE_DIR "external/gdm"
+)
+
+FetchContent_MakeAvailable(gdm)
+```
 ## Current CMake Targets
 
 GDM defines the following namespaced targets in the top-level `CMakeLists.txt`:
@@ -113,36 +147,3 @@ target_link_libraries(my_app PRIVATE gdm::gdm)
 - At the moment, GDM is consumed in-tree via `add_subdirectory(...)`.
 - There is currently no installed package export (`install(EXPORT ...)`) in this repository yet.
 
-```
-# GDM options
-set(GDM_USE_GLUTIL ON CACHE BOOL "" FORCE)
-set(GDM_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(GDM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-
-set(GDM_WINDOW_BACKEND "glfw" CACHE STRING "" FORCE)
-set(GDM_GL_LOADER "glad" CACHE STRING "" FORCE)
-set(GDM_USE_GLM ON CACHE BOOL "" FORCE)
-
-set(GLFW_VERSION "3.4.0" CACHE STRING "" FORCE)
-set(GLM_VERSION "1.0.1" CACHE STRING "" FORCE)
-set(GLAD_VERSION "2.0.8" CACHE STRING "" FORCE)
-
-set(GDM_GLAD_EXTENSION
-    #these are default
-    "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug;GL_EXT_texture_filter_anisotropic"
-    CACHE STRING "" FORCE
-)
-
-# Fetch gdm
-include(FetchContent)
-FetchContent_Declare(
-    gdm
-    GIT_REPOSITORY https://github.com/awidesky/gdm.git
-    GIT_TAG master
-    GIT_SHALLOW TRUE
-    GIT_REMOTE_UPDATE_STRATEGY CHECKOUT
-    SOURCE_DIR "external/gdm"
-)
-
-FetchContent_MakeAvailable(gdm)
-```
