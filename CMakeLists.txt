@@ -92,8 +92,7 @@ if (GDM_GL_LOADER STREQUAL "glad")
         "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
     )
 
-    if (NOT DEFINED GDM_GLAD_EXTENSION OR GDM_GLAD_EXTENSION STREQUAL ""
-        OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXTENSION_DEFAULT}")
+    if (NOT DEFINED GDM_GLAD_EXTENSION OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXTENSION_DEFAULT}")
         set(GDM_GLAD_EXTENSION "${_GDM_GLAD_EXTENSION_DEFAULT}" CACHE STRING
             "Additional GL extensions for glad (semicolon-separated list)" FORCE
         )
