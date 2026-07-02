@@ -8,33 +8,54 @@
 
 ## Supported OpenGL Libraries
 
-- window backend (`glfw`, `freeglut`, or `none`)
-- OpenGL loader (`glad`, `glew`, `glew-glad`, or `none`)
-- optional math support (`glm`)
-- optional debugging utility module (`glutil`)
+- **Window backend** (`glfw`, `freeglut`, or `none`)
+- **OpenGL function loader** (`glad`, `glew`, `glew-glad`, or `none`)
+- **OpenGL Mathematics** (`glm`)
+- **OpenGL debugging & resource utility(optional, explained later)** (`glutil`)
 
 After you specified the desired library and versions, `GDM` will search for installed libraries, download the source if installed package not existes, and provide targets that resolves to specified dependency.  
 The main value is a small set of interface targets that carry link dependencies and compile definitions so application code can resolve OpenGL dependencies through all environment, and switch providers without changing includes or link lines.
 
 ## Usage Example
 
-Following example
-```
-# Specify OpenGL libraries
-set(GDM_WINDOW_BACKEND "glfw" CACHE STRING "" FORCE)
-set(GDM_GL_LOADER "glad" CACHE STRING "" FORCE)
-set(GDM_USE_GLM ON CACHE BOOL "" FORCE)
-set(GDM_USE_GLUTIL ON CACHE BOOL "" FORCE)
+### Minimum Example - Project with `glfw`, `glad`, `glm`
 
-# Version variables are set to the latest by default, so it's not guaranteed
-set(GDM_GLFW_VERSION "3.4.0" CACHE STRING "" FORCE)
+Following exmaple will search for installed package of specified OpenGL dependencies, download the sources in `${CMAKE_SOURCE_DIR}/external` if not installed, 
+```cmake
+set(GDM_WINDOW_BACKEND  "glfw"  CACHE STRING "")
+set(GDM_GL_LOADER       "glad"  CACHE STRING "")
+set(GDM_USE_GLM           ON    CACHE BOOL   "")
+
+add_subdirectory(external/gdm)
+
+add_executable(my_app src/main.cpp)
+target_link_libraries(my_app PRIVATE gdm::deps)
+```
+_It's not even minimum!_ You can omit the part that selects the library name, since the default is `glfw + glad(gl:core=4.6) + glm` combination.  
+The `gdm::deps` target links all OpenGL depenedencies requested. It can be linked into yout project target [Generated CMake Targets](#generated-cmake-targets)
+
+### Detailed Example - Specifying versions and options
+Following example 
+```cmake
+# Windows backend(glfw, freeglut)
+set(GDM_WINDOW_BACKEND "glfw"  CACHE STRING "" FORCE)
+set(GDM_GLFW_VERSION   "3.4.0" CACHE STRING "" FORCE)
+
+# OpenGL function loader(glad, glew)
+set(GDM_GL_LOADER      "glad"         CACHE STRING "" FORCE)
+set(GDM_GLAD_API       "4.6"          CACHE STRING "" FORCE)
+set(GDM_GLAD_PROFILE   "core"         CACHE STRING "" FORCE)
+set(GDM_GLAD_EXTENSION "GL_KHR_debug" CACHE STRING "" FORCE)
+
+# OpenGL Mathematics(glm)
+set(GDM_USE_GLM      ON     CACHE BOOL "" FORCE)
 set(GDM_GLM_VERSION "1.0.3" CACHE STRING "" FORCE)
 
-set(GDM_GLAD_EXTENSION
-    # These are the default extensions. Remove this part if following extensions is enough for you
-    "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
-    CACHE STRING "" FORCE
-)
+# GLUTILL
+set(GDM_USE_GLUTIL   ON     CACHE BOOL "" FORCE)
+
+# Downloads the dependencies into /external directory
+set(GDM_EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external" CACHE PATH "" FORCE)
 
 # Fetch gdm
 include(FetchContent)
@@ -46,13 +67,9 @@ FetchContent_Declare(
     GIT_REMOTE_UPDATE_STRATEGY CHECKOUT
     SOURCE_DIR     "external/gdm"
 )
-set(GDM_WINDOW_BACKEND glfw CACHE STRING "" FORCE)
-set(GDM_GL_LOADER     glad CACHE STRING "" FORCE)
-set(GDM_USE_GLM       ON   CACHE BOOL   "" FORCE)
-set(GDM_USE_GLUTIL    ON   CACHE BOOL   "" FORCE)
 FetchContent_MakeAvailable(gdm)
 ```
-## Current CMake Targets
+## Generated CMake Targets
 
 GDM defines the following namespaced targets in the top-level `CMakeLists.txt`:
 
