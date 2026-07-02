@@ -60,7 +60,7 @@ set(GDM_GL_LOADER "glad" CACHE STRING
 set_property(CACHE GDM_GL_LOADER
     PROPERTY STRINGS none glad glew glew-glad)
 
-option(GDM_USE_GLM "Enable GLM support" ON)
+option(GDM_USE_GLM "Enable GLM library" ON)
 
 # Default external dependency directory; users may override via cache
 set(GDM_EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external" CACHE PATH
