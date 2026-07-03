@@ -67,20 +67,38 @@ set(GDM_EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external" CACHE PATH
     "Directory where GDM external dependencies are stored"
 )
 
+# For dependencies
+include(FetchContent)
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "")
+if(DEFINED CMAKE_TLS_VERIFY)
+    set(GDM_TLS_VERIFY ${CMAKE_TLS_VERIFY})
+endif()
+include(cmake/Dependencies.cmake)
+include(cmake/FetchGlad.cmake)
+
 # -----------------------
 # User-configurable dependency versions
 # -----------------------
 
 # Create version/config cache variables only for selected dependencies
 if (GDM_WINDOW_BACKEND STREQUAL "glfw")
-    set(GDM_GLFW_VERSION "3.4.0" CACHE STRING "GLFW version")
+    if(NOT DEFINED GDM_GLFW_VERSION)
+        get_latest_version("glfw" "glfw" GDM_GLFW_VERSION)
+        set(GDM_GLFW_VERSION "${GDM_GLFW_VERSION}" CACHE STRING "GLFW version")
+    endif()
     find_package(Threads REQUIRED) # pre-find threads
 elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
-    set(GDM_FREEGLUT_VERSION "3.8.0" CACHE STRING "FreeGLUT version")
+    if(NOT DEFINED GDM_FREEGLUT_VERSION)
+        get_latest_version("freeglut" "freeglut" GDM_FREEGLUT_VERSION)
+        set(GDM_FREEGLUT_VERSION "${GDM_FREEGLUT_VERSION}" CACHE STRING "FreeGLUT version")
+    endif()
 endif()
 
 if (GDM_USE_GLM)
-    set(GDM_GLM_VERSION "1.0.3" CACHE STRING "GLM version")
+    if(NOT DEFINED GDM_GLM_VERSION)
+        get_latest_version("g-truc" "glm" GDM_GLM_VERSION)
+        set(GDM_GLM_VERSION "${GDM_GLM_VERSION}" CACHE STRING "GLM version")
+    endif()
 endif()
 
 if (GDM_GL_LOADER STREQUAL "glad")
@@ -102,12 +120,18 @@ if (GDM_GL_LOADER STREQUAL "glad")
     unset(_GDM_GLAD_EXTENSION_DEFAULT)
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
-    set(GDM_GLEW_VERSION "2.3.1" CACHE STRING "GLEW version")
+    if(NOT DEFINED GDM_GLEW_VERSION)
+        get_latest_version("nigels-com" "glew" GDM_GLEW_VERSION)
+        set(GDM_GLEW_VERSION "${GDM_GLEW_VERSION}" CACHE STRING "GLEW version")
+    endif()
     option(GDM_GLEW_STATIC "Use static GLEW when available" ON)
 
 elseif (GDM_GL_LOADER STREQUAL "glew-glad")
     # GLEW (public interface) + GLAD (actual GL entrypoints via fetch_glad_allEXT)
-    set(GDM_GLEW_VERSION "2.3.1" CACHE STRING "GLEW version")
+    if(NOT DEFINED GDM_GLEW_VERSION)
+        get_latest_version("nigels-com" "glew" GDM_GLEW_VERSION)
+        set(GDM_GLEW_VERSION "${GDM_GLEW_VERSION}" CACHE STRING "GLEW version")
+    endif()
 
 endif()
 
@@ -135,15 +159,6 @@ if (NOT (GDM_GL_LOADER STREQUAL "glew" OR GDM_GL_LOADER STREQUAL "glew-glad"))
     unset(GDM_GLEW_VERSION CACHE)
     unset(GDM_GLEW_STATIC CACHE)
 endif()
-
-# For dependencies
-include(FetchContent)
-set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "")
-if(DEFINED CMAKE_TLS_VERIFY)
-    set(GDM_TLS_VERIFY ${CMAKE_TLS_VERIFY})
-endif()
-include(cmake/Dependencies.cmake)
-include(cmake/FetchGlad.cmake)
 
 # CMAKE_PREFIX_PATH append for Windows 
 if(WIN32)
@@ -646,7 +661,10 @@ else()
 endif()
 
 if (GDM_USE_GLUTIL)
-    set(GDM_CPPTRACE_VERSION "1.0.4" CACHE STRING "cpptrace version")
+    if(NOT DEFINED GDM_CPPTRACE_VERSION)
+        get_latest_version("jeremy-rifkin" "cpptrace" GDM_CPPTRACE_VERSION)
+        set(GDM_CPPTRACE_VERSION "${GDM_CPPTRACE_VERSION}" CACHE STRING "cpptrace version")
+    endif()
     use_or_fetch_package(
         NAME cpptrace
         VERSION ${GDM_CPPTRACE_VERSION}

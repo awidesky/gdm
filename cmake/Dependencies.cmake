@@ -1,3 +1,49 @@
+# get_latest_version(owner repo result_var)
+# Fetches the latest release tag from a GitHub repository.
+# Normalizes the version: strips leading 'v', appends '.0' if only two components (e.g. 3.4 -> 3.4.0).
+# On failure, aborts configuration with FATAL_ERROR.
+function(get_latest_version owner repo result_var)
+    set(API_URL "https://api.github.com/repos/${owner}/${repo}/releases/latest")
+    set(json_file "${CMAKE_BINARY_DIR}/_gdm_downloads/${repo}_latest_tag.json")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_gdm_downloads")
+
+    file(DOWNLOAD "${API_URL}" "${json_file}"
+        STATUS _dl_status
+        TLS_VERIFY ${GDM_TLS_VERIFY}
+        INACTIVITY_TIMEOUT 10
+    )
+
+    list(GET _dl_status 0 _dl_code)
+    if(NOT _dl_code EQUAL 0)
+        list(GET _dl_status 1 _dl_msg)
+        message(FATAL_ERROR
+            "[${PROJECT_NAME}] Failed to get latest version for ${owner}/${repo}: ${_dl_msg}\n"
+            "[${PROJECT_NAME}] Set ${result_var} manually and re-configure."
+        )
+    endif()
+
+    file(READ "${json_file}" _json)
+    string(JSON _tag ERROR_VARIABLE _json_err GET "${_json}" tag_name)
+    if(_json_err OR _tag STREQUAL "")
+        message(FATAL_ERROR
+            "[${PROJECT_NAME}] Failed to parse latest release tag for ${owner}/${repo}\n"
+            "[${PROJECT_NAME}] Set ${result_var} manually and re-configure."
+        )
+    endif()
+
+    # Strip leading 'v' if present
+    string(REGEX REPLACE "^v" "" _ver "${_tag}")
+
+    # If version has only one dot (e.g. 3.4), append .0
+    string(REGEX MATCHALL "\\." _dots "${_ver}")
+    list(LENGTH _dots _dot_count)
+    if(_dot_count EQUAL 1)
+        set(_ver "${_ver}.0")
+    endif()
+
+    set(${result_var} "${_ver}" PARENT_SCOPE)
+endfunction()
+
 
 function(use_or_fetch_package)
     set(options)
