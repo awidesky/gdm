@@ -66,6 +66,7 @@ option(GDM_USE_GLM "Enable GLM library" ON)
 set(GDM_EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external" CACHE PATH
     "Directory where GDM external dependencies are stored"
 )
+file(MAKE_DIRECTORY "${GDM_EXTERNAL_DIR}")
 
 # For dependencies
 include(FetchContent)
