@@ -48,6 +48,7 @@ if (GDM_BUILD_TESTS)
 endif()
 
 message(STATUS "[GDM] Version: ${PROJECT_VERSION}")
+message(STATUS "[GDM] GDM_EXTERNAL_DIR: ${GDM_EXTERNAL_DIR}")
 
 # Dependency providers
 set(GDM_WINDOW_BACKEND "glfw" CACHE STRING
@@ -299,69 +300,38 @@ if (GDM_GL_LOADER STREQUAL "none")
     add_library(gdm::loader ALIAS gdm_loader)
     list(APPEND _gdm_defs GDM_HAS_LOADER_NONE)
 elseif (GDM_GL_LOADER STREQUAL "glad")
-    set(GDM_GLAD_DEBUG_DIR ${GDM_EXTERNAL_DIR}/glad_debug)
-    set(GDM_GLAD_RELEASE_DIR ${GDM_EXTERNAL_DIR}/glad_release)
-    set(GDM_GLAD_SINGLE_DIR ${GDM_EXTERNAL_DIR}/glad)
+    fetch_glad(
+        OUT_VAR _glad_debug_dir
+        BASE_DIR ${GDM_EXTERNAL_DIR}
+        LANG "gl"
+        APIS "${GDM_GLAD_API}"
+        PROFILES "${GDM_GLAD_PROFILE}"
+        OPTIONS DEBUG
+        EXTENSIONS ${GDM_GLAD_EXTENSION}
+    )
 
-    if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
-        message(STATUS "[GDM] Found installed glad_debug and glad_release")
+    fetch_glad(
+        OUT_VAR _glad_release_dir
+        BASE_DIR ${GDM_EXTERNAL_DIR}
+        LANG "gl"
+        APIS "${GDM_GLAD_API}"
+        PROFILES "${GDM_GLAD_PROFILE}"
+        EXTENSIONS ${GDM_GLAD_EXTENSION}
+    )
 
-    elseif (EXISTS ${GDM_GLAD_SINGLE_DIR}/src/gl.c)
-        message(STATUS "[GDM] Found installed single glad")
+    add_library(gdm_glad_debug STATIC
+        "${_glad_debug_dir}/src/gl.c"
+    )
+    target_include_directories(gdm_glad_debug PUBLIC
+        "${_glad_debug_dir}/include"
+    )
 
-    else()
-        message(STATUS "[GDM] Fetching glad debug/release mode")
-        fetch_glad(
-            OUT_VAR _glad_debug_src
-            NAME glad_debug_remote
-            DEST_DIR ${GDM_GLAD_DEBUG_DIR}
-            APIS "gl=${GDM_GLAD_API}"
-            PROFILES "gl=${GDM_GLAD_PROFILE}"
-            OPTIONS DEBUG
-            EXTENSIONS ${GDM_GLAD_EXTENSION}
-        )
-
-        fetch_glad(
-            OUT_VAR _glad_release_src
-            NAME glad_release_remote
-            DEST_DIR ${GDM_GLAD_RELEASE_DIR}
-            APIS "gl=${GDM_GLAD_API}"
-            PROFILES "gl=${GDM_GLAD_PROFILE}"
-            EXTENSIONS ${GDM_GLAD_EXTENSION}
-        )
-    endif()
-
-    if (EXISTS ${GDM_GLAD_DEBUG_DIR}/src/gl.c AND EXISTS ${GDM_GLAD_RELEASE_DIR}/src/gl.c)
-        add_library(gdm_glad_debug STATIC
-            ${GDM_GLAD_DEBUG_DIR}/src/gl.c
-        )
-        target_include_directories(gdm_glad_debug PUBLIC
-            ${GDM_GLAD_DEBUG_DIR}/include
-        )
-
-        add_library(gdm_glad_release STATIC
-            ${GDM_GLAD_RELEASE_DIR}/src/gl.c
-        )
-        target_include_directories(gdm_glad_release PUBLIC
-            ${GDM_GLAD_RELEASE_DIR}/include
-        )
-
-    elseif (EXISTS ${GDM_GLAD_SINGLE_DIR}/src/gl.c)
-
-        add_library(gdm_glad_single STATIC
-            ${GDM_GLAD_SINGLE_DIR}/src/gl.c
-        )
-        target_include_directories(gdm_glad_single PUBLIC
-            ${GDM_GLAD_SINGLE_DIR}/include
-        )
-
-        add_library(gdm_glad_debug INTERFACE)
-        add_library(gdm_glad_release INTERFACE)
-        target_link_libraries(gdm_glad_debug INTERFACE gdm_glad_single)
-        target_link_libraries(gdm_glad_release INTERFACE gdm_glad_single)
-    else()
-        message(FATAL_ERROR "[GDM] glad source was not generated correctly.")
-    endif()
+    add_library(gdm_glad_release STATIC
+        "${_glad_release_dir}/src/gl.c"
+    )
+    target_include_directories(gdm_glad_release PUBLIC
+        "${_glad_release_dir}/include"
+    )
 
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
@@ -422,47 +392,29 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
     list(APPEND _gdm_defs GDM_HAS_GLEW)
 
 elseif (GDM_GL_LOADER STREQUAL "glew-glad")
-    # Dedicated GLAD dirs for glew-glad (ALL extensions, gl=4.6 core)
-    set(GDM_GLAD_ALLEXT_DEBUG_DIR   ${GDM_EXTERNAL_DIR}/glad_ALLEXT_debug)
-    set(GDM_GLAD_ALLEXT_RELEASE_DIR ${GDM_EXTERNAL_DIR}/glad_ALLEXT_release)
+    fetch_glad_allEXT(
+        OUT_VAR _glad_allex_debug_dir
+        BASE_DIR ${GDM_EXTERNAL_DIR}
+        GLAD_OPTIONS DEBUG
+    )
 
-    if (EXISTS ${GDM_GLAD_ALLEXT_DEBUG_DIR}/src/gl.c
-        AND EXISTS ${GDM_GLAD_ALLEXT_RELEASE_DIR}/src/gl.c)
-        message(STATUS "[GDM] Found installed glad_ALLEXT_debug and glad_ALLEXT_release")
-    else()
-        message(STATUS "[GDM] Fetching glad (ALL extensions) for glew-glad debug/release mode")
-
-        fetch_glad_allEXT(
-            OUT_VAR _glad_allex_debug_src
-            NAME glad_allex_debug_remote
-            DEST_DIR ${GDM_GLAD_ALLEXT_DEBUG_DIR}
-            GLAD_OPTIONS DEBUG
-        )
-
-        fetch_glad_allEXT(
-            OUT_VAR _glad_allex_release_src
-            NAME glad_allex_release_remote
-            DEST_DIR ${GDM_GLAD_ALLEXT_RELEASE_DIR}
-        )
-    endif()
-
-    if (NOT EXISTS ${GDM_GLAD_ALLEXT_DEBUG_DIR}/src/gl.c
-        OR NOT EXISTS ${GDM_GLAD_ALLEXT_RELEASE_DIR}/src/gl.c)
-        message(FATAL_ERROR "[GDM] glad_ALLEXT source was not generated correctly (glew-glad).")
-    endif()
+    fetch_glad_allEXT(
+        OUT_VAR _glad_allex_release_dir
+        BASE_DIR ${GDM_EXTERNAL_DIR}
+    )
 
     add_library(gdm_glad_allext_debug STATIC
-        ${GDM_GLAD_ALLEXT_DEBUG_DIR}/src/gl.c
+        "${_glad_allex_debug_dir}/src/gl.c"
     )
     target_include_directories(gdm_glad_allext_debug PUBLIC
-        ${GDM_GLAD_ALLEXT_DEBUG_DIR}/include
+        "${_glad_allex_debug_dir}/include"
     )
 
     add_library(gdm_glad_allext_release STATIC
-        ${GDM_GLAD_ALLEXT_RELEASE_DIR}/src/gl.c
+        "${_glad_allex_release_dir}/src/gl.c"
     )
     target_include_directories(gdm_glad_allext_release PUBLIC
-        ${GDM_GLAD_ALLEXT_RELEASE_DIR}/include
+        "${_glad_allex_release_dir}/include"
     )
 
     # GLEW (always fetch from glew-cmake for glew-glad)
