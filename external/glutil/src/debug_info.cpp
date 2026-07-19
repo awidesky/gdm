@@ -277,9 +277,6 @@ static const char* maxLoadedGLVersion_glew() {
 #if defined(GL_VERSION_1_1)
     if (GLEW_VERSION_1_1) return "GLEW_VERSION_1_1";
 #endif
-#if defined(GL_VERSION_1_0)
-    if (GLEW_VERSION_1_0) return "GLEW_VERSION_1_0";
-#endif
     return "UNKNOWN";
 }
 #endif

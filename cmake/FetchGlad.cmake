@@ -119,8 +119,9 @@ function(fetch_glad)
   else()
       set(_fg_ext_print "${FG_EXTENSIONS}")
   endif()
+  get_filename_component(_fg_rel_dir "${_fg_out_dir}" NAME)
   message(STATUS
-      "[${PROJECT_NAME}] glad-${_fg_suffix} : ${FG_LANG}=${FG_APIS}, ${_fg_profiles}, ${_fg_options}, Extensions=${_fg_ext_print}"
+      "[${PROJECT_NAME}] ${_fg_rel_dir} : ${FG_LANG}=${FG_APIS}, ${_fg_profiles}, ${_fg_options}, Extensions=${_fg_ext_print}"
   )
 
   unset(_fg_profiles)

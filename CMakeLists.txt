@@ -36,7 +36,7 @@ if (GDM_USE_GLUTIL)
 else()
     unset(GLUTIL_DISABLE_LOG_ON_RELEASE CACHE)
 endif()
-option(GDM_BUILD_EXAMPLES "Build GDM examples" ${GDM_STANDALONE})
+option(GDM_BUILD_EXAMPLES "Build GDM/GLUtil examples" ${GDM_STANDALONE})
 option(GDM_BUILD_TESTS "Build the GDM/GLUtil test programs" ${GDM_STANDALONE})
 option(GDM_TLS_VERIFY "Enable TLS verification" ON)
 

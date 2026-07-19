@@ -157,8 +157,8 @@ if (GDM_BUILD_TESTS)
   endif()
 endif()
 
-# Examples (require GLFW + GLAD + GLM)
-if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM_USE_GLM)
+# Examples (require GLFW + GLAD + GLM, and  GDM_BUILD_EXAMPLES)
+if (GDM_BUILD_EXAMPLES AND GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM_USE_GLM)
   add_glutil_example(glutil_textureExample
         example/texture.cpp
   )
