@@ -314,28 +314,30 @@ function(fetch_glad_allEXT)
     set(_fg_out_dir "${_fg_base_dir}_${_fg_suffix_num}")
   endwhile()
 
-  set(GL_XML_URL "https://cvs.khronos.org/svn/repos/ogl/trunk/doc/registry/public/api/gl.xml")
-  set(GL_XML_PATH "${CMAKE_BINARY_DIR}/_gdm_downloads/khronos_gl.xml")
+  set(GL_XML_URL "https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/xml/gl.xml")
+  set(GL_XML_PATH "${CMAKE_BINARY_DIR}/_gdm_downloads/gl.xml")
 
   # Time the download of gl.xml from Khronos
   string(TIMESTAMP _xml_start_time "%s" UTC)
 
-  file(DOWNLOAD
-    "${GL_XML_URL}"
-    "${GL_XML_PATH}"
-    STATUS dl_status
-    TLS_VERIFY ${GDM_TLS_VERIFY}
-  )
-  list(GET dl_status 0 dl_code)
-  if(NOT dl_code EQUAL 0)
-    file(REMOVE "${GL_XML_PATH}")
-    list(GET dl_status 1 dl_msg)
-    message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: Failed to download gl.xml: ${dl_msg}")
-  endif()
+  if(NOT EXISTS "${GL_XML_PATH}")
+    file(DOWNLOAD
+      "${GL_XML_URL}"
+      "${GL_XML_PATH}"
+      STATUS dl_status
+      TLS_VERIFY ${GDM_TLS_VERIFY}
+    )
+    list(GET dl_status 0 dl_code)
+    if(NOT dl_code EQUAL 0)
+      file(REMOVE "${GL_XML_PATH}")
+      list(GET dl_status 1 dl_msg)
+      message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: Failed to download gl.xml: ${dl_msg}")
+    endif()
 
-  string(TIMESTAMP _xml_end_time "%s" UTC)
-  math(EXPR _xml_elapsed_time "${_xml_end_time} - ${_xml_start_time}")
-  message(STATUS "[${PROJECT_NAME}] gl.xml download completed in ${_xml_elapsed_time}s")
+    string(TIMESTAMP _xml_end_time "%s" UTC)
+    math(EXPR _xml_elapsed_time "${_xml_end_time} - ${_xml_start_time}")
+    message(STATUS "[${PROJECT_NAME}] gl.xml download completed in ${_xml_elapsed_time}s")
+  endif()
 
   file(READ "${GL_XML_PATH}" GL_XML_TEXT)
   string(REGEX MATCHALL "<extension[^>]*>" EXT_TAGS "${GL_XML_TEXT}")
@@ -352,7 +354,11 @@ function(fetch_glad_allEXT)
   list(LENGTH GL_EXTS GL_EXTS_LEN)
 
   if(GL_EXTS_LEN EQUAL 0)
-    message(FATAL_ERROR "[${PROJECT_NAME}] Parsed 0 GL extensions from gl.xml.")
+    message(FATAL_ERROR 
+        "[${PROJECT_NAME}] Unable to parse GL Extensions from gl.xml(try re-configuring!)\n"
+        "[${PROJECT_NAME}] Check if ${GL_XML_URL} works if this issue persists."
+    )
+    file(REMOVE "${GL_XML_PATH}")
   endif()
 
   message(STATUS "[${PROJECT_NAME}] Parsed ${GL_EXTS_LEN} GL extensions from Khronos registry")
