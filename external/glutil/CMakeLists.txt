@@ -78,7 +78,7 @@ target_link_libraries(glutil PRIVATE
 )
 
 # C++ standard
-target_compile_features(glutil PRIVATE cxx_std_17)
+target_compile_features(glutil PUBLIC cxx_std_17)
 
 function(add_glutil_example TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
@@ -90,7 +90,6 @@ function(add_glutil_example TARGET_NAME)
         gdm::gdm
     )
 
-    target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
     if(MSVC)
         target_compile_options(${TARGET_NAME} PRIVATE
             /W4 /utf-8
@@ -116,7 +115,6 @@ function(add_glutil_test TARGET_NAME TEST_NAME)
         gdm::gdm
     )
 
-    target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
     if(MSVC)
         target_compile_options(${TARGET_NAME} PRIVATE
             /W4 /utf-8

@@ -11,10 +11,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Is gdm the main project, not a library?
 string(COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" GDM_STANDALONE)
 
-# C++ options
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 # Build options
 if (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Default type of build is Debug.")
@@ -561,7 +557,6 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
             gdm::window
             libglew_static
     )
-    target_compile_definitions(gdm_glew_glad PRIVATE GDM_HAS_GLEW_GLAD)
 
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
