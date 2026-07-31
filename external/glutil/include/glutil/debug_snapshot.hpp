@@ -199,6 +199,7 @@ private:
         (void)dir;
         (void)dumpVertexData;
         (void)printAsync;
+        (void)m_alreadyCaptured;
         return {};
     }
 
