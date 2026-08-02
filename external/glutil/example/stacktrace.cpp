@@ -1,6 +1,4 @@
-﻿#include <glad/gl.h>
-#include <GLFW/glfw3.h>
-#include <glutil/glutil.hpp>
+﻿#include <glutil/glutil.hpp>
 #include <iostream>
 #include "config.hpp"
 
@@ -19,7 +17,7 @@ void static postCallback(void* ret, const char* name, GLADapiproc apiproc, int l
     if (err == GL_NO_ERROR)
         return;
 
-    std::cerr << "\n[GL ERROR] " << name << " (0x" << std::hex << err << std::dec << ")\n";
+    std::cerr << "\n[GL ERROR] from custom postcallback : " << name << " (0x" << std::hex << err << std::dec << ")\n";
 
     glutil::debug::printStackTrace();
 }
@@ -36,7 +34,7 @@ int main() {
 #endif
 
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "GLUtil_stacktrace_test", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -50,13 +48,18 @@ int main() {
         return -1;
     }
 
-#ifdef GLAD_OPTION_GL_DEBUG
+// check if GLAD debug callback is enabled by GDM_DEBUG macro.
+// 1 if enabled(build type is Debug or RelWithDebInfo), 0 if not.
+#if GDM_DEBUG
     gladSetGLPostCallback(postCallback);
 #endif
 
     glBindTexture(GL_TEXTURE_2D, 99999);
 
+// check if GLAD debug callback is enabled by GLAD_OPTION_GL_DEBUG macro.
+// defined if GLAD is built with GLAD_GL_DEBUG option enabled. not defined otherwise.
 #ifndef GLAD_OPTION_GL_DEBUG
+    // GLAD debug callback is not enabled, call the custom postCallback manually.
     postCallback(NULL, "glBindTexture", (GLADapiproc) glad_glBindTexture, 2, GL_TEXTURE_2D, 99999);
 #endif
 

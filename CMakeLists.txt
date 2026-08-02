@@ -16,7 +16,9 @@ if (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Default type of build is Debug.")
 endif()
 
-option(GDM_USE_GLUTIL "Enable GLUtil module" ON)
+# GLUtil is an internal utility library: default ON only when GDM is the main project.
+# Set this to ON manually when you need the library.
+option(GDM_USE_GLUTIL "Enable GLUtil module" ${GDM_STANDALONE})
 # Option to control GLUtil logging in non-debug builds
 if (GDM_USE_GLUTIL)
     set(_gdm_glutil_disable_log_default OFF)
