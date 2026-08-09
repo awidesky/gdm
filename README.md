@@ -4,12 +4,20 @@
 [![CMake](https://img.shields.io/badge/CMake-%3E%3D3.24-blue)](CMakeLists.txt)
 
 **GDM** is a CMake-based OpenGL dependency manager for OpenGL projects.  
-Specify your OpenGL library(`glfw`, `freeglut`, `glad`, `glew`, `glm`) and desired version once, and GDM will:
-- find installed packages
-- download sources if not installed
-- and provide clean namespaced targets  
+Specify your OpenGL libraries(`glfw`, `freeglut`, `glad`, `glew`, `glm`, etc) and desired version once, and GDM will:
+- Find installed packages(via `find_package`)
+- Download sources under `${GDM_EXTERNAL_DIR}` if not installed
+- Provide clean namespaced targets to link  
   
-so that your dependencies would work in all OS and build system, without adding platform-specific compile/link options or embedding library files inside your project.
+so that your dependencies would work..  
+- in all OS and build system that cmake supports,
+- regardless of which package managers you used to install the packages,
+- or even when you did not install the required package,
+- without adding platform-specific compile/link options,
+- or embedding library files inside your project,
+
+without any external tools.
+
 
 ## Supported OpenGL Libraries
 
