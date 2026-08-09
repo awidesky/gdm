@@ -1,0 +1,7 @@
+{
+    "dev_branch": "dev",
+    "hide": false,
+    "mavenLib": false,
+    "release": false,
+    "TODOregex": "TODO_"
+}
