@@ -86,7 +86,7 @@ function(use_or_fetch_package)
 
     # 1. Prefer external/<name>-<version>
     if (EXISTS ${PKG_EXTERNAL_DIR}/CMakeLists.txt)
-        message(STATUS "[${PROJECT_NAME}] Using external ${PKG_NAME} ${PKG_VERSION}" )
+        message(STATUS "[${PROJECT_NAME}] Found external ${PKG_NAME} ${PKG_VERSION}" )
         add_subdirectory("${PKG_EXTERNAL_DIR}" "${_gdm_pkg_binary_dir}")
         set(USE_EXTERNAL_PACKAGE TRUE)
     endif()
