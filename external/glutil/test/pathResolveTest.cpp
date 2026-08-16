@@ -1,3 +1,19 @@
+/*
+ * Path resolution smoke test.
+ *
+ * Covers glutil::pathResolve() success and failure for each branch of its
+ * lookup strategy.
+ *
+ * Resolve strategy (in order, first hit wins):
+ *   1. If the path is absolute, use it as-is and only check existence.
+ *   2. Otherwise, try the path as relative to each base:
+ *        a. the current working directory
+ *        b. the directory containing the running executable
+ *        c. the compile-time PROJECT_ROOT
+ *   The first base where the path exists is used; the result is the
+ *   weakly-canonicalized full path. If none exists, resolution fails.
+ */
+
 #include <filesystem>
 #include <iostream>
 

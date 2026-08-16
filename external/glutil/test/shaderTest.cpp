@@ -1,3 +1,24 @@
+/*
+ * Shader encoding validation test for raw shader files and ShaderLoader.
+ *
+ * This covers UTF-8, UTF-8 BOM, UTF-16 LE, and MS949 shader assets in the
+ * test/shader directory. The program reads each shader as raw bytes, compiles
+ * it directly, then loads it through glutil::ShaderLoader with encoding checks
+ * enabled to confirm that the loader handles non-ASCII text and successfully
+ * produces valid GLSL.
+ *
+ * It compares the compile results between the raw loading and glutil::ShaderLoader,
+ * and prints the compile and link messages for each shader. The test expects that
+ * shaders with non-ASCII characters (e.g., MS949) will fail to compile when
+ * loaded raw, but will succeed when loaded through the ShaderLoader which handles
+ * the BOM and encoding.
+ * 
+ * In GLSL 4.2 and later, compiler accepts UTF-8 encoded source with non-ASCII characters in comments.
+ * So while reading UTF8_BOM_only_ASCII_token.fs in GLSL4.2 context, the glutil::ShaderLoader will remove the BOM,
+ * but keep the non-ASCII characters, believing the user would wrote non-ASCII characters only in comments.
+ * The test checks in both 3.3 and 4.2 contexts to ensure that the loader behaves correctly across versions.
+ */
+
 #include <iostream>
 #include <fstream>
 #include <sstream>

@@ -1,3 +1,48 @@
+/*
+ * Encoding and replacement benchmark for shader text sanitization.
+ *
+ * This test measures the cost of glutil::hasNonASCII and
+ * glutil::replaceNonASCIIWithSpace against a real MS949-derived shader source,
+ * then sanity-checks that the no-op, check-only, and replacement paths behave
+ * correctly as the input is duplicated at x1, x4, and x8 sizes.
+ *
+ * You can check how much overhead does it take to check the encoding or 
+ * replace all non-ASCII characters with spaces in a shader source. *
+ * Following is the summary of the benchmark results in my MacBook Air (M2, 2022) 8GB with Apple clang 17.0.0:
+
+Case x1
+  size: 1954 bytes, iterations: 100000
+  1) no-op        : total: 4292.72 us, average: 42.9272 ns/call
+  2) check-only   : total: 11982.3 us, average: 119.823 ns/call
+  3) qword replace : total: 114816 us, average: 1148.16 ns/call
+  4) dword replace : total: 161734 us, average: 1617.34 ns/call
+  5) byte replace : total: 515138 us, average: 5151.38 ns/call
+  no-op=1x, check=2.79131x, qword=26.7467x, dword=37.6762x, byte=120.003x (4.3ms, 12.0ms, 114.8ms, 161.7ms, 515.1ms)
+
+Case x4
+  size: 7816 bytes, iterations: 100000
+  1) no-op        : total: 3894.14 us, average: 38.9414 ns/call
+  2) check-only   : total: 11629.8 us, average: 116.298 ns/call
+  3) qword replace : total: 518957 us, average: 5189.57 ns/call
+  4) dword replace : total: 924943 us, average: 9249.43 ns/call
+  5) byte replace : total: 1.70019e+06 us, average: 17001.9 ns/call
+  no-op=1x, check=2.98647x, qword=133.266x, dword=237.522x, byte=436.6x (3.9ms, 11.6ms, 519.0ms, 924.9ms, 1.7s)
+
+Case x8
+  size: 15632 bytes, iterations: 100000
+  1) no-op        : total: 3178.49 us, average: 31.7849 ns/call
+  2) check-only   : total: 10242.4 us, average: 102.424 ns/call
+  3) qword replace : total: 763583 us, average: 7635.83 ns/call
+  4) dword replace : total: 1.09756e+06 us, average: 10975.6 ns/call
+  5) byte replace : total: 3.30801e+06 us, average: 33080.1 ns/call
+  no-op=1x, check=3.22241x, qword=240.235x, dword=345.31x, byte=1040.75x (3.2ms, 10.2ms, 763.6ms, 1.1s, 3.3s)
+
+ * Replacing non-ASCII characters with spaces is significantly slower even with the optimized qword approach,
+ * and the overhead increases with larger shader sources. 
+ * Still, considering that shader sources are typically small and the replacement is done only once per shader load,
+ * the actual overhead in a real application is likely to be just a couple of microseconds.
+ */
+
 #include <glutil/shader.hpp>
 
 #include <chrono>
