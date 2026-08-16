@@ -345,7 +345,7 @@ static const char* maxLoadedGLVersion_glad() {
 } // namespace
 
 void printRuntimeInfo(bool verbose, std::ostream& os) {
-    os << "=== Runtime Dependency Info ===\n";
+    os << "=== Runtime OpenGL Info ===\n";
     GLVersion ver = getOpenGLVersion();
 
     os << "[GLUTIL] Version: " << GLUTIL_VERSION_MAJOR << "." << GLUTIL_VERSION_MINOR << "." << GLUTIL_VERSION_REVISION

@@ -239,7 +239,19 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    glutil::debug::printRuntimeInfo(true);
+#ifdef GDM_HAS_GLUTIL
+    // Debug info functions (see README "Debug info functions" section).
+    glutil::debug::printRuntimeInfo(true); // GL version, vendor, renderer, capability limits
+    std::cout << "\n== glutil::debug::printGpuMemoryInfo() ==\n";
+    glutil::debug::printGpuMemoryInfo(std::cout); // GPU memory usage via vendor extensions
+    std::cout << "\n== glutil::debug::printGpuMemoryInfo() end ==\n";
+
+    std::cout << "\nSupported extensions: " << glutil::debug::getGLExtensions().size() << '\n';
+    std::cout << "GL_KHR_debug supported: " << glutil::debug::hasGLExtension("GL_KHR_debug") << '\n';
+
+    const glutil::debug::GLVersion ver = glutil::debug::availableGLversion();
+    std::cout << "\nHighest available GL version: " << ver.major << '.' << ver.minor << '\n';
+#endif
 
     const std::array<float, 18> vertices = {
         -0.5f, -0.5f, 0.0f, 1.0f, 0.2f, 0.2f,

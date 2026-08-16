@@ -48,17 +48,11 @@ int main() {
         return -1;
     }
 
-// check if GLAD debug callback is enabled by GDM_DEBUG macro.
-// 1 if enabled(build type is Debug or RelWithDebInfo), 0 if not.
-#if GDM_DEBUG
-    gladSetGLPostCallback(postCallback);
-#endif
-
     glBindTexture(GL_TEXTURE_2D, 99999);
 
-// check if GLAD debug callback is enabled by GLAD_OPTION_GL_DEBUG macro.
-// defined if GLAD is built with GLAD_GL_DEBUG option enabled. not defined otherwise.
-#ifndef GLAD_OPTION_GL_DEBUG
+// check if GLAD debug callback is enabled by GDM_DEBUG macro.
+// 1 if enabled(build type is Debug or RelWithDebInfo), 0 if not.
+#if !GDM_DEBUG
     // GLAD debug callback is not enabled, call the custom postCallback manually.
     postCallback(NULL, "glBindTexture", (GLADapiproc) glad_glBindTexture, 2, GL_TEXTURE_2D, 99999);
 #endif
@@ -66,6 +60,10 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
+
+        //inside of rendering loop; test aggregated GL error logging.
+        glBindVertexArray(0);
+        glDrawArrays(GL_TRIANGLES, 0, 3); 
 
         glfwSwapBuffers(window);
         glfwPollEvents();
