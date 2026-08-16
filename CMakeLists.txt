@@ -107,8 +107,8 @@ if (GDM_GL_LOADER STREQUAL "glad")
     set_property(CACHE GDM_GLAD_PROFILE PROPERTY STRINGS core compatibility)
 
     set(_GDM_GLAD_EXTENSION_DEFAULT
-        # TODO_think : GL_EXT_debug_label and GL_EXT_debug_marker is not used in glutil
-        "GL_ARB_debug_output;GL_EXT_debug_label;GL_EXT_debug_marker;GL_EXT_texture_compression_s3tc;GL_KHR_debug"
+        # The default extensions used by GLUtil - GL_KHR_debug for debug features, GL_EXT_texture_compression_s3tc for DDS loading
+        "GL_KHR_debug;GL_EXT_texture_compression_s3tc"
     )
 
     if (NOT DEFINED GDM_GLAD_EXTENSION OR GDM_GLAD_EXTENSION STREQUAL "${_GDM_GLAD_EXTENSION_DEFAULT}")
