@@ -1,8 +1,8 @@
-﻿#include <glutil/glutil.hpp>
+﻿#include "config.hpp"
+#include <glutil/glutil.hpp>
 #include <iostream>
-#include "config.hpp"
 
-void static framebuffer_size_callback(GLFWwindow* window, int width, int height){
+void static framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     (void)window;
     glViewport(0, 0, width, height);
 }
@@ -33,7 +33,6 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "GLUtil_stacktrace_test", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -48,13 +47,19 @@ int main() {
         return -1;
     }
 
-    glBindTexture(GL_TEXTURE_2D, 99999);
+    // normal texture binding
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    // erroneous texture binding
+    glBindTexture(GL_TEXTURE_2D, 99999); // should generate an error
 
 // check if GLAD debug callback is enabled by GDM_DEBUG macro.
 // 1 if enabled(build type is Debug or RelWithDebInfo), 0 if not.
 #if !GDM_DEBUG
     // GLAD debug callback is not enabled, call the custom postCallback manually.
-    postCallback(NULL, "glBindTexture", (GLADapiproc) glad_glBindTexture, 2, GL_TEXTURE_2D, 99999);
+    postCallback(NULL, "glBindTexture", (GLADapiproc)glad_glBindTexture, 2, GL_TEXTURE_2D, 99999);
 #endif
 
     while (!glfwWindowShouldClose(window)) {
