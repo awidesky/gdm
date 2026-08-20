@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Encoding and replacement benchmark for shader text sanitization.
  *
  * This test measures the cost of glutil::hasNonASCII and
@@ -174,13 +174,12 @@ static BenchResult benchmarkChecking(const std::string& source,
         const auto t1 = clock::now();
         algoElapsed += (t1 - t0);
         if (has)
-            ++trueCount;
+            trueCount = trueCount + 1;
     }
 
     BenchResult r;
     r.totalUs = algoElapsed.count();
     r.averageNs = (r.totalUs * 1000.0) / static_cast<double>(iterations);
-    (void)trueCount;
     return r;
 }
 
