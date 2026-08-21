@@ -17,7 +17,7 @@ include(FetchContent)
 # already exists but its CONFIG differs, a numeric suffix (_2, _3, …) is
 # appended so that different configurations always use distinct directories.
 function(fetch_glad)
-  set(oneValueArgs OUT_VAR BASE_DIR DEST_DIR LANG)
+  set(oneValueArgs OUT_VAR BASE_DIR DEST_DIR LANG SKIP_LOCK)
   set(multiValueArgs APIS PROFILES OPTIONS EXTENSIONS)
   cmake_parse_arguments(FG "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -29,6 +29,17 @@ function(fetch_glad)
   endif()
   if(NOT FG_APIS)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: APIS is required (ex: 4.6)")
+  endif()
+
+  # Lock the slot for glad download.
+  # SKIP_LOCK param is used by fetch_glad_allEXT, which already holds the lock for the whole operation.
+  if(NOT FG_SKIP_LOCK)
+    if(FG_DEST_DIR)
+      get_filename_component(_fg_lock_dir "${FG_DEST_DIR}" DIRECTORY)
+    else()
+      set(_fg_lock_dir "${FG_BASE_DIR}")
+    endif()
+    gdm_lock_guard("${_fg_lock_dir}/.gdm.lock")
   endif()
 
   # Build a canonical config string for the CONFIG file and for comparison.
@@ -224,12 +235,19 @@ function(fetch_glad)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: Failed to download glad.zip: ${_dl_msg}\nURL=${zip_url}")
   endif()
 
-  # Extract
-  file(MAKE_DIRECTORY "${_fg_out_dir}")
+  # Extract into a staging dir first, then atomically rename into the final slot.
+  # This prevents a crashed/interrupted configure from leaving a partial glad directory
+  # that would poison the slot forever (the slot search skips directories without a matching CONFIG).
+  set(_fg_stage_dir "${_fg_out_dir}.staging")
+  file(REMOVE_RECURSE "${_fg_stage_dir}")
+  file(MAKE_DIRECTORY "${_fg_stage_dir}")
   file(ARCHIVE_EXTRACT
     INPUT "${_zip_path}"
-    DESTINATION "${_fg_out_dir}"
+    DESTINATION "${_fg_stage_dir}"
   )
+
+  file(REMOVE_RECURSE "${_fg_out_dir}")
+  file(RENAME "${_fg_stage_dir}" "${_fg_out_dir}")
 
   string(TIMESTAMP _fetch_end_time "%s" UTC)
   math(EXPR _fetch_elapsed_time "${_fetch_end_time} - ${_fetch_start_time}")
@@ -265,6 +283,9 @@ function(fetch_glad_allEXT)
   if(NOT FGAE_BASE_DIR)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: BASE_DIR is required")
   endif()
+
+  # Lock the slot. The inner fetch_glad() call passes SKIP_LOCK because this function already holds the lock.
+  gdm_lock_guard("${FGAE_BASE_DIR}/.gdm.lock")
 
   # Build config string (extensions excluded — they are dynamic)
   string(CONCAT _fg_config_string
@@ -371,6 +392,7 @@ function(fetch_glad_allEXT)
     PROFILES "core"
     OPTIONS ${FGAE_GLAD_OPTIONS}
     EXTENSIONS ${GL_EXTS}
+    SKIP_LOCK
   )
 
   # Overwrite CONFIG with our own (which marks EXTENSIONS=ALLEXT instead of

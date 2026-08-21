@@ -45,6 +45,31 @@ function(get_latest_version owner repo result_var)
 endfunction()
 
 
+# How long (seconds) to wait for the GDM dependency lock before failing.
+set(GDM_LOCK_TIMEOUT 60)
+
+# gdm_lock_guard(<lock_file>)
+# Expands to a file(LOCK ... GUARD FUNCTION) call so the lock is released automatically when function returns.
+# Serializes dependency fetch/extract/rename against other CMake processes sharing the same _gdm_lock_dir.
+# On failure (lock held past GDM_LOCK_TIMEOUT), aborts with error message.
+macro(gdm_lock_guard lock_file)
+    get_filename_component(_gdm_lock_dir "${lock_file}" DIRECTORY)
+    file(MAKE_DIRECTORY "${_gdm_lock_dir}")
+    file(LOCK "${lock_file}"
+        GUARD FUNCTION
+        TIMEOUT ${GDM_LOCK_TIMEOUT}
+        RESULT_VARIABLE _gdm_lock_result
+    )
+    if(_gdm_lock_result)
+        message(FATAL_ERROR
+            "[${PROJECT_NAME}] Failed to acquire dependency lock '${lock_file}': ${_gdm_lock_result}\n"
+            "Another CMake configure may be working on the same directory(${_gdm_lock_dir}).\n"
+            "If no other configuration is active, delete the lock file and re-run configure."
+        )
+    endif()
+endmacro()
+
+
 function(use_or_fetch_package)
     set(options)
     set(oneValueArgs
@@ -70,6 +95,10 @@ function(use_or_fetch_package)
             "[${PROJECT_NAME}] use_or_fetch_package requires NAME, VERSION, and CANDIDATE_TARGETS"
         )
     endif()
+
+    # Serialize the existence check + fetch/extract/rename against other
+    # configure processes sharing the same GDM_EXTERNAL_DIR.
+    gdm_lock_guard("${GDM_EXTERNAL_DIR}/.gdm.lock")
 
     # external directory name with version number
     set(PKG_EXTERNAL_DIR
