@@ -69,14 +69,14 @@ without any external tools.
 - **OpenGL Mathematics** (`glm`)
 - **OpenGL debugging & resource utility(optional, explained later)** (`glutil`)
 
-After you specified the desired library and versions, `GDM` will search for installed libraries, download the source if installed package not existes, and provide targets that resolves to specified dependency(like `gdm::window`, `gdm::ers without changing includes or link lines.
+After you specified the desired library and versions, `GDM` will search for installed libraries, download the source if installed package does not exist, and provide targets that resolve to specified dependencies (like `gdm::window`, `gdm::loader`, `gdm::math`, `gdm::opengl`) without changing includes or link lines.
 
 ## Usage Examples
 
 ### 1. Minimum Example - Project with `glfw`, `glad`, `glm`
 
-Following exmaple will search for instal(assumes you already have `GDM` at `external/gdm` directory)led latest version of `glfw` and `glm`.  
-If not installed, download the sources in `${CMAKE_SOURCE_DIR}`, which defaults to `${CMAKE_SOURCgenerated E_DIR}/ealso download inad`, It'll always downloaded in `${CMAKE_SOURCE_DIR}`, and configuration is OpenGL 4.6 Core profile. [Per-provider version options](#per-provider-version-options)
+Following example will search for installed latest version of `glfw` and `glm`(assumes you already have `GDM` at `external/gdm` directory).  
+If not installed, download the sources in `${GDM_EXTERNAL_DIR}`, which defaults to `${CMAKE_SOURCE_DIR}/external`, and configuration is OpenGL 4.6 Core profile. [Per-provider version options](#per-provider-version-options)
 ```cmake
 set(GDM_WINDOW_BACKEND  "glfw"  CACHE STRING "")
 set(GDM_GL_LOADER       "glad"  CACHE STRING "")
@@ -88,7 +88,7 @@ add_executable(my_app src/main.cpp)
 target_link_libraries(my_app PRIVATE gdm::deps)
 ```
 _It's not even minimum!_ You can omit the part that selects the library name, since the default is `glfw + glad(gl:core=4.6) + glm` combination.  
-The `gdm::deps` target links all OpenGL depenedencies requested. It can be linked into yout project target [Generated CMake Targets](#generated-cmake-targets)
+The `gdm::deps` target links all OpenGL dependencies requested. It can be linked into your project target [Generated CMake Targets](#generated-cmake-targets)
 
 ### 2. Detailed Example - Specifying versions and options
 Following example 
@@ -299,7 +299,7 @@ target_link_libraries(my_app PRIVATE gdm::gdm)
 | `gdm::math` | GLM alias target (only when `GDM_USE_GLM=ON`) |
 | `gdm::defs` | Compile-time feature macros |
 | `gdm::deps` | **Recommended consumer target** - bundles defs + opengl + window + loader + math |
-| `gdm::gdm` | Meta [alias for `gd](https://github.com/Dav1dde/glad/wiki/C#debugging)m::deps` |
+| `gdm::gdm` | Meta alias for `gdm::deps` |
 | `gdm::glutil` | GLUtil library (only when `GDM_USE_GLUTIL=ON`) |
 
 Every imported target's `IMPORTED_GLOBAL` is set to `TRUE`, so original target names like `glfw::glfw` or `glm::glm` are also visible. Using the `gdm::*` aliases is recommended for portability.
@@ -324,7 +324,7 @@ Link `gdm::defs` (or any target that depends on it) to get these compile definit
 
 // Build type
 #if GDM_DEBUG             // Debug or RelWithDebInfo configuration
-#ifdef GDM_BUNo dependency is used. ILD_TYPE_DEBUG
+#ifdef GDM_BUILD_TYPE_DEBUG
 #ifdef GDM_BUILD_TYPE_RELEASE
 ```
 
@@ -354,7 +354,8 @@ Example usage:
 | `GDM_BUILD_EXAMPLES` | `ON`, `OFF` | `ON` (standalone) | Build examples |
 | `GDM_BUILD_TESTS` | `ON`, `OFF` | `ON` (standalone) | Build GLUtil tests |
 | `GDM_EXTERNAL_DIR` | path | `${CMAKE_SOURCE_DIR}/external` | External dependency directory |
-| `GDM_TLS_VERIFY` | `ON`, `OFF` | `ON` | TLS verification for downloads |
+| `GDM_TLS_VERIFY` | `ON`, `OFF` | `ON` | TLS verification for downloads (overrided by `CMAKE_TLS_VERIFY` if it's defined) |
+| `GDM_FORCE_GEN_GLAD` | `ON`, `OFF` | `OFF` | Force re-generation of GLAD sources even if cached (useful when `gen.glad.sh` API changes) |
 | `GLUTIL_DISABLE_LOG_ON_RELEASE` | `ON`, `OFF` | `OFF` (ON as subproject) | Suppress GLUtil logging in non-debug builds |
 
 ### Per-provider version options
@@ -475,14 +476,18 @@ and some help functions that give system/OpenGL informations.
 
 | Component | Description |
 |-----------|-------------|
-| `glutil::debug::init()` | Install `GL_KHR_debug` callback, set up GL object tracking, print GL runtimeonly if  info |
-| `glutil::debug::labelGLobject()` | Label GL objects (requires `only if KHR_debug` support) |
+| `glutil::debug::init()` | Install `GL_KHR_debug` callback, set up GL object tracking, print GL runtime info |
+| `glutil::debug::labelGLobject()` | Label GL objects (requires `GL_KHR_debug` or GL 4.3+) |
 | `glutil::debug::getGLobjectLabel()` | Retrieve GL object label |
-| `glutilDsGL_KHR_d downloadebugSupported()` | Runtime check for `KHR_debug` availability |
-| `glutil::debug::printRuntimeInfo()` | Print GL version, vendor, renderer, extenonly if standaloneteTracker` | Global singleton tracking GL object creation/destruction. Reports leaked objects on destruction. |
-| `Snapshot` | Full GL state capture: framebuffers, shader programs + uniforms, textures, VAO/VBO/EBO layout, renderer state, binding stte. Supports async output to stream or file. |
-| `debug::disableAutoLabelGLObjects` | Global toggle  loggingfor automatic GL object labeling |
-| `debug::disableAutoInspcector` | Global toggle for automatic inspection hooks |
+| `glutil::debug::isGL_KHR_debugSupported()` | Runtime check for `GL_KHR_debug` availability |
+| `glutil::debug::printRuntimeInfo()` | Print GL version, vendor, renderer, extensions, and capability limits |
+| `glutil::debug::printGpuMemoryInfo()` | Print GPU memory usage (vendor-specific extensions) |
+| `glutil::debug::hasGLExtension()` / `getGLExtensions()` | Check for / list supported GL extensions |
+| `glutil::debug::availableGLversion()` | Find highest available OpenGL version by creating test contexts |
+| `glutil::debug::GLStateTracker` | Global singleton tracking GL object creation/destruction. Reports leaked objects on destruction. |
+| `glutil::debug::Snapshot` | Full GL state capture: framebuffers, shader programs + uniforms, textures, VAO/VBO/EBO layout, renderer state, binding state. Supports async output to stream or file. |
+| `glutil::debug::disableAutoLabelGLObjects` | Global toggle for automatic GL object labeling (default: `false`, labeling enabled) |
+| `glutil::debug::disableAutoInspector` | Global toggle for automatic inspection hooks (default: `false`) |
 
 
 ### Automatic debug initialization
@@ -669,7 +674,7 @@ See example: [example/stacktrace.cpp](./external/glutil/example/stacktrace.cpp)
 - `hasGLExtension(name)` / `getGLExtensions()` — check for / list supported extensions.
 - `availableGLversion()` : Find highest avilable OpenGL version by creating contexts with selected [window backend provider](#supported-opengl-libraries). The return type is `GLVersion`; it's safely comparable against version strings (e.g. `if (version >= "4.2")`).
 
-See example: [example/debugLabel.cpp](./examples/01_helloWindow.cpp)
+See example: [example/debugLabel.cpp](./external/glutil/example/debugLabel.cpp)
 
 ### GL state snapshots
 
