@@ -3,7 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CMake](https://img.shields.io/badge/CMake-%3E%3D3.24-blue)](CMakeLists.txt)
 
-**GSpecify your OpenGL libraries(`glfw`, `freeglut`, `glad`, `glew`, `glm`, etc) and desired version once, and GDM will:
+**GDM** is a CMake-based OpenGL dependency manager for OpenGL projects.  
+
+Specify your OpenGL libraries(`glfw`, `freeglut`, `glad`, `glew`, `glm`, etc) and desired version, and GDM will:
 - Find installed packages(via `find_package`)
 - Download sources under `${GDM_EXTERNAL_DIR}` if not installed
 - Provide clean namespaced targets to link  
@@ -17,52 +19,28 @@ so that your dependencies would work..
 
 without any external tools.
 
-c compile/link options or embedding library files inside your project.
-
-
 ---
-
-## Dependency Resolution
-
-Every provider is pinned to one concrete version before anything is downloaded. If you don't set a version explicitly (e.g. `GDM_GLFW_VERSION`), GDM queries the GitHub API for that provider's latest release tag and uses it, so a bare GDM setup always resolves to the newest `glfw`, `glm`, `glew`, etc.
-
-The resolved version is baked into the naming of the downloaded sources: each dependencies live under `${GDM_EXTERNAL_DIR}/<name>-<version>/`, e.g. `external/glfw-3.4.0/`. Since the directory name encodes both the library and its exact version, several versions can sit side by side without interfering, and bumping a version simply downloads into a new directory rather than overwriting the old one.
-
-At configure time GDM resolves each provider in this order:
-
-1. **External sources** — if `${GDM_EXTERNAL_DIR}/<name>-<version>/` already exists and contains a `CMakeLists.txt`, it is used as-is via `add_subdirectory()` and nothing is re-downloaded.
-2. **Installed package** — otherwise GDM runs `find_package(<name> CONFIG EXACT <version>)`. If a system-installed library with required version exists, it will be used.
-3. **Download from GitHub** — otherwise GDM fetches the release tarball (`<repo>/archive/<tag>.tar.gz`), extracts it into `${GDM_EXTERNAL_DIR}/<name>-<version>/`, and uses it the same way. The raw archive is cached under `<build>/_gdm_downloads/`, so re-configuring after a failed or interrupted extraction reuses the cached tarball instead of re-downloading.
-
-From the consumer's point of view, the source of a dependency (on-disk dir, installed package, or download) doesn't matter: every resolved dependency is exposed through the same namespaced `gdm::*` targets, so your link lines stay identical either way.
-
-### Advantages over plain `FetchContent`
-
-GDM's fetching strategy is essentially "FetchContent, but with a stable, versioned, project-level source cache". Compared to wiring up `FetchContent` yourself for each dependency, GDM gives you:
-
-- **Sources survive outside the build tree** — `FetchContent` keeps sources under `<build>/_deps/`, so deleting or recreating the build directory forces a full re-fetch. GDM keeps them in `external/<name>-<version>/`, which persists across build directories and build configurations (Debug, Release, ...), so a fresh build is configured from already-downloaded sources without touching the network.
-- **One download, many consumers** — `GDM_EXTERNAL_DIR` can point to a shared location (e.g. a parent project's `external/`), so several projects or build trees reuse the same sources instead of each re-downloading its own private copy into `_deps/`.
-- **Multiple versions coexist** — because the directory name encodes name + version, you can keep e.g. `external/glfw-3.4.0/` and `external/glfw-3.5.0/` side by side and flip a cache variable to switch, without clobbering the other.
-- **Manual/offline population** — dropping sources into `external/<name>-<version>/` yourself lets GDM use them directly (its first resolution step), enabling fully offline or air-gapped builds. `FetchContent` always expects to fetch from the network.
-- **Installed-package fallback** — GDM tries `find_package` for an exact-version system install before downloading; `FetchContent` never checks for installed packages and always goes to the network.
-- **No per-dependency sub-build** — `FetchContent` wraps each dependency in an extra `*-subbuild` superbuild step. GDM adds the dependency directly via `add_subdirectory()`, with its binary dir isolated under `<build>/_gdm_deps/<name>-<version>/`, keeping the build graph simpler.
-- **Resumable downloads** — archives are cached under `<build>/_gdm_downloads/` with stable names, so an interrupted extraction doesn't force a re-download on the next configure.
-
 
 ## Table of Contents
 
 - [GDM - OpenGL Dependency Manager](#gdm---opengl-dependency-manager)
-  - [Dependency Resolution](#dependency-resolution)
-    - [Advantages over plain `FetchContent`](#advantages-over-plain-fetchcontent)
   - [Table of Contents](#table-of-contents)
   - [Supported OpenGL Libraries](#supported-opengl-libraries)
   - [Usage Examples](#usage-examples)
     - [1. Minimum Example - Project with `glfw`, `glad`, `glm`](#1-minimum-example---project-with-glfw-glad-glm)
     - [2. Detailed Example - Specifying versions and options](#2-detailed-example---specifying-versions-and-options)
     - [OpenGL Application Examples](#opengl-application-examples)
+  - [Dependency Resolution](#dependency-resolution)
+    - [Advantages over plain `FetchContent`](#advantages-over-plain-fetchcontent)
   - [Generated CMake Targets](#generated-cmake-targets)
     - [What `gdm::window` does](#what-gdmwindow-does)
+    - [What `gdm::loader` does](#what-gdmloader-does)
+    - [What `gdm::opengl` does](#what-gdmopengl-does)
+    - [What `gdm::math` does](#what-gdmmath-does)
+    - [What `gdm::defs` does](#what-gdmdefs-does)
     - [What `gdm::deps` does](#what-gdmdeps-does)
+    - [What `gdm::gdm` does](#what-gdmgdm-does)
+    - [What `gdm::glutil` does](#what-gdmglutil-does)
   - [How To Use](#how-to-use)
     - [1) Add GDM as a subdirectory](#1-add-gdm-as-a-subdirectory)
     - [Linking selectively](#linking-selectively)
@@ -75,7 +53,6 @@ GDM's fetching strategy is essentially "FetchContent, but with a stable, version
     - [Shader example](#shader-example)
   - [Debug System Overview](#debug-system-overview)
     - [Automatic debug initialization](#automatic-debug-initialization)
-- [\[TIMER\] Entire Snapshot took: 0.160798 ms](#timer-entire-snapshot-took-0160798-ms)
     - [GL object leak detection](#gl-object-leak-detection)
     - [Automatic GL object labeling](#automatic-gl-object-labeling)
     - [GL Error logging with stack trace](#gl-error-logging-with-stack-trace)
@@ -161,45 +138,130 @@ There's a simple OpenGL program [`examples/01_helloWindow.cpp`](examples/01_hell
 Build with: `cmake -B build && cmake --build build`
 
 
+## Dependency Resolution
+
+Every provider is pinned to one concrete version before anything is downloaded. If you don't set a version explicitly (e.g. `GDM_GLFW_VERSION`), GDM queries the GitHub API for that provider's latest release tag and uses it, so a bare GDM setup always resolves to the newest `glfw`, `glm`, `glew`, etc.
+
+The resolved version is baked into the naming of the downloaded sources: each dependencies live under `${GDM_EXTERNAL_DIR}/<name>-<version>/`, e.g. `external/glfw-3.4.0/`. Since the directory name encodes both the library and its exact version, several versions can sit side by side without interfering, and bumping a version simply downloads into a new directory rather than overwriting the old one.
+
+At configure time GDM resolves each provider in this order:
+
+1. **External sources** — if `${GDM_EXTERNAL_DIR}/<name>-<version>/` already exists and contains a `CMakeLists.txt`, it is used as-is via `add_subdirectory()` and nothing is re-downloaded.
+2. **Installed package** — otherwise GDM runs `find_package(<name> CONFIG EXACT <version>)`. If a system-installed library with required version exists, it will be used.
+3. **Download from GitHub** — otherwise GDM fetches the release tarball (`<repo>/archive/<tag>.tar.gz`), extracts it into `${GDM_EXTERNAL_DIR}/<name>-<version>/`, and uses it the same way. The raw archive is cached under `<build>/_gdm_downloads/`, so re-configuring after a failed or interrupted extraction reuses the cached tarball instead of re-downloading.
+
+From the consumer's point of view, the source of a dependency (on-disk dir, installed package, or download) doesn't matter: every resolved dependency is exposed through the same namespaced `gdm::*` targets, so your link lines stay identical either way.
+
+### Advantages over plain `FetchContent`
+
+GDM's fetching strategy is essentially "FetchContent, but with a stable, versioned, project-level source cache". Compared to wiring up `FetchContent` yourself for each dependency, GDM gives you:
+
+- **Sources survive outside the build tree** — `FetchContent` keeps sources under `<build>/_deps/`, so deleting or recreating the build directory forces a full re-fetch. GDM keeps them in `external/<name>-<version>/`, which persists across build directories and build configurations (Debug, Release, ...), so a fresh build is configured from already-downloaded sources without touching the network.
+- **One download, many consumers** — `GDM_EXTERNAL_DIR` can point to a shared location (e.g. a parent project's `external/`), so several projects or build trees reuse the same sources instead of each re-downloading its own private copy into `_deps/`.
+- **Multiple versions coexist** — because the directory name encodes name + version, you can keep e.g. `external/glfw-3.4.0/` and `external/glfw-3.5.0/` side by side and flip a cache variable to switch, without clobbering the other.
+- **Manual/offline population** — dropping sources into `external/<name>-<version>/` yourself lets GDM use them directly (its first resolution step), enabling fully offline or air-gapped builds. `FetchContent` always expects to fetch from the network.
+- **Installed-package fallback** — GDM tries `find_package` for an exact-version system install before downloading; `FetchContent` never checks for installed packages and always goes to the network.
+- **No per-dependency sub-build** — `FetchContent` wraps each dependency in an extra `*-subbuild` superbuild step. GDM adds the dependency directly via `add_subdirectory()`, with its binary dir isolated under `<build>/_gdm_deps/<name>-<version>/`, keeping the build graph simpler.
+- **Resumable downloads** — archives are cached under `<build>/_gdm_downloads/` with stable names, so an interrupted extraction doesn't force a re-download on the next configure.
+
 ## Generated CMake Targets
 
-GDM defines the following namespaced targets in the top-level `CMakeLists.txt`:
+GDM provides the following namespaced dependency targets:
 
-- `gdm::window`: selected window backend provider target
-- `gdm::loader`: selected OpenGL loader target
-- `gdm::opengl`: system OpenGL target bridge (`OpenGL::GL` or `OpenGL::OpenGL`)
-- `gdm::math`: optional GLM alias target
-- `gdm::defs`: compile-time feature macros (`GDM_HAS_*`, `GDM_DEBUG`, build type macros)
-- `gdm::deps`: bundle target that links `gdm::defs`, `gdmalias of , `gdm::window`, `gdm::loader`, and `gdm::math`
+- `gdm::window`: selected window backend provider(`glfw`, `freeglut`, ...)
+- `gdm::loader`: selected OpenGL function loader target(`glew`, `glad`, ...)
+- `gdm::opengl`: system OpenGL (`OpenGL::GL` if possible, else `OpenGL::OpenGL`)
+- `gdm::math`: alias of `glm::glm`
+- `gdm::defs`: compile-time macros like (`GDM_HAS_*`, `GDM_DEBUG`, `GDM_BUILD_TYPE_*`)
+- `gdm::deps`: bundle target that links `gdm::defs`, `gdm::opengl`, `gdm::window`, `gdm::loader`, and `gdm::math`
 - `gdm::gdm`: meta target that links `gdm::deps`
-- `gdm::glutil`: present only when `GDM_USE_GLUTIL=ON`
+- `gdm::glutil`: the [GLUtil](#glutil---opengl-utility-library). Present only when `GDM_USE_GLUTIL=ON`
 
-Using imported target name(like glm::glm or glfw, etc) should work since every imported target's IMPORTED_GLOBAL property is
-set to ON, but using genearted alias target is recommended.
+Using imported target names like `glm::glm` or `glfw::glfw` should work because every imported target's `IMPORTED_GLOBAL` property is
+set to `ON`, but using the generated alias targets is more flexible and recommended for portability.
 
 ### What `gdm::window` does
 
-`gdspecificw` is an alias for the selected backend:
+`gdm::window` is an alias for the selected window backend(window creation, OpenGL context management, and input processing) provider.
 
-- `GDM_WINDOW_BACKEND=glfw`: aliases a GLFW target (`glfw`, `glfw3`, or `glfw::glfw`)
-- `GDM_WINDOW_BACKEND=freeglut`: aliases a FreeGLUT target (`freeglut`, `freeglut_static`, etc.)
-- `GDM_WINDOW_BACKEND=none`: aliases an empty interface target
+Set `GDM_WINDOW_BACKEND` to `glfw`, `freeglut`, or `none` (default: `glfw`).  
+- `glfw` - Use [GLFW](https://www.glfw.org). Set the version with `GDM_GLFW_VERSION` (default: `3.4.0`).  
+- `freeglut` - Use [FreeGLUT](https://freeglut.sourceforge.net). Set the version with `GDM_FREEGLUT_VERSION` (default: `3.8.0`).
+- `none` - `gdm::window` links to empty interface target. No dependency is used.
 
-Use this when you only want window-system linkage.
+### What `gdm::loader` does
+
+`gdm::loader` is an alias for the selected OpenGL function loader.
+
+Set `GDM_GL_LOADER` to `glad`, `glew`, `glew-glad`, or `none` (default: `glad`).  
+- `glad` - [GLAD](https://gen.glad.sh). Generates a loader tailored to your API version, profile, and extension list. Configure with these options:
+
+  | Name | Default |
+  |------|---------|
+  | `GDM_GLAD_API` | `4.6` |
+  | `GDM_GLAD_PROFILE` | `core` |
+  | `GDM_GLAD_EXTENSION` | `GL_KHR_debug;GL_EXT_texture_compression_s3tc` |
+
+  GDM internally creates two static library targets — `gdm_glad_debug` (built with GLAD's `DEBUG` option) and `gdm_glad_release` (built without).
+  `gdm::loader` depends on both, and links `gdm_glad_debug` in `Debug`/`RelWithDebInfo` build, and `gdm_glad_release` otherwise.  
+  This means [GLAD callback](https://stackoverflow.com/questions/54476931/how-do-i-use-gladcallback) can be used in debug build(when `GDM_DEBUG` and `GLAD_OPTION_GL_DEBUG` macro is defined), and release builds will have no debug callback overhead([example](./external/glutil/example/stacktrace.cpp)).  
+  Note that GLAD callback is not [OpenGL debug message callback](https://wikis.khronos.org/opengl/Debug_Output)!
+- `glew` - [GLEW](https://glew.sourceforge.net). Set the version with `GDM_GLEW_VERSION` (default: `2.3.1`). Linkage mode controlled by `GDM_GLEW_STATIC` (default: `ON`).  
+- `glew-glad` - GLEW API backed by GLAD function loading. This is for legacy projects that already use GLEW, but also need GLUtil's debug features, which require GLAD support. In this mode, GDM generates a small wrapper that keeps GLEW-style headers and calls intact, strips GLEW's direct function declarations from the public header, and redirects loading to GLAD instead. That lets existing GLEW code keep compiling while GLUtil can use GLAD's debug callback path. Example usage: [https://github.com/awidesky/ogl-gdm](https://github.com/awidesky/ogl-gdm). See [glew-glad Hybrid Mode](#glew-glad-hybrid-mode) for details.
+- `none` - `gdm::loader` links to empty interface target. No dependency is used.
+
+### What `gdm::opengl` does
+
+`gdm::opengl` provides the system OpenGL library linkage. It resolves to `OpenGL::GL` on desktop platforms (macOS, Linux, Windows) or falls back to `OpenGL::OpenGL` when the modern target is unavailable.
+
+No configuration variables control this target directly - it is always created and always resolves to whatever `find_package(OpenGL)` discovers on the target system.
+
+### What `gdm::math` does
+
+`gdm::math` is an alias of `glm::glm` - the [GLM](https://github.com/g-truc/glm) header-only math library.
+
+Controlled by `GDM_USE_GLM` (default: `ON`). Set the version with `GDM_GLM_VERSION` (default: `1.0.3`). When `GDM_USE_GLM=OFF`, `gdm::math` links to empty interface target.
+
+### What `gdm::defs` does
+
+`gdm::defs` is a compile-time-definitions-only interface target. It defines macros about used dependencies configurations and build types.
+
+Always linked by `gdm::deps`. The exact set of macros depends on your configuration:
+
+- `GDM_HAS_GLFW` / `GDM_HAS_FREEGLUT` / `GDM_HAS_WINDOW_NONE`
+  * Exactly one of these is defined according to `GDM_WINDOW_BACKEND`
+- `GDM_HAS_GLAD` / `GDM_HAS_GLEW` / `GDM_HAS_GLEW_GLAD` / `GDM_HAS_LOADER_NONE`
+  * These are defined according to `GDM_GL_LOADER`. When `glew-glad` is selected, all of `GDM_HAS_GLAD`, `GDM_HAS_GLEW`, and `GDM_HAS_GLEW_GLAD` are defined.
+- `GDM_HAS_OPENGL`
+  * Always defined when the project configures successfully; CMake will fail if no usable system OpenGL target is found.
+- `GDM_HAS_GLM`
+  * Defined when `GDM_USE_GLM=ON`
+- `GDM_HAS_GLUTIL`
+  * Defined when `GDM_USE_GLUTIL=ON`
+- `GDM_BUILD_TYPE_DEBUG` / `GDM_BUILD_TYPE_RELEASE` / `GDM_BUILD_TYPE_RELWITHDEBINFO` / `GDM_BUILD_TYPE_MINSIZEREL`
+  * Exactly one of these is defined depending on the active CMake configuration.
+- `GDM_DEBUG`
+  * Always defined. Value is `1` for `Debug` and `RelWithDebInfo` build, and `0` otherwise. Used by [GLUtil](#glutil---opengl-utility-library)'s debug functionality.
 
 ### What `gdm::deps` does
 
-`gdm::deps` is the most useful consumer target. Link it to get:
+`gdm::deps` bundles all selected GDM-managed dependencies into a single interface target, so you only need one `target_link_libraries(my_app PRIVATE gdm::deps)`.
 
-- the selected OpenGL/window/loader stack
-- optional GLM linkage (if enabled)
-- compile definitions such as:
-	- `GDM_HAS_GLFW` or `GDM_HAS_FREEGLUT`
-	- `GDM_HAS_GLAD`, `GDM_HAS_GLEW`, `GDM_HAS_GLEW_GLAD`
-	- `GDM_HAS_GLM`, `GDM_HAS_GLUTIL`
-	- `GDM_DEBUG`
+It links `gdm::defs`, `gdm::opengl`, `gdm::window`, `gdm::loader`, and `gdm::math`.
 
-This lets applNo dependency is used. ication code gate includes and behavior with `#ifdef GDM_HAS_*`.
+### What `gdm::gdm` does
+
+`gdm::gdm` is the main target, currently same as `gdm::deps`. Which one to use is purely a naming preference.
+
+### What `gdm::glutil` does
+
+`gdm::glutil` is the [GLUtil](#glutil---opengl-utility-library) library - Easy loading for shader, texture, model resources, plus logging, file-path resolution, GL and string helpers, and a comprehensive debug system with error reporting, GL object tracking, labeling, stack traces, runtime info, GL state snapshots, and leak detection. Detailed explanation and usage at [GLUtil - OpenGL Utility Library](#glutil---opengl-utility-library)
+
+Present only when `GDM_USE_GLUTIL=ON`. Defaults to `ON` when GDM is the main project, and `OFF` when GDM is consumed as a subdirectory — set `GDM_USE_GLUTIL=ON` to enable it. This target is **not** included in `gdm::deps` - link it explicitly when you need GLUtil features:
+
+```cmake
+target_link_libraries(my_app PRIVATE gdm::deps gdm::glutil)
+```
 
 ## How To Use
 
