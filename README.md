@@ -350,13 +350,22 @@ Example usage:
 | `GDM_WINDOW_BACKEND` | `none`, `glfw`, `freeglut` | `glfw` | Window system backend |
 | `GDM_GL_LOADER` | `none`, `glad`, `glew`, `glew-glad` | `glad` | OpenGL loader |
 | `GDM_USE_GLM` | `ON`, `OFF` | `ON` | Enable GLM math library |
-| `GDM_USE_GLUTIL` | `ON`, `OFF` | `ON` | Enable GLUtil utility library |
+| `GDM_USE_GLUTIL` | `ON`, `OFF` | `ON` (standalone) | Enable GLUtil utility library |
 | `GDM_BUILD_EXAMPLES` | `ON`, `OFF` | `ON` (standalone) | Build examples |
 | `GDM_BUILD_TESTS` | `ON`, `OFF` | `ON` (standalone) | Build GLUtil tests |
 | `GDM_EXTERNAL_DIR` | path | `${CMAKE_SOURCE_DIR}/external` | External dependency directory |
 | `GDM_TLS_VERIFY` | `ON`, `OFF` | `ON` | TLS verification for downloads (overrided by `CMAKE_TLS_VERIFY` if it's defined) |
 | `GDM_FORCE_GEN_GLAD` | `ON`, `OFF` | `OFF` | Force re-generation of GLAD sources even if cached (useful when `gen.glad.sh` API changes) |
-| `GLUTIL_DISABLE_LOG_ON_RELEASE` | `ON`, `OFF` | `OFF` (ON as subproject) | Suppress GLUtil logging in non-debug builds |
+| `GLUTIL_DISABLE_LOG_ON_RELEASE` | `ON`, `OFF` | `OFF` (standalone) | Suppress GLUtil logging in non-debug builds |
+
+When GDM is the top-level project (`CMAKE_SOURCE_DIR == CMAKE_CURRENT_SOURCE_DIR`),
+`GDM_STANDALONE` is set to `ON` and the following defaults apply:
+ - `GDM_USE_GLUTIL=ON`
+ - `GDM_BUILD_EXAMPLES=ON`
+ - `GDM_BUILD_TESTS=ON`
+ - `GLUTIL_DISABLE_LOG_ON_RELEASE=OFF`
+
+When GDM is included via `add_subdirectory()` or `FetchContent`, `GDM_STANDALONE=OFF` and the defaults flip.
 
 ### Per-provider version options
 
@@ -606,9 +615,13 @@ In function glBindTexture
 
 ### GL object leak detection
 
-`GLStateTracker` singleton object tracks OpenGL objects. In it's destructor it logs all unreleased GL objects(buffers, textures, programs, etc.) with their debug labels, making resource leak detection trivial in debug builds.
-  
-When the program is being terminated, Info of unreleased GL objects will be logged. You can get the `GLStateTracker` object by `glutil::debug::GLStateTracker::instance()` and see information of currently tracked objects.
+`GLStateTracker` singleton object tracks OpenGL objects. In its destructor it logs all unreleased GL objects (buffers, textures, programs, etc.) with their debug labels, making resource leak detection trivial in debug builds.
+
+When the program terminates, info of unreleased GL objects will be logged. You can get the `GLStateTracker` object by `glutil::debug::GLStateTracker::instance()` and inspect currently tracked objects:
+
+- `instance()` — returns the singleton instance
+- `getTrackedObjects()` — returns a map of all tracked GL objects with their labels
+- `printTrackedObjects(os)` — dumps all tracked objects to the given output stream
 
 See example: [example/tracker.cpp](./external/glutil/example/tracker.cpp)
 
