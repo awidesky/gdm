@@ -11,7 +11,7 @@ Specify your OpenGL libraries(`glfw`, `freeglut`, `glad`, `glew`, `glm`, etc) an
 - Provide clean namespaced targets to link  
   
 so that your dependencies would work..  
-- in all OS and build system that cmake supports,
+- in all cmake supported OS and build system,
 - regardless of which package managers you used to install the packages,
 - or even when you did not install the required package,
 - without adding platform-specific compile/link options,
@@ -33,14 +33,14 @@ without any external tools.
   - [Dependency Resolution](#dependency-resolution)
     - [Advantages over plain `FetchContent`](#advantages-over-plain-fetchcontent)
   - [Generated CMake Targets](#generated-cmake-targets)
-    - [What `gdm::window` does](#what-gdmwindow-does)
-    - [What `gdm::loader` does](#what-gdmloader-does)
-    - [What `gdm::opengl` does](#what-gdmopengl-does)
-    - [What `gdm::math` does](#what-gdmmath-does)
-    - [What `gdm::defs` does](#what-gdmdefs-does)
-    - [What `gdm::deps` does](#what-gdmdeps-does)
-    - [What `gdm::gdm` does](#what-gdmgdm-does)
-    - [What `gdm::glutil` does](#what-gdmglutil-does)
+    - [`gdm::window`](#what-gdmwindow-does)
+    - [`gdm::loader`](#what-gdmloader-does)
+    - [`gdm::opengl`](#what-gdmopengl-does)
+    - [`gdm::math`](#what-gdmmath-does)
+    - [`gdm::defs`](#what-gdmdefs-does)
+    - [`gdm::deps`](#what-gdmdeps-does)
+    - [`gdm::gdm`](#what-gdmgdm-does)
+    - [`gdm::glutil`](#what-gdmglutil-does)
   - [How To Use](#how-to-use)
     - [1) Add GDM as a subdirectory](#1-add-gdm-as-a-subdirectory)
     - [Linking selectively](#linking-selectively)
@@ -59,8 +59,8 @@ without any external tools.
     - [Debug info functions](#debug-info-functions)
     - [GL state snapshots](#gl-state-snapshots)
   - [glew-glad Hybrid Mode](#glew-glad-hybrid-mode)
-  - [Project Structure](#project-structure)
-  - [License](#license)
+- [Project Structure](#project-structure)
+- [License](#license)
 
 ## Supported OpenGL Libraries
 
@@ -69,14 +69,18 @@ without any external tools.
 - **OpenGL Mathematics** (`glm`)
 - **OpenGL debugging & resource utility(optional, explained later)** (`glutil`)
 
-After you specified the desired library and versions, `GDM` will search for installed libraries, download the source if installed package does not exist, and provide targets that resolve to specified dependencies (like `gdm::window`, `gdm::loader`, `gdm::math`, `gdm::opengl`) without changing includes or link lines.
+After you specified the desired library and versions, `GDM` will search for installed libraries, download the source if installed package does not exist, and provide targets that resolve to specified dependencies (like `gdm::window`, `gdm::loader`, `gdm::math`, `gdm::opengl`).
 
 ## Usage Examples
 
 ### 1. Minimum Example - Project with `glfw`, `glad`, `glm`
 
-Following example will search for installed latest version of `glfw` and `glm`(assumes you already have `GDM` at `external/gdm` directory).  
-If not installed, download the sources in `${GDM_EXTERNAL_DIR}`, which defaults to `${CMAKE_SOURCE_DIR}/external`, and configuration is OpenGL 4.6 Core profile. [Per-provider version options](#per-provider-version-options)
+(assumes you already have `GDM` at `external/gdm` directory)  
+Following example will search for installed latest version of `glfw`, and `glm`.  
+If not installed, download the sources in `${GDM_EXTERNAL_DIR}`, which defaults to `${CMAKE_SOURCE_DIR}/external`.  
+For `glad`, the gl 4.6 core profile is selected for default, and generated via `curl` call to [https://gen.glad.sh](https://gen.glad.sh).
+See [Per-provider version options](#per-provider-version-options) for default values of necessary options.
+
 ```cmake
 set(GDM_WINDOW_BACKEND  "glfw"  CACHE STRING "")
 set(GDM_GL_LOADER       "glad"  CACHE STRING "")
@@ -140,7 +144,7 @@ Build with: `cmake -B build && cmake --build build`
 
 ## Dependency Resolution
 
-Every provider is pinned to one concrete version before anything is downloaded. If you don't set a version explicitly (e.g. `GDM_GLFW_VERSION`), GDM queries the GitHub API for that provider's latest release tag and uses it, so a bare GDM setup always resolves to the newest `glfw`, `glm`, `glew`, etc.
+Every dependency is pinned to one concrete version before anything is downloaded. If you don't set a version(e.g. `GDM_GLFW_VERSION`) explicitly, GDM queries the GitHub API for that dependency's latest release tag and uses it, so a bare GDM setup always resolves to the newest version.
 
 The resolved version is baked into the naming of the downloaded sources: each dependencies live under `${GDM_EXTERNAL_DIR}/<name>-<version>/`, e.g. `external/glfw-3.4.0/`. Since the directory name encodes both the library and its exact version, several versions can sit side by side without interfering, and bumping a version simply downloads into a new directory rather than overwriting the old one.
 
@@ -148,21 +152,19 @@ At configure time GDM resolves each provider in this order:
 
 1. **External sources** — if `${GDM_EXTERNAL_DIR}/<name>-<version>/` already exists and contains a `CMakeLists.txt`, it is used as-is via `add_subdirectory()` and nothing is re-downloaded.
 2. **Installed package** — otherwise GDM runs `find_package(<name> CONFIG EXACT <version>)`. If a system-installed library with required version exists, it will be used.
-3. **Download from GitHub** — otherwise GDM fetches the release tarball (`<repo>/archive/<tag>.tar.gz`), extracts it into `${GDM_EXTERNAL_DIR}/<name>-<version>/`, and uses it the same way. The raw archive is cached under `<build>/_gdm_downloads/`, so re-configuring after a failed or interrupted extraction reuses the cached tarball instead of re-downloading.
+3. **Download from GitHub** — otherwise GDM fetches the release tarball (`<repo>/archive/<tag>.tar.gz`), extracts it into `${GDM_EXTERNAL_DIR}/<name>-<version>/`. GDM downloads source archive instead of FetchContent, making it much faster(~1.8x).
+   
+GLAD sources are generated on-demand (via `curl` to `gen.glad.sh`) by calling `fetch_glad()` **twice** — once with `OPTIONS DEBUG` (for `Debug`/`RelWithDebInfo`) and once without (for `Release`/`MinSizeRel`).  
+Examples with default options (`GDM_GLAD_API=4.6`, `GDM_GLAD_PROFILE=core`):
+- Debug:   `external/glad-gl4.6core_DEBUG`
+- Release: `external/glad-gl4.6core`
 
-From the consumer's point of view, the source of a dependency (on-disk dir, installed package, or download) doesn't matter: every resolved dependency is exposed through the same namespaced `gdm::*` targets, so your link lines stay identical either way.
+If a directory already exists, GDM reads its `CONFIG` file and reuses it if the configuration matches (same API, profile, options, extensions). If the config differs, it tries `_2`, `_3`, ... suffixes to find a matching slot.
 
-### Advantages over plain `FetchContent`
+To force re-generation (e.g. after `gen.glad.sh` API changes or to update extensions), set `GDM_FORCE_GEN_GLAD=ON`.
 
-GDM's fetching strategy is essentially "FetchContent, but with a stable, versioned, project-level source cache". Compared to wiring up `FetchContent` yourself for each dependency, GDM gives you:
-
-- **Sources survive outside the build tree** — `FetchContent` keeps sources under `<build>/_deps/`, so deleting or recreating the build directory forces a full re-fetch. GDM keeps them in `external/<name>-<version>/`, which persists across build directories and build configurations (Debug, Release, ...), so a fresh build is configured from already-downloaded sources without touching the network.
-- **One download, many consumers** — `GDM_EXTERNAL_DIR` can point to a shared location (e.g. a parent project's `external/`), so several projects or build trees reuse the same sources instead of each re-downloading its own private copy into `_deps/`.
-- **Multiple versions coexist** — because the directory name encodes name + version, you can keep e.g. `external/glfw-3.4.0/` and `external/glfw-3.5.0/` side by side and flip a cache variable to switch, without clobbering the other.
-- **Manual/offline population** — dropping sources into `external/<name>-<version>/` yourself lets GDM use them directly (its first resolution step), enabling fully offline or air-gapped builds. `FetchContent` always expects to fetch from the network.
-- **Installed-package fallback** — GDM tries `find_package` for an exact-version system install before downloading; `FetchContent` never checks for installed packages and always goes to the network.
-- **No per-dependency sub-build** — `FetchContent` wraps each dependency in an extra `*-subbuild` superbuild step. GDM adds the dependency directly via `add_subdirectory()`, with its binary dir isolated under `<build>/_gdm_deps/<name>-<version>/`, keeping the build graph simpler.
-- **Resumable downloads** — archives are cached under `<build>/_gdm_downloads/` with stable names, so an interrupted extraction doesn't force a re-download on the next configure.
+From the consumer's point of view, the source of a dependency (installed package or download) doesn't matter: every resolved dependency is exposed through the same namespaced `gdm::*` targets, so your link lines stay identical either way.
+  
 
 ## Generated CMake Targets
 
@@ -369,17 +371,17 @@ When GDM is included via `add_subdirectory()` or `FetchContent`, `GDM_STANDALONE
 
 ### Per-provider version options
 
-These are created on-demand based on your provider selections:
+These are created on-demand based on your provider selections. For GitHub-hosted dependencies, the default is **the latest GitHub release tag at configure time** (queried via `get_latest_version()`), not a hardcoded value.
 
 | Option | Applies when | Default |
 |--------|-------------|---------|
-| `GDM_GLFW_VERSION` | `GDM_WINDOW_BACKEND=glfw` | `3.4.0` |
-| `GDM_FREEGLUT_VERSION` | `GDM_WINDOW_BACKEND=freeglut` | `3.8.0` |
-| `GDM_GLM_VERSION` | `GDM_USE_GLM=ON` | `1.0.3` |
+| `GDM_GLFW_VERSION` | `GDM_WINDOW_BACKEND=glfw` | Latest release tag |
+| `GDM_FREEGLUT_VERSION` | `GDM_WINDOW_BACKEND=freeglut` | Latest release tag |
+| `GDM_GLM_VERSION` | `GDM_USE_GLM=ON` | Latest release tag |
 | `GDM_GLAD_API` | `GDM_GL_LOADER=glad` | `4.6` |
 | `GDM_GLAD_PROFILE` | `GDM_GL_LOADER=glad` | `core` |
 | `GDM_GLAD_EXTENSION` | `GDM_GL_LOADER=glad` | `GL_KHR_debug;GL_EXT_texture_compression_s3tc` |
-| `GDM_GLEW_VERSION` | `GDM_GL_LOADER=glew` or `glew-glad` | `2.3.1` |
+| `GDM_GLEW_VERSION` | `GDM_GL_LOADER=glew` or `glew-glad` | Latest release tag |
 | `GDM_GLEW_STATIC` | `GDM_GL_LOADER=glew` | `ON` |
 
 # GLUtil - OpenGL Utility Library
@@ -517,7 +519,7 @@ if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
     return -1; // glad load failed
 }
 glutil::debug::init(); // manual debug init
-
+=
 // The debug callback catches the GL error and prints a stack trace automatically.
 glBindTexture(GL_TEXTURE_2D, 99999);
 ```
@@ -539,14 +541,21 @@ if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) { // actually calls glutil_gl
 }
 // glutil::debug::init() was already called by the hijacked gladLoadGL.
 
+// normal texture binding
+GLuint tex = 0;
+glGenTextures(1, &tex);
+glBindTexture(GL_TEXTURE_2D, tex);
+
 // Same erroneous call, same output as above (debug is already active).
 glBindTexture(GL_TEXTURE_2D, 99999);
 ```
 
+Below is expected output; you can see how the OpenGL error, stacktrace, and related snapshot is logged.
 <details>
 <summary>Expected output</summary>
-
+Lines starting with // are comments; not a part of output.
 <pre>
+// `gldebugCallback` section is OpenGL's debug output callback(GL 4.3+ needed)
 [ERROR] OpenGL debug message callback invoked!
 ---------------------gldebugCallback-start----------------
 Message: Error has been generated. GL error GL_INVALID_OPERATION in (null): (ID: 173538523) Generic error
@@ -555,11 +564,13 @@ Source: API
 Type: ERROR
 Severity: HIGH
 ---------------------gldebugCallback-end------------------
+// this part is backed via glad's postcallback.
+// for every gl call, glutil checks for gl error and prints info of error and stacktrace.
 [ERROR] [GL Error] GL_INVALID_OPERATION(1282)
 In function glBindTexture
 #0 0x00007ff6c51b1a56 in main at stacktrace.cpp:55:18
-      53:     glBindTexture(GL_TEXTURE_2D, tex);
-      54:
+      53:
+      54:     // Same erroneous call, same output as above (debug is already active).
     &gt; 55:     glBindTexture(GL_TEXTURE_2D, 99999); // should generate an error
               ^
       56:     
@@ -568,6 +579,7 @@ In function glBindTexture
 #3 0x00007ff8ad1d4033 in BaseThreadInitThunk at KERNEL32.DLL
 #4 0x00007ff8ad633690 in RtlUserThreadStart at ntdll.dll
 
+// after detecting the OpenGL error, glutil outputs a snapshot with related context information when available.
 [ERROR] [ErrorSnapshot] You tried to bind texture #99999, Label : (none) to target GL_TEXTURE_2D
 [ERROR] [ErrorSnapshot] Check following snapshot to see loaded/bound texture(s).
 
@@ -607,6 +619,7 @@ In function glBindTexture
 
 [ERROR] ---- End of "GL_INVALID_OPERATION(1282) in function glBindTexture"
 
+// when the program is terminated, the GLStateTracker will check and report for unreleased GL object
 [INFO] === OpenGL Object Leak Check ===
 [ERROR] [LEAK] Object id=1 type=GL_TEXTURE label=Tex2D#1(stacktrace.cpp:53 -&gt; glBindTexture(GL_TEXTURE_2D, tex);)
 </pre>
@@ -693,15 +706,20 @@ See example: [example/debugLabel.cpp](./external/glutil/example/debugLabel.cpp)
 
 `Snapshot` captures the full current GL state in one shot: framebuffer status, shader programs + active uniform values, texture bindings (per active texture unit), VAO/VBO/EBO layouts (+ raw data), renderer pipeline state, and the set of currently bound objects.
 
+A full snapshot typically completes less than **1–3 ms**, making it practical to use even in hot paths or error handlers. The capture is designed for low overhead: you can select the necessary parts that coveres wanted GL state, and the heavy formatting/printing work is submitted to a background thread when using async mode.
+
+
 ```cpp
 glutil::debug::Snapshot snap(true); // enable all categories
 snap.shaderUniform(true)            // dump active uniforms
     .bufferVAOInfo(true, true)      // dump VAO/VBO layout + raw data
     .rendererState(true)            // dump pipeline state
     .capture(std::cerr);            // output to stderr (synchronous)
-// or capture to directory:
+// or capture to directory (sync mode):
 snap.capture("/tmp/gl_snapshot", /*dumpVertexData=*/true);
 ```
+
+**Async mode** is used when capturing to a stream(first overload, `capture(std::cerr)`); the directory path overload (`capture("/tmp/gl_snapshot")`) is synchronous. In async mode, formatting/serialization runs on a background worker thread so the render loop isn't blocked by IO workload.
 
 A `Snapshot` created with default options captures **only once**: after the first `capture()`, subsequent calls return early. This prevents the (large) dump from flooding the log when it is invoked every frame or on every error — the same anti-spam idea used for error reports.
 
@@ -728,7 +746,7 @@ One of the actual use cases of `glew-glad` mode is [ogl-gdm](http://github.com/a
 
 ---
 
-## Project Structure
+# Project Structure
 
 ```
 gdm/
@@ -751,6 +769,6 @@ gdm/
 └── README.md                   # What your're seeing right now :D
 ```
 
-## License
+# License
 
 MIT - see [LICENSE](LICENSE).
