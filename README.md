@@ -139,7 +139,8 @@ There's a simple OpenGL program [`examples/01_helloWindow.cpp`](examples/01_hell
 - GLUtil-aware shader compilation with automatic error reporting
 - `GLUtil`'s debug information logging if `GLUtil` is used
 
-Build with: `cmake -B build && cmake --build build`
+Build with: `cmake -B build -DGDM_BUILD_EXAMPLES=ON && cmake --build build`
+(If GDM is standalone, `DGDM_BUILD_EXAMPLES=ON` is not needed. See [Configuration Options](#configuration-options))
 
 
 ## Dependency Resolution
@@ -187,8 +188,8 @@ set to `ON`, but using the generated alias targets is more flexible and recommen
 `gdm::window` is an alias for the selected window backend(window creation, OpenGL context management, and input processing) provider.
 
 Set `GDM_WINDOW_BACKEND` to `glfw`, `freeglut`, or `none` (default: `glfw`).  
-- `glfw` - Use [GLFW](https://www.glfw.org). Set the version with `GDM_GLFW_VERSION` (default: `3.4.0`).  
-- `freeglut` - Use [FreeGLUT](https://freeglut.sourceforge.net). Set the version with `GDM_FREEGLUT_VERSION` (default: `3.8.0`).
+- `glfw` - Use [GLFW](https://www.glfw.org). Set the version with `GDM_GLFW_VERSION` (default: latest release tag).  
+- `freeglut` - Use [FreeGLUT](https://freeglut.sourceforge.net). Set the version with `GDM_FREEGLUT_VERSION` (default: latest release tag).
 - `none` - `gdm::window` links to empty interface target. No dependency is used.
 
 ### What `gdm::loader` does
@@ -208,13 +209,13 @@ Set `GDM_GL_LOADER` to `glad`, `glew`, `glew-glad`, or `none` (default: `glad`).
   `gdm::loader` depends on both, and links `gdm_glad_debug` in `Debug`/`RelWithDebInfo` build, and `gdm_glad_release` otherwise.  
   This means [GLAD callback](https://stackoverflow.com/questions/54476931/how-do-i-use-gladcallback) can be used in debug build(when `GDM_DEBUG` and `GLAD_OPTION_GL_DEBUG` macro is defined), and release builds will have no debug callback overhead([example](./external/glutil/example/stacktrace.cpp)).  
   Note that GLAD callback is not [OpenGL debug message callback](https://wikis.khronos.org/opengl/Debug_Output)!
-- `glew` - [GLEW](https://glew.sourceforge.net). Set the version with `GDM_GLEW_VERSION` (default: `2.3.1`). Linkage mode controlled by `GDM_GLEW_STATIC` (default: `ON`).  
+- `glew` - [GLEW](https://glew.sourceforge.net). Set the version with `GDM_GLEW_VERSION` (default: latest release tag). Linkage mode controlled by `GDM_GLEW_STATIC` (default: `ON`). Requires a window backend (`glfw` or `freeglut`); `none` is not supported.  
 - `glew-glad` - GLEW API backed by GLAD function loading. This is for legacy projects that already use GLEW, but also need GLUtil's debug features, which require GLAD support. In this mode, GDM generates a small wrapper that keeps GLEW-style headers and calls intact, strips GLEW's direct function declarations from the public header, and redirects loading to GLAD instead. That lets existing GLEW code keep compiling while GLUtil can use GLAD's debug callback path. Example usage: [https://github.com/awidesky/ogl-gdm](https://github.com/awidesky/ogl-gdm). See [glew-glad Hybrid Mode](#glew-glad-hybrid-mode) for details.
 - `none` - `gdm::loader` links to empty interface target. No dependency is used.
 
 ### What `gdm::opengl` does
 
-`gdm::opengl` provides the system OpenGL library linkage. It resolves to `OpenGL::GL` on desktop platforms (macOS, Linux, Windows) or falls back to `OpenGL::OpenGL` when the modern target is unavailable.
+`gdm::opengl` provides the system OpenGL library linkage. It links `OpenGL::GL` when that target is available, otherwise falls back to `OpenGL::OpenGL` (GLVND); configuration fails if neither exists.
 
 No configuration variables control this target directly - it is always created and always resolves to whatever `find_package(OpenGL)` discovers on the target system.
 
@@ -222,7 +223,7 @@ No configuration variables control this target directly - it is always created a
 
 `gdm::math` is an alias of `glm::glm` - the [GLM](https://github.com/g-truc/glm) header-only math library.
 
-Controlled by `GDM_USE_GLM` (default: `ON`). Set the version with `GDM_GLM_VERSION` (default: `1.0.3`). When `GDM_USE_GLM=OFF`, `gdm::math` links to empty interface target.
+Controlled by `GDM_USE_GLM` (default: `ON`). Set the version with `GDM_GLM_VERSION` (default: latest release tag). When `GDM_USE_GLM=OFF`, `gdm::math` links to empty interface target.
 
 ### What `gdm::defs` does
 
@@ -312,13 +313,14 @@ Link `gdm::defs` (or any target that depends on it) to get these compile definit
 
 ```cpp
 // Window backend
-#ifdef GDM_HAS_GLFW       // GLFW selected
-#ifdef GDM_HAS_FREEGLUT   // FreeGLUT selected
+#ifdef GDM_HAS_GLFW         // GLFW selected
+#ifdef GDM_HAS_FREEGLUT     // FreeGLUT selected
+#ifdef GDM_HAS_WINDOW_NONE  // no window backend selected
 
 // OpenGL loader
-#ifdef GDM_HAS_GLAD       // GLAD selected
-#ifdef GDM_HAS_GLEW       // GLEW or glew-glad selected
-#ifdef GDM_HAS_GLEW_GLAD  // glew-glad hybrid mode
+#ifdef GDM_HAS_GLAD         // GLAD or glew-glad selected
+#ifdef GDM_HAS_GLEW         // GLEW or glew-glad selected
+#ifdef GDM_HAS_GLEW_GLAD    // glew-glad hybrid mode
 
 // Optional modules
 #ifdef GDM_HAS_GLM        // GLM enabled
@@ -378,6 +380,7 @@ These are created on-demand based on your provider selections. For GitHub-hosted
 | `GDM_GLFW_VERSION` | `GDM_WINDOW_BACKEND=glfw` | Latest release tag |
 | `GDM_FREEGLUT_VERSION` | `GDM_WINDOW_BACKEND=freeglut` | Latest release tag |
 | `GDM_GLM_VERSION` | `GDM_USE_GLM=ON` | Latest release tag |
+| `GDM_CPPTRACE_VERSION` | `GDM_USE_GLUTIL=ON` | Latest release tag |
 | `GDM_GLAD_API` | `GDM_GL_LOADER=glad` | `4.6` |
 | `GDM_GLAD_PROFILE` | `GDM_GL_LOADER=glad` | `core` |
 | `GDM_GLAD_EXTENSION` | `GDM_GL_LOADER=glad` | `GL_KHR_debug;GL_EXT_texture_compression_s3tc` |
@@ -519,7 +522,7 @@ if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
     return -1; // glad load failed
 }
 glutil::debug::init(); // manual debug init
-=
+
 // The debug callback catches the GL error and prints a stack trace automatically.
 glBindTexture(GL_TEXTURE_2D, 99999);
 ```
@@ -690,6 +693,7 @@ In function glDrawArrays
 ```
 
 See example: [example/stacktrace.cpp](./external/glutil/example/stacktrace.cpp)
+  
 
 ### Debug info functions
 
@@ -698,7 +702,7 @@ See example: [example/stacktrace.cpp](./external/glutil/example/stacktrace.cpp)
 - `printRuntimeInfo(verbose, os)` — print GL version, vendor, renderer, and (optionally) extended capability limits.
 - `printGpuMemoryInfo(os)` — GPU memory usage(it uses naive vendor-specific extensions, providing just little available informations).
 - `hasGLExtension(name)` / `getGLExtensions()` — check for / list supported extensions.
-- `availableGLversion()` : Find highest avilable OpenGL version by creating contexts with selected [window backend provider](#supported-opengl-libraries). The return type is `GLVersion`; it's safely comparable against version strings (e.g. `if (version >= "4.2")`).
+- `availableGLversion()` : Find highest available OpenGL version by creating contexts with selected [window backend provider](#supported-opengl-libraries). The return type is `GLVersion`; it's safely comparable against version strings (e.g. `if (version >= "4.2")`).
 
 See example: [example/debugLabel.cpp](./external/glutil/example/debugLabel.cpp)
 
@@ -742,7 +746,7 @@ Set `GDM_GL_LOADER=glew-glad` to get the **GLEW API** backed by **GLAD function 
 set(GDM_GL_LOADER glew-glad CACHE STRING "")
 ```
 
-One of the actual use cases of `glew-glad` mode is [ogl-gdm](http://github.com/awidesky/ogl-gdm/tree/test) - GDM port of [opengl-tutorial]().
+One of the actual use cases of `glew-glad` mode is [ogl-gdm](http://github.com/awidesky/ogl-gdm/tree/test) - GDM port of [opengl-tutorial](https://github.com/opengl-tutorials/ogl).
 
 ---
 
@@ -766,7 +770,7 @@ gdm/
 ├── examples/
 │   └── 01_helloWindow.cpp      # Simple example: triangle with window backend + loader + system information
 ├── LICENSE                     # MIT
-└── README.md                   # What your're seeing right now :D
+└── README.md                   # What you're seeing right now :D
 ```
 
 # License
