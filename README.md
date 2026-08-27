@@ -161,8 +161,6 @@ Examples with default options (`GDM_GLAD_API=4.6`, `GDM_GLAD_PROFILE=core`):
 
 If a directory already exists, GDM reads its `CONFIG` file and reuses it if the configuration matches (same API, profile, options, extensions). If the config differs, it tries `_2`, `_3`, ... suffixes to find a matching slot.
 
-To force re-generation (e.g. after `gen.glad.sh` API changes or to update extensions), set `GDM_FORCE_GEN_GLAD=ON`.
-
 From the consumer's point of view, the source of a dependency (installed package or download) doesn't matter: every resolved dependency is exposed through the same namespaced `gdm::*` targets, so your link lines stay identical either way.
   
 
@@ -361,7 +359,6 @@ Example usage:
 | `GDM_BUILD_TESTS` | `ON`, `OFF` | `ON` (standalone) | Build GLUtil tests |
 | `GDM_EXTERNAL_DIR` | path | `${CMAKE_SOURCE_DIR}/external` | External dependency directory |
 | `GDM_TLS_VERIFY` | `ON`, `OFF` | `ON` | TLS verification for downloads (overrided by `CMAKE_TLS_VERIFY` if it's defined) |
-| `GDM_FORCE_GEN_GLAD` | `ON`, `OFF` | `OFF` | Force re-generation of GLAD sources even if cached (useful when `gen.glad.sh` API changes) |
 | `GLUTIL_DISABLE_LOG_ON_RELEASE` | `ON`, `OFF` | `OFF` (standalone) | Suppress GLUtil logging in non-debug builds |
 
 When GDM is the top-level project (`CMAKE_SOURCE_DIR == CMAKE_CURRENT_SOURCE_DIR`),
