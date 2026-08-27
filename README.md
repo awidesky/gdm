@@ -11,13 +11,12 @@ Specify your OpenGL libraries(`glfw`, `freeglut`, `glad`, `glew`, `glm`, etc) an
 - Provide clean namespaced targets to link  
   
 so that your dependencies would work..  
-- in all cmake supported OS and build system,
+- in all CMake‑supported OSes and build systems,
 - regardless of which package managers you used to install the packages,
 - or even when you did not install the required package,
 - without adding platform-specific compile/link options,
 - or embedding library files inside your project,
 
-without any external tools.
 
 ---
 
@@ -111,7 +110,7 @@ set(GDM_GLAD_EXTENSION "GL_KHR_debug" CACHE STRING "" FORCE)
 set(GDM_USE_GLM      ON     CACHE BOOL "" FORCE)
 set(GDM_GLM_VERSION "1.0.3" CACHE STRING "" FORCE)
 
-# GLUTILL
+# GLUTIL
 set(GDM_USE_GLUTIL   ON     CACHE BOOL "" FORCE)
 
 # Downloads the dependencies into /external directory
@@ -140,14 +139,14 @@ There's a simple OpenGL program [`examples/01_helloWindow.cpp`](examples/01_hell
 - `GLUtil`'s debug information logging if `GLUtil` is used
 
 Build with: `cmake -B build -DGDM_BUILD_EXAMPLES=ON && cmake --build build`
-(If GDM is standalone, `DGDM_BUILD_EXAMPLES=ON` is not needed. See [Configuration Options](#configuration-options))
+(If GDM is standalone, `-DGDM_BUILD_EXAMPLES=ON` is not needed. See [Configuration Options](#configuration-options))
 
 
 ## Dependency Resolution
 
 Every dependency is pinned to one concrete version before anything is downloaded. If you don't set a version(e.g. `GDM_GLFW_VERSION`) explicitly, GDM queries the GitHub API for that dependency's latest release tag and uses it, so a bare GDM setup always resolves to the newest version.
 
-The resolved version is baked into the naming of the downloaded sources: each dependencies live under `${GDM_EXTERNAL_DIR}/<name>-<version>/`, e.g. `external/glfw-3.4.0/`. Since the directory name encodes both the library and its exact version, several versions can sit side by side without interfering, and bumping a version simply downloads into a new directory rather than overwriting the old one.
+The resolved version is baked into the naming of the downloaded sources: each dependency lives under `${GDM_EXTERNAL_DIR}/<name>-<version>/`, e.g. `external/glfw-3.4.0/`. Since the directory name encodes both the library and its exact version, several versions can sit side by side without interfering, and bumping a version simply downloads into a new directory rather than overwriting the old one.
 
 At configure time GDM resolves each provider in this order:
 
@@ -299,7 +298,7 @@ target_link_libraries(my_app PRIVATE gdm::gdm)
 | `gdm::window` | Selected window backend (GLFW / FreeGLUT / none) |
 | `gdm::loader` | Selected OpenGL loader (GLAD / GLEW / glew-glad / none) |
 | `gdm::opengl` | System OpenGL bridge (`OpenGL::GL` or `OpenGL::OpenGL`) |
-| `gdm::math` | GLM alias target (only when `GDM_USE_GLM=ON`) |
+| `gdm::math` | GLM alias target (when `GDM_USE_GLM=ON`); empty interface target when `OFF` |
 | `gdm::defs` | Compile-time feature macros |
 | `gdm::deps` | **Recommended consumer target** - bundles defs + opengl + window + loader + math |
 | `gdm::gdm` | Meta alias for `gdm::deps` |
@@ -321,6 +320,7 @@ Link `gdm::defs` (or any target that depends on it) to get these compile definit
 #ifdef GDM_HAS_GLAD         // GLAD or glew-glad selected
 #ifdef GDM_HAS_GLEW         // GLEW or glew-glad selected
 #ifdef GDM_HAS_GLEW_GLAD    // glew-glad hybrid mode
+#ifdef GDM_HAS_LOADER_NONE  // no loader selected
 
 // Optional modules
 #ifdef GDM_HAS_GLM        // GLM enabled
@@ -330,6 +330,8 @@ Link `gdm::defs` (or any target that depends on it) to get these compile definit
 #if GDM_DEBUG             // Debug or RelWithDebInfo configuration
 #ifdef GDM_BUILD_TYPE_DEBUG
 #ifdef GDM_BUILD_TYPE_RELEASE
+#ifdef GDM_BUILD_TYPE_RELWITHDEBINFO
+#ifdef GDM_BUILD_TYPE_MINSIZEREL
 ```
 
 Example usage:
@@ -345,7 +347,7 @@ Example usage:
 #endif
 ```
 
-`GDM_EXTERNAL_DIR` is set to `${CMAKE_SOURCE_DIR}/external`
+`GDM_EXTERNAL_DIR` defaults to `${CMAKE_SOURCE_DIR}/external`
 
 ## Configuration Options
 
@@ -485,8 +487,7 @@ glutil::ShaderLoader::replaceUnknownNonASCII = true;
 
 ## Debug System Overview
 
-The philosophy of GLUtil's debug system is mostly 'behind the scene' work that give handful of useful information when an OpenGL error has occured, 
-and some help functions that give system/OpenGL informations.
+The philosophy of GLUtil's debug system is mostly behind-the-scenes work that gives a handful of useful information when an OpenGL error has occurred, and some helper functions that provide system/OpenGL information.
 
 | Component | Description |
 |-----------|-------------|
@@ -710,7 +711,7 @@ See example: [example/debugLabel.cpp](./external/glutil/example/debugLabel.cpp)
 
 `Snapshot` captures the full current GL state in one shot: framebuffer status, shader programs + active uniform values, texture bindings (per active texture unit), VAO/VBO/EBO layouts (+ raw data), renderer pipeline state, and the set of currently bound objects.
 
-A full snapshot typically completes less than **1–3 ms**, making it practical to use even in hot paths or error handlers. The capture is designed for low overhead: you can select the necessary parts that coveres wanted GL state, and the heavy formatting/printing work is submitted to a background thread when using async mode.
+A full snapshot is expected completes less than about **1–3 ms**, making it practical to use even in hot paths or error handlers. The capture is designed for low overhead: you can select the necessary parts that cover the desired GL state, and the heavy formatting/printing work is submitted to a background thread when using async mode.
 
 
 ```cpp
@@ -718,7 +719,7 @@ glutil::debug::Snapshot snap(true); // enable all categories
 snap.shaderUniform(true)            // dump active uniforms
     .bufferVAOInfo(true, true)      // dump VAO/VBO layout + raw data
     .rendererState(true)            // dump pipeline state
-    .capture(std::cerr);            // output to stderr (synchronous)
+    .capture(std::cerr);            // output to stderr (async output)
 // or capture to directory (sync mode):
 snap.capture("/tmp/gl_snapshot", /*dumpVertexData=*/true);
 ```
@@ -745,6 +746,11 @@ Set `GDM_GL_LOADER=glew-glad` to get the **GLEW API** backed by **GLAD function 
 ```cmake
 set(GDM_GL_LOADER glew-glad CACHE STRING "")
 ```
+
+Note that :
+- Requires a window backend (`glfw` or `freeglut`); `GDM_WINDOW_BACKEND=none` is not supported.
+- The generated `glew.h` shim covers the core GLEW API; some GLEW-specific extensions or version checks may not be available.
+- Not a drop-in replacement for all GLEW use cases; test thoroughly when migrating.
 
 One of the actual use cases of `glew-glad` mode is [ogl-gdm](http://github.com/awidesky/ogl-gdm/tree/test) - GDM port of [opengl-tutorial](https://github.com/opengl-tutorials/ogl).
 
