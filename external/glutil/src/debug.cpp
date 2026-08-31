@@ -28,10 +28,13 @@ GL_KHR_DebugSupport isGL_KHR_debugSupported() {
                 #if defined(GDM_HAS_GLEW_GLAD)
                     (GLEW_KHR_debug || GLEW_VERSION_4_3 || GLAD_GL_KHR_debug || GLAD_GL_VERSION_4_3)
                 #elif defined(GDM_HAS_GLAD)
-                    #if defined(GL_KHR_debug)
+                    #ifdef GL_KHR_debug
                         GLAD_GL_KHR_debug ||
                     #endif
-                        GLAD_GL_VERSION_4_3
+                    #ifdef GLAD_GL_VERSION_4_3
+                        GLAD_GL_VERSION_4_3 ||
+                    #endif
+                    false
                 #elif defined(GDM_HAS_GLEW)
                     (GLEW_KHR_debug || GLEW_VERSION_4_3)
                 #else
@@ -47,11 +50,13 @@ GL_KHR_DebugSupport isGL_KHR_debugSupported() {
 
 static bool isValidGLobject(GLenum identifier, GLuint name) {
     switch (identifier) {
+#ifdef GL_BUFFER
         case GL_BUFFER: return glIsBuffer(name);
-        case GL_TEXTURE: return glIsTexture(name);
-        case GL_VERTEX_ARRAY: return glIsVertexArray(name);
         case GL_PROGRAM: return glIsProgram(name);
         case GL_SHADER: return glIsShader(name);
+#endif
+        case GL_TEXTURE: return glIsTexture(name);
+        case GL_VERTEX_ARRAY: return glIsVertexArray(name);
         case GL_FRAMEBUFFER: return glIsFramebuffer(name);
         case GL_RENDERBUFFER: return glIsRenderbuffer(name);
 #if defined(GL_SAMPLER)
@@ -99,9 +104,11 @@ static std::string makeSafeGLobjectLabel(const std::string& label) {
 static void syncTrackerLabel(GLenum identifier, GLuint name, const std::string& label) {
     auto& tracker = GLStateTracker::instance();
     switch (identifier) {
+#ifdef GL_BUFFER
         case GL_BUFFER:
             if (auto* info = tracker.buffers.get(name)) info->label = label;
             break;
+#endif
         case GL_VERTEX_ARRAY:
             if (auto* info = tracker.objects.get(identifier, name)) {
                 info->label = label;
@@ -109,8 +116,12 @@ static void syncTrackerLabel(GLenum identifier, GLuint name, const std::string& 
             }
             break;
         case GL_TEXTURE:
+#ifdef GL_SHADER
         case GL_SHADER:
+#endif
+#ifdef GL_PROGRAM
         case GL_PROGRAM:
+#endif
         case GL_FRAMEBUFFER:
             if (auto* info = tracker.objects.get(identifier, name)) info->label = label;
             break;

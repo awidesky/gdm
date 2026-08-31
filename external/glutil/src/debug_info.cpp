@@ -161,14 +161,16 @@ static void checkOpenGLDebugExtension(std::ostream& os) {
     } else {
         os << "[OpenGL] glDebugMessageCallback=" << support.glDebugMessageCallbackPtr << ", "
         #if defined(GDM_HAS_GLAD) && !defined(GDM_HAS_GLEW_GLAD)
+            #if defined(GL_VERSION_4_3)
             << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3 << ", GLAD_GL_KHR_debug=" 
+            #endif
             #if defined(GL_KHR_debug)
               << GLAD_GL_KHR_debug
             #else
               << "undefined"
             #endif
-        #elif defined(GDM_HAS_GLAD)
-            << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3
+        #elif defined(GDM_HAS_GLAD) // glew-glad. glad is locked to gl4.6
+            << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3 << ", GLAD_GL_KHR_debug=" << GLAD_GL_KHR_debug
         #elif defined(GDM_HAS_GLEW)
             << "GLEW_KHR_debug=" << GLEW_KHR_debug << ", GLEW_VERSION_4_3=" << GLEW_VERSION_4_3
         #endif

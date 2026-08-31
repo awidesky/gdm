@@ -738,12 +738,20 @@ void Snapshot::captureTextureInfo(SnapshotSink& out) const {
       {GL_TEXTURE_BINDING_CUBE_MAP, GL_TEXTURE_CUBE_MAP, "CubeMap", true, true},
       {GL_TEXTURE_BINDING_3D, GL_TEXTURE_3D, "3D", true, true},
       {GL_TEXTURE_BINDING_2D_ARRAY, GL_TEXTURE_2D_ARRAY, "2D_Array", true, true},
+#ifdef GL_TEXTURE_BINDING_2D_MULTISAMPLE
       {GL_TEXTURE_BINDING_2D_MULTISAMPLE, GL_TEXTURE_2D_MULTISAMPLE, "2D_Multisample", false, true},
       {GL_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY, GL_TEXTURE_2D_MULTISAMPLE_ARRAY, "2D_MS_Array", false, true},
+#endif
+#ifdef GL_TEXTURE_BINDING_CUBE_MAP_ARRAY
       {GL_TEXTURE_BINDING_CUBE_MAP_ARRAY, GL_TEXTURE_CUBE_MAP_ARRAY, "CubeMap_Array", true, true},
+#endif
+#ifdef GL_TEXTURE_BINDING_RECTANGLE
       {GL_TEXTURE_BINDING_RECTANGLE, GL_TEXTURE_RECTANGLE, "Rectangle", false, true},
+#endif
       {GL_TEXTURE_BINDING_1D, GL_TEXTURE_1D, "1D", true, true},
+#ifdef GL_TEXTURE_BINDING_1D_ARRAY
       {GL_TEXTURE_BINDING_1D_ARRAY, GL_TEXTURE_1D_ARRAY, "1D_Array", true, true},
+#endif
     };
 
     const int samplerIndent = 29;

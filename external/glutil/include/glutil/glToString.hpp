@@ -259,13 +259,17 @@ constexpr inline const char* glTextureTargetToShortString(GLenum target) {
 #ifdef GL_TEXTURE_1D_ARRAY
         case GL_TEXTURE_1D_ARRAY: return "Tex1DArr";
         case GL_TEXTURE_2D_ARRAY: return "Tex2DArr";
+#endif
+#ifdef GL_TEXTURE_RECTANGLE
         case GL_TEXTURE_RECTANGLE: return "TexRect";
+        case GL_TEXTURE_BUFFER: return "TexBuffer";
+#endif
+#ifdef GL_TEXTURE_2D_MULTISAMPLE
+        case GL_TEXTURE_2D_MULTISAMPLE: return "Tex2DMS";
+        case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: return "Tex2DMSArr";
 #endif
 #ifdef GL_TEXTURE_CUBE_MAP_ARRAY
         case GL_TEXTURE_CUBE_MAP_ARRAY: return "TexCubeArr";
-        case GL_TEXTURE_2D_MULTISAMPLE: return "Tex2DMS";
-        case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: return "Tex2DMSArr";
-        case GL_TEXTURE_BUFFER: return "TexBuffer";
 #endif
         default: return "UNKNOWN";
     }
@@ -280,13 +284,17 @@ constexpr inline const char* glTextureTargetToString(GLenum target) {
 #ifdef GL_TEXTURE_1D_ARRAY
         case GL_TEXTURE_1D_ARRAY: return "GL_TEXTURE_1D_ARRAY";
         case GL_TEXTURE_2D_ARRAY: return "GL_TEXTURE_2D_ARRAY";
+#endif
+#ifdef GL_TEXTURE_RECTANGLE
         case GL_TEXTURE_RECTANGLE: return "GL_TEXTURE_RECTANGLE";
+        case GL_TEXTURE_BUFFER: return "GL_TEXTURE_BUFFER";
+#endif
+#ifdef GL_TEXTURE_2D_MULTISAMPLE
+        case GL_TEXTURE_2D_MULTISAMPLE: return "GL_TEXTURE_2D_MULTISAMPLE";
+        case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: return "GL_TEXTURE_2D_MULTISAMPLE_ARRAY";
 #endif
 #ifdef GL_TEXTURE_CUBE_MAP_ARRAY
         case GL_TEXTURE_CUBE_MAP_ARRAY: return "GL_TEXTURE_CUBE_MAP_ARRAY";
-        case GL_TEXTURE_2D_MULTISAMPLE: return "GL_TEXTURE_2D_MULTISAMPLE";
-        case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: return "GL_TEXTURE_2D_MULTISAMPLE_ARRAY";
-        case GL_TEXTURE_BUFFER: return "GL_TEXTURE_BUFFER";
 #endif
         default: return "UNKNOWN";
     }
@@ -301,8 +309,6 @@ constexpr inline const char* glShaderTypeToShortString(GLenum type) {
 #endif
 #ifdef GL_TESS_CONTROL_SHADER
     case GL_TESS_CONTROL_SHADER: return "tcs";
-#endif
-#ifdef GL_TESS_EVALUATION_SHADER
     case GL_TESS_EVALUATION_SHADER: return "tes";
 #endif
 #ifdef GL_COMPUTE_SHADER
@@ -320,8 +326,6 @@ constexpr inline const char* glShaderTypeToString(GLenum type) {
 #endif
 #ifdef GL_TESS_CONTROL_SHADER
     case GL_TESS_CONTROL_SHADER: return "GL_TESS_CONTROL_SHADER";
-#endif
-#ifdef GL_TESS_EVALUATION_SHADER
     case GL_TESS_EVALUATION_SHADER: return "GL_TESS_EVALUATION_SHADER";
 #endif
 #ifdef GL_COMPUTE_SHADER
@@ -348,9 +352,7 @@ constexpr inline const char* glErrorToString(GLenum err) {
 constexpr inline const char* glFramebufferStatusToString(GLenum status) {
     switch (status) {
         case GL_FRAMEBUFFER_COMPLETE: return "GL_FRAMEBUFFER_COMPLETE";
-#ifdef GL_FRAMEBUFFER_UNDEFINED
         case GL_FRAMEBUFFER_UNDEFINED: return "GL_FRAMEBUFFER_UNDEFINED";
-#endif
         case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
         case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
@@ -385,18 +387,18 @@ constexpr inline const char* usageToString(GLint usage) {
 
 inline const char* glLabelObjectTypeToString(GLenum type) {
     switch (type) {
+#ifdef GL_BUFFER
         case GL_BUFFER: return "GL_BUFFER";
         case GL_SHADER: return "GL_SHADER";
         case GL_PROGRAM: return "GL_PROGRAM";
-        case GL_VERTEX_ARRAY: return "GL_VERTEX_ARRAY";
         case GL_QUERY: return "GL_QUERY";
+        case GL_SAMPLER: return "GL_SAMPLER";
+        case GL_PROGRAM_PIPELINE: return "GL_PROGRAM_PIPELINE";
+#endif
+        case GL_VERTEX_ARRAY: return "GL_VERTEX_ARRAY";
         case GL_TEXTURE: return "GL_TEXTURE";
         case GL_RENDERBUFFER: return "GL_RENDERBUFFER";
         case GL_FRAMEBUFFER: return "GL_FRAMEBUFFER";
-        case GL_SAMPLER: return "GL_SAMPLER";
-#ifdef GL_PROGRAM_PIPELINE
-        case GL_PROGRAM_PIPELINE: return "GL_PROGRAM_PIPELINE";
-#endif
 #ifdef GL_TRANSFORM_FEEDBACK
         case GL_TRANSFORM_FEEDBACK: return "GL_TRANSFORM_FEEDBACK";
 #endif
@@ -408,15 +410,21 @@ inline const char* glLabelObjectTypeToString(GLenum type) {
 constexpr inline const char* glBufferTypeToString(GLenum target) {
     switch (target) {
         case GL_ARRAY_BUFFER: return "GL_ARRAY_BUFFER";
+#ifdef GL_ATOMIC_COUNTER_BUFFER
         case GL_ATOMIC_COUNTER_BUFFER: return "GL_ATOMIC_COUNTER_BUFFER";
+#endif
         case GL_COPY_READ_BUFFER: return "GL_COPY_READ_BUFFER";
         case GL_COPY_WRITE_BUFFER: return "GL_COPY_WRITE_BUFFER";
 #ifdef GL_DISPATCH_INDIRECT_BUFFER
         case GL_DISPATCH_INDIRECT_BUFFER: return "GL_DISPATCH_INDIRECT_BUFFER";
-        case GL_QUERY_BUFFER: return "GL_QUERY_BUFFER";
         case GL_SHADER_STORAGE_BUFFER: return "GL_SHADER_STORAGE_BUFFER";
 #endif
+#ifdef GL_QUERY_BUFFER
+        case GL_QUERY_BUFFER: return "GL_QUERY_BUFFER";
+#endif
+#ifdef GL_DRAW_INDIRECT_BUFFER
         case GL_DRAW_INDIRECT_BUFFER: return "GL_DRAW_INDIRECT_BUFFER";
+#endif
         case GL_ELEMENT_ARRAY_BUFFER: return "GL_ELEMENT_ARRAY_BUFFER";
         case GL_PIXEL_PACK_BUFFER: return "GL_PIXEL_PACK_BUFFER";
         case GL_PIXEL_UNPACK_BUFFER: return "GL_PIXEL_UNPACK_BUFFER";
@@ -430,15 +438,21 @@ constexpr inline const char* glBufferTypeToString(GLenum target) {
 constexpr inline const char* glBufferTypeToShortString(GLenum target) {
     switch (target) {
         case GL_ARRAY_BUFFER: return "VBO";
+#ifdef GL_ATOMIC_COUNTER_BUFFER
         case GL_ATOMIC_COUNTER_BUFFER: return "ACB";
+#endif
         case GL_COPY_READ_BUFFER: return "CRB";
         case GL_COPY_WRITE_BUFFER: return "CWB";
 #ifdef GL_DISPATCH_INDIRECT_BUFFER
         case GL_DISPATCH_INDIRECT_BUFFER: return "DIB";
-        case GL_QUERY_BUFFER: return "QB";
         case GL_SHADER_STORAGE_BUFFER: return "SSBO";
 #endif
+#ifdef GL_QUERY_BUFFER
+        case GL_QUERY_BUFFER: return "QB";
+#endif
+#ifdef GL_DRAW_INDIRECT_BUFFER
         case GL_DRAW_INDIRECT_BUFFER: return "DrIB";
+#endif
         case GL_ELEMENT_ARRAY_BUFFER: return "EBO";
         case GL_PIXEL_PACK_BUFFER: return "PPB";
         case GL_PIXEL_UNPACK_BUFFER: return "PUB";
