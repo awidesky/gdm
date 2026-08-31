@@ -29,7 +29,8 @@ public:
      */
     class LogStream {
     public:
-        LogStream(std::ostream* out, const char* level, bool enabled) : out(out), level(level), enabled(enabled) {}
+        LogStream(std::ostream* out, const char* level, bool enabled, bool prefixEnabled)
+         : out(out), level(level), enabled(enabled), prefixEnabled(prefixEnabled) {}
 
         /**
          * Flushes buffered log message on destruction.
@@ -41,7 +42,9 @@ public:
             auto msg = buffer.str();
             if (msg.empty()) return;
 
-            (*out) << "[" << level << "] " << msg;
+            if (prefixEnabled) {
+                (*out) << "[" << level << "] " << msg;
+            } else (*out) << msg;
 
             if (msg.back() != '\n') (*out) << '\n';
         }
@@ -67,22 +70,24 @@ public:
     private:
         std::ostream* out = nullptr; // Output stream target
         const char* level = "";      // Log level label
-        bool enabled = true;         // Whether logging is enabled
+        bool enabled , prefixEnabled;// Whether logging is enabled and prefix printing is enabled
         std::ostringstream buffer;   // Internal message buffer
     };
 
-    LogStream warning() const { return LogStream(stream, "WARNING", enabled); }
-    LogStream error() const { return LogStream(stream, "ERROR", enabled); }
-    LogStream info() const { return LogStream(stream, "INFO", enabled); }
+    LogStream warning() const { return LogStream(stream, "WARNING", enabled, prefixEnabled); }
+    LogStream error() const { return LogStream(stream, "ERROR", enabled, prefixEnabled); }
+    LogStream info() const { return LogStream(stream, "INFO", enabled, prefixEnabled); }
 
     void setOutput(std::ostream* os) { stream = os; }
     void enable(bool v) { enabled = v; }
+    void printPrefix(bool v) { prefixEnabled = v; }
 
 private:
     Logger(std::ostream* os) : stream(os) {}
 
     std::ostream* stream;
     bool enabled = true;
+    bool prefixEnabled = true;
 };
 
 /**
@@ -91,6 +96,13 @@ private:
 inline void enableAllLoggers(bool enable) {
     Logger::stdoutLogger().enable(enable);
     Logger::stderrLogger().enable(enable);
+}
+/**
+ * Enables or disables prefix printing for all global loggers (stdout and stderr).
+ */
+inline void enablePrefixAllLoggers(bool enable) {
+    Logger::stdoutLogger().printPrefix(enable);
+    Logger::stderrLogger().printPrefix(enable);
 }
 } // namespace glutil
 
