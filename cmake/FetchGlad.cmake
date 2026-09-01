@@ -17,9 +17,10 @@ include(FetchContent)
 # already exists but its CONFIG differs, a numeric suffix (_2, _3, …) is
 # appended so that different configurations always use distinct directories.
 function(fetch_glad)
-  set(oneValueArgs OUT_VAR BASE_DIR DEST_DIR LANG SKIP_LOCK)
+  set(options SKIP_LOCK)
+  set(oneValueArgs OUT_VAR BASE_DIR DEST_DIR LANG)
   set(multiValueArgs APIS PROFILES OPTIONS EXTENSIONS)
-  cmake_parse_arguments(FG "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  cmake_parse_arguments(FG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if(NOT FG_OUT_VAR)
     message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: OUT_VAR is required")
