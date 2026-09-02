@@ -11,6 +11,8 @@ void static framebuffer_size_callback(GLFWwindow* window, int width, int height)
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
+// manual postCallback is only needed when GLAD debug callback is not enabled.
+#if !GDM_DEBUG
 void static postCallback(void* ret, const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)ret; (void)apiproc; (void)len_args;
     GLenum err = glad_glGetError();
@@ -21,6 +23,7 @@ void static postCallback(void* ret, const char* name, GLADapiproc apiproc, int l
 
     glutil::debug::printStackTrace();
 }
+#endif
 int main() {
 
     glfwInit();

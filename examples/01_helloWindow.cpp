@@ -167,7 +167,7 @@ bool initializeLoader() {
 
 } // namespace
 
-int main(int argc, char** argv) {
+int main() {
     int context_version_major = 3;
     int context_version_minor = 3;
 

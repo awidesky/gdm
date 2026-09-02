@@ -284,7 +284,7 @@ TextureDDS ImageLoader::loadDDS(const std::filesystem::path& path, bool flipV) {
         return result;
     }
 
-    ddsktx_texture_info tc = {0};
+    ddsktx_texture_info tc = {};
     ddsktx_error err = {};
     if (!ddsktx_parse(&tc, result.fileData, static_cast<int>(fileSize), &err)) {
         result.error = std::string("ddsktx_parse failed: ") + err.msg;
