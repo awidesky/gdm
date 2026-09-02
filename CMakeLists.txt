@@ -133,6 +133,13 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
         set(GDM_GLEW_VERSION "${GDM_GLEW_VERSION}" CACHE STRING "GLEW version")
     endif()
 
+    # glew-glad's bridge (glewToGlad.cpp) hard-depends on glutil::debug::init(),
+    # GLUtil must be enabled, or glew-glad looses it's whole point.
+    if (NOT GDM_USE_GLUTIL)
+        message(STATUS "[GDM] GDM_GL_LOADER=glew-glad requires GLUtil; enabling GDM_USE_GLUTIL")
+        set(GDM_USE_GLUTIL ON CACHE BOOL "Enable GLUtil module" FORCE)
+    endif()
+
 endif()
 
 # Clean up stale cache variables when provider selection changes
