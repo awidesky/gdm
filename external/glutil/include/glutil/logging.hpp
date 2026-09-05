@@ -14,11 +14,11 @@ namespace glutil {
  */
 class Logger {
 public:
-    inline static Logger& stdoutLogger() {
+    inline static Logger& outLogger() {
         static Logger instance(&std::cout);
         return instance;
     }
-    inline static Logger& stderrLogger() {
+    inline static Logger& errLogger() {
         static Logger instance(&std::cerr);
         return instance;
     }
@@ -79,7 +79,7 @@ public:
     LogStream info() const { return LogStream(stream, "INFO", enabled, prefixEnabled); }
 
     void setOutput(std::ostream* os) { stream = os; }
-    std::ostream* getOutput() { return stream; }
+    std::ostream* getOutput() const { return stream; }
     void enable(bool v) { enabled = v; }
     void printPrefix(bool v) { prefixEnabled = v; }
 
@@ -95,27 +95,27 @@ private:
  * Enables or disables all global loggers (stdout and stderr).
  */
 inline void enableAllLoggers(bool enable) {
-    Logger::stdoutLogger().enable(enable);
-    Logger::stderrLogger().enable(enable);
+    Logger::outLogger().enable(enable);
+    Logger::errLogger().enable(enable);
 }
 /**
  * Enables or disables prefix printing for all global loggers (stdout and stderr).
  */
 inline void enablePrefixAllLoggers(bool enable) {
-    Logger::stdoutLogger().printPrefix(enable);
-    Logger::stderrLogger().printPrefix(enable);
+    Logger::outLogger().printPrefix(enable);
+    Logger::errLogger().printPrefix(enable);
 }
 } // namespace glutil
 
 // Macro definitions for convenient usage
 #if GLUTIL_DISABLE_LOG_ON_RELEASE && !GDM_DEBUG
-    #define LOG_WARNING() if constexpr(true) ; else glutil::Logger::stdoutLogger().warning()
-    #define LOG_ERROR()   if constexpr(true) ; else glutil::Logger::stderrLogger().error()
-    #define LOG_INFO()    if constexpr(true) ; else glutil::Logger::stdoutLogger().info()
+    #define LOG_WARNING() if constexpr(true) ; else glutil::Logger::outLogger().warning()
+    #define LOG_ERROR()   if constexpr(true) ; else glutil::Logger::errLogger().error()
+    #define LOG_INFO()    if constexpr(true) ; else glutil::Logger::outLogger().info()
 #else
-    #define LOG_WARNING() glutil::Logger::stdoutLogger().warning()
-    #define LOG_ERROR()   glutil::Logger::stderrLogger().error()
-    #define LOG_INFO()    glutil::Logger::stdoutLogger().info()
+    #define LOG_WARNING() glutil::Logger::outLogger().warning()
+    #define LOG_ERROR()   glutil::Logger::errLogger().error()
+    #define LOG_INFO()    glutil::Logger::outLogger().info()
 #endif
 
 #endif // GLUTIL_LOGGING_HPP
