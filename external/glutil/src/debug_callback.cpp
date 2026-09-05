@@ -29,8 +29,7 @@ static void checkGLErrorPostCallback(void* ret, const char* name, GLADapiproc ap
     if (err != GL_NO_ERROR) {
         std::stringstream ss;
         ss << "[GL Error] " << glErrorToString(err) << '(' << err << ')' << " in function " << name;
-        printStackTrace(ss.str());
-        LOG_ERROR() << '\n';
+        printStackTrace(*glutil::Logger::stderrLogger().getOutput(), ss.str());
     }
 }
 
@@ -670,7 +669,7 @@ static void fullPostCallback(void* ret, const char* name, GLADapiproc apiproc, i
             if (report.intervalSec > 0)
                 logger << " occurred " << report.count << " times in " << report.intervalSec << " seconds.";
         }
-        printStackTrace(std::string("In function ") + name);
+        printStackTrace(*glutil::Logger::stderrLogger().getOutput(), std::string("In function ") + name);
         va_list args;
         va_start(args, len_args);
         errorSnapshot(err, ret, name, len_args, args);

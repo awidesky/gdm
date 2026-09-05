@@ -12,7 +12,7 @@
 
 
 namespace glutil::debug {
-void printStackTrace(std::string header, int skip, int depth, bool snippets, int snippet_context) {
+void printStackTrace(std::ostream& out, std::string header, int skip, int depth, bool snippets, int snippet_context) {
     cpptrace::formatter{}
       .header(header)                                     // header
       .colors(cpptrace::formatter::color_mode::automatic) // Color: always / none / automatic
@@ -21,7 +21,22 @@ void printStackTrace(std::string header, int skip, int depth, bool snippets, int
       .snippets(snippets)                                 // source snippet 
       .snippet_context(snippet_context)                   // How many lines of source context to show in a snippet	
       .columns(true)                                      // column number enable
-      .print(std::cerr, cpptrace::stacktrace::current(skip, depth));
+      .print(out, cpptrace::stacktrace::current(skip, depth));
+}
+
+std::string stringStackTrace(std::string header, int skip, int depth, bool snippets, int snippet_context, bool color) {
+    std::ostringstream ss;
+    cpptrace::formatter{}
+      .header(header)                                     // header
+      .colors(color ? cpptrace::formatter::color_mode::always
+                    : cpptrace::formatter::color_mode::none) // color only when explicitly requested
+      .addresses(cpptrace::formatter::address_mode::raw)  // Adress: raw / object / none
+      .paths(cpptrace::formatter::path_mode::basename)    // Path: full / basename
+      .snippets(snippets)                                 // source snippet 
+      .snippet_context(snippet_context)                   // How many lines of source context to show in a snippet	
+      .columns(true)                                      // column number enable
+      .print(ss, cpptrace::stacktrace::current(skip, depth));
+    return ss.str();
 }
 
 std::string getCalledGLfunctionName(int skip) {

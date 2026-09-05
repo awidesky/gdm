@@ -79,6 +79,7 @@ public:
     LogStream info() const { return LogStream(stream, "INFO", enabled, prefixEnabled); }
 
     void setOutput(std::ostream* os) { stream = os; }
+    std::ostream* getOutput() { return stream; }
     void enable(bool v) { enabled = v; }
     void printPrefix(bool v) { prefixEnabled = v; }
 
