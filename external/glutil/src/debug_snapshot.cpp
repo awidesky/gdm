@@ -258,15 +258,15 @@ struct GLStateGuard {
         glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &arrayBuffer);
         glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
         glGetIntegerv(GL_RENDERBUFFER_BINDING, &renderbuffer);
-        prev_disableAutoLabelGLObjects = disableAutoLabelGLObjects;
-        disableAutoLabelGLObjects = true;
+        prev_disableAutoLabelGLObjects = config.disableAutoLabelGLObjects;
+        config.disableAutoLabelGLObjects = true;
     }
     ~GLStateGuard() {
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer);
         glActiveTexture(activeTexture);
         glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
-        disableAutoLabelGLObjects = prev_disableAutoLabelGLObjects;
+        config.disableAutoLabelGLObjects = prev_disableAutoLabelGLObjects;
     }
 };
 

@@ -13,6 +13,37 @@
 namespace glutil::debug {
 
 /**
+ * Runtime configuration for the debug system.
+ *
+ * This struct is not declared in debug.hpp to avoid a circular include.
+ * debug.hpp includes debug_tracker.hpp, and GLStateTracker's destructor (below)
+ * references config, so config must be visible to this header.
+ * 
+ */
+struct DebugConfig {
+    /** Disable automatic GL object labeling. */
+    bool disableAutoLabelGLObjects = false;
+    /** Disable automatic inspection hooks. */
+    bool disableAutoInspcector = false;
+    /** Disable the GL object leak check at program exit. */
+    bool disableLeakCheck = false;
+    /** Disable the "No OpenGL Object Leaks Detected" report when no leak is found. */
+    bool disableNoLeakReport = true;
+};
+
+#if GDM_DEBUG
+/** Global debug configuration instance. Defined in debug.cpp. */
+extern DebugConfig config;
+#else
+// In release builds the config is unused; provide a default instance.
+// Values mirror the old release-mode defaults: all debug features disabled.
+inline DebugConfig config{/*disableAutoLabelGLObjects=*/true,
+                          /*disableAutoInspcector=*/true,
+                          /*disableLeakCheck=*/true,
+                          /*disableNoLeakReport=*/true};
+#endif
+
+/**
  * Buffer classification used by debug tracking.
  */
 enum class BufferRole {
@@ -130,6 +161,8 @@ private:
 #if GDM_DEBUG
     /** Debug-only destructor that reports remaining tracked GL objects. */
     ~GLStateTracker() {
+        if (config.disableLeakCheck) return;
+
         bool hasLeak = false;
 
         for (auto& [id, info] : buffers.getAll()) {
@@ -155,7 +188,7 @@ private:
                         << " label=" << (info.label.empty() ? "(none)" : info.label);
         }
 
-        if (!hasLeak)
+        if (!hasLeak && !config.disableNoLeakReport)
             LOG_INFO() << "=== No OpenGL Object Leaks Detected ===";
     }
 #else

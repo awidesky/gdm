@@ -11,8 +11,7 @@
 
 namespace glutil::debug {
 
-bool disableAutoLabelGLObjects = false;
-bool disableAutoInspcector = false;
+DebugConfig config;
 
 GL_KHR_DebugSupport isGL_KHR_debugSupported() {
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)

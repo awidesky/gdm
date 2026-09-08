@@ -28,10 +28,6 @@ struct GL_KHR_DebugSupport {
 /** Check runtime + compile-time availability of GL_KHR_debug / GL 4.3 debug output. */
 GL_KHR_DebugSupport isGL_KHR_debugSupported();
 
-/** Global toggle to disable automatic GL object labeling. */
-extern bool disableAutoLabelGLObjects;
-/** Global toggle to disable automatic inspection hooks. */
-extern bool disableAutoInspcector;
 // Labels a GL object, only if KHR_debug is supported.
 bool labelGLobject(GLenum identifier, GLuint name, const std::string& label);
 // Returns the GL object label only if KHR_debug is supported.
@@ -43,8 +39,6 @@ void init();
 #else
 // always returns null in release build.
 inline constexpr GL_KHR_DebugSupport isGL_KHR_debugSupported() noexcept { return {nullptr, false, false}; }
-// always false in release build. Even if the value is changed, It won't be used.
-inline bool disableAutoLabelGLObjects = true, disableAutoInspcector = true;
 // always returns false in release build.
 inline constexpr bool labelGLobject(GLenum, GLuint, const std::string&) noexcept { return false; }
 // always returns empty string in release build.

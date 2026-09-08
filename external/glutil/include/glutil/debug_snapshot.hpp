@@ -59,6 +59,11 @@ struct SnapshotAsyncHandle {
  * - GL object binding state
  *
  * Supports synchronous and async streaming output.
+ *
+ * NOTE: Snapshot is NOT thread-safe. It reads and temporarily mutates the
+ * current OpenGL context state (via GLStateGuard), and its internal state is not synchronized.
+ * It must be used from a single render thread that owns the GL context.
+ * The async output worker only deals with output; the capture itself is single-threaded.
  */
 class Snapshot {
 public:

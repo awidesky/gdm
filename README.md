@@ -498,8 +498,10 @@ The philosophy of GLUtil's debug system is mostly behind-the-scenes work that gi
 | `glutil::debug::availableGLversion()` | Find highest available OpenGL version by creating test contexts |
 | `glutil::debug::GLStateTracker` | Global singleton tracking GL object creation/destruction. Reports leaked objects on destruction. |
 | `glutil::debug::Snapshot` | Full GL state capture: framebuffers, shader programs + uniforms, textures, VAO/VBO/EBO layout, renderer state, binding state. Supports async output to stream or file. |
-| `glutil::debug::disableAutoLabelGLObjects` | Global toggle for automatic GL object labeling (default: `false`, labeling enabled) |
-| `glutil::debug::disableAutoInspector` | Global toggle for automatic inspection hooks (default: `false`) |
+| `glutil::debug::config.disableAutoLabelGLObjects` | Global toggle for automatic GL object labeling (default: `false`, labeling enabled) |
+| `glutil::debug::config.disableAutoInspcector` | Global toggle for automatic inspection hooks (default: `false`) |
+| `glutil::debug::config.disableLeakCheck` | Global toggle for the GL object leak check at program exit (default: `false`, check enabled) |
+| `glutil::debug::config.disableNoLeakReport` | Global toggle for the "No OpenGL Object Leaks Detected" report (default: `true`, report suppressed when there's no problem) |
 
 
 ### Automatic debug initialization
@@ -643,7 +645,7 @@ See example: [example/tracker.cpp](./external/glutil/example/tracker.cpp)
 
 The debug callback automatically labels every GL object (buffers, textures, VAOs, shaders, programs, etc.) right after it is created, using `glObjectLabel` (requires `GL_KHR_debug` or GL 4.3+). Labels include the object type, id, and the line of code that created it, e.g. `VBO#3(glBufferData)` or `Shader#2(glCreateShader)`. Tex2D#1(stacktrace.cpp:53 -> glBindTexture(GL_TEXTURE_2D, tex);)
 
-If you want auto-labeling turned off, use the global variable `glutil::debug::disableAutoLabelGLObjects = true;`.
+If you want auto-labeling turned off, use the global variable `glutil::debug::config.disableAutoLabelGLObjects = true;`.
 
 See example: [example/autoLabeling.cpp](./external/glutil/example/autoLabeling.cpp)
 

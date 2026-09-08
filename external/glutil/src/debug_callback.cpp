@@ -314,7 +314,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
 }
 static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_list args) {
     (void)len_args;
-    if (disableAutoLabelGLObjects) return;
+    if (config.disableAutoLabelGLObjects) return;
 
     auto& tracker = GLStateTracker::instance();
     GLFunctions func = classifyGLFunctions(name);
@@ -487,7 +487,7 @@ static void autoLabelGLObjects(void* ret, const char* name, int len_args, va_lis
 }
 static void autoPostInspcector(void* ret, const char* name, int len_args, va_list args) {
     (void)len_args; (void)ret;
-    if (disableAutoInspcector) return;
+    if (config.disableAutoInspcector) return;
 
     auto func = classifyGLFunctions(name);
     switch (func) {
@@ -537,7 +537,7 @@ static void autoPostInspcector(void* ret, const char* name, int len_args, va_lis
 }
 static void autoPreInspcector(const char* name, GLADapiproc apiproc, int len_args, ...) {
     (void)apiproc;
-    if (disableAutoInspcector) return;
+    if (config.disableAutoInspcector) return;
 
     auto func = classifyGLFunctions(name);
     switch (func) {
