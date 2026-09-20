@@ -63,8 +63,9 @@ macro(gdm_lock_guard lock_file)
     if(_gdm_lock_result)
         message(FATAL_ERROR
             "[${PROJECT_NAME}] Failed to acquire dependency lock '${lock_file}': ${_gdm_lock_result}\n"
-            "Another CMake configure may be working on the same directory(${_gdm_lock_dir}).\n"
-            "If no other configuration is active, delete the lock file and re-run configure."
+            "Another CMake configure may be working on the same directory(${_gdm_lock_dir}),\n"
+            "or there's no sufficient permissions in the external directory.\n"
+            "If no other configuration is active, delete the lock file and re-configure."
         )
     endif()
 endmacro()

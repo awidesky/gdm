@@ -68,16 +68,17 @@ function(fetch_glad)
   endif()
 
   # The folder name must be less than (around) 200 chars.
-  # Truncate the suffix if it's too long; we keep the first 190 chars and
+  # Truncate the suffix if it's too long; we keep the first ${_FG_MAX_SUFFIX_LEN} chars and
   # append a hash of the tail so different configs still map to different folders.
+  set(_FG_MAX_SUFFIX_LEN 50)
   string(LENGTH "${_fg_suffix}" _fg_suffix_len)
-  if(_fg_suffix_len GREATER 190)
-    string(SUBSTRING "${_fg_suffix}" 0 190 _fg_suffix_trunc)
-    string(SUBSTRING "${_fg_suffix}" 190 -1 _fg_suffix_tail)
+  if(_fg_suffix_len GREATER _FG_MAX_SUFFIX_LEN)
+    string(SUBSTRING "${_fg_suffix}" 0 ${_FG_MAX_SUFFIX_LEN} _fg_suffix_trunc)
+    string(SUBSTRING "${_fg_suffix}" ${_FG_MAX_SUFFIX_LEN} -1 _fg_suffix_tail)
     string(MD5 _fg_tail_hash "${_fg_suffix_tail}")
     string(SUBSTRING "${_fg_tail_hash}" 0 8 _fg_tail_hash_short)
     set(_fg_suffix "${_fg_suffix_trunc}_${_fg_tail_hash_short}")
-    message(STATUS "[${PROJECT_NAME}] fetch_glad: folder name too long; truncated to about 200 chars")
+    message(STATUS "[${PROJECT_NAME}] fetch_glad: folder name too long; truncated to about ${_FG_MAX_SUFFIX_LEN} chars")
   endif()
 
   # Decide output directory
@@ -305,16 +306,17 @@ function(fetch_glad_allEXT)
   endif()
 
   # The folder name must be less than (around) 200 chars.
-  # Truncate the suffix if it's too long; we keep the first 190 chars and
+  # Truncate the suffix if it's too long; we keep the first ${_FG_MAX_SUFFIX_LEN}  chars and
   # append a hash of the tail so different configs still map to different folders.
+  set(_FG_MAX_SUFFIX_LEN 50)
   string(LENGTH "${_fg_suffix}" _fg_suffix_len)
-  if(_fg_suffix_len GREATER 190)
-    string(SUBSTRING "${_fg_suffix}" 0 190 _fg_suffix_trunc)
-    string(SUBSTRING "${_fg_suffix}" 190 -1 _fg_suffix_tail)
+  if(_fg_suffix_len GREATER _FG_MAX_SUFFIX_LEN)
+    string(SUBSTRING "${_fg_suffix}" 0 ${_FG_MAX_SUFFIX_LEN} _fg_suffix_trunc)
+    string(SUBSTRING "${_fg_suffix}" ${_FG_MAX_SUFFIX_LEN} -1 _fg_suffix_tail)
     string(MD5 _fg_tail_hash "${_fg_suffix_tail}")
     string(SUBSTRING "${_fg_tail_hash}" 0 8 _fg_tail_hash_short)
     set(_fg_suffix "${_fg_suffix_trunc}_${_fg_tail_hash_short}")
-    message(STATUS "[${PROJECT_NAME}] fetch_glad_allEXT: folder name too long; truncated to about 200 chars")
+    message(STATUS "[${PROJECT_NAME}] fetch_glad_allEXT: folder name too long; truncated to about ${_FG_MAX_SUFFIX_LEN} chars")
   endif()
   set(_fg_base_dir "${FGAE_BASE_DIR}/glad-${_fg_suffix}")
 
