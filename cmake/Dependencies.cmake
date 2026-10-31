@@ -267,3 +267,133 @@ function(use_or_fetch_package)
 
     unset(_gdm_pkg_binary_dir)
 endfunction()
+
+
+# -----------------------
+# Utility Functions
+# -----------------------
+
+# gdm_fetch_files(NAME TAG REPOSITORY <url> FILES <file>... OUT_DIR <var>)
+#
+# Downloads one or more files from a GitHub repository (raw.githubusercontent.com)
+# into ${GDM_EXTERNAL_DIR}/<name>-<tag>/, keyed by (name, tag).
+# Each file is stored under its base name.
+# No CMake target is created; use OUT_DIR to consume the fetched files
+# (e.g. target_include_directories() for headers).
+# TAG may be a branch, tag, or commit hash; 40-char commit hashes are shortened
+# to 7 characters (git short-hash style) for the on-disk directory name.
+#
+# On success, sets OUT_DIR to the fetched directory.
+# If all requested files already exist, returns immediately.
+function(gdm_fetch_files)
+    set(options)
+    set(oneValueArgs
+        NAME
+        TAG
+        REPOSITORY
+        OUT_DIR
+    )
+    set(multiValueArgs
+        FILES
+    )
+
+    cmake_parse_arguments(FF
+        "${options}"
+        "${oneValueArgs}"
+        "${multiValueArgs}"
+        ${ARGN}
+    )
+
+    if (NOT FF_NAME OR NOT FF_TAG OR NOT FF_FILES OR NOT FF_REPOSITORY OR NOT FF_OUT_DIR)
+        message(FATAL_ERROR
+            "[${PROJECT_NAME}] gdm_fetch_files requires NAME, TAG, REPOSITORY, FILES and OUT_DIR"
+        )
+    endif()
+
+    # Shorten full 40-char commit hashes to git-style 7-char short hashes
+    # for the on-disk directory name (keeps paths readable).
+    # NOTE: length is checked with string(LENGTH) because CMake's MATCHES
+    # does not support {n} repetition (it silently fails to match).
+    set(_ff_tag_dir "${FF_TAG}")
+    string(LENGTH "${FF_TAG}" _ff_tag_len)
+    if (_ff_tag_len EQUAL 40 AND FF_TAG MATCHES "^[0-9a-fA-F]+$")
+        string(SUBSTRING "${FF_TAG}" 0 7 _ff_tag_dir)
+    endif()
+
+    set(_ff_dir "${GDM_EXTERNAL_DIR}/${FF_NAME}-${_ff_tag_dir}")
+
+    # Destination path for each file (stored under its base name).
+    set(_ff_dst_files "")
+    foreach(_ff_file IN LISTS FF_FILES)
+        get_filename_component(_ff_filename "${_ff_file}" NAME)
+        list(APPEND _ff_dst_files "${_ff_dir}/${_ff_filename}")
+    endforeach()
+
+    # Every requested file must be present to reuse the cached directory.
+    set(_ff_all_exist TRUE)
+    foreach(_ff_dst IN LISTS _ff_dst_files)
+        if (NOT EXISTS "${_ff_dst}")
+            set(_ff_all_exist FALSE)
+        endif()
+    endforeach()
+
+    if (_ff_all_exist)
+        message(STATUS "[${PROJECT_NAME}] Found external files ${FF_NAME} ${_ff_tag_dir}")
+        set(${FF_OUT_DIR} "${_ff_dir}" PARENT_SCOPE)
+        return()
+    endif()
+
+    # Serialize the download against other configure processes sharing GDM_EXTERNAL_DIR.
+    gdm_lock_guard("${GDM_EXTERNAL_DIR}/.gdm.lock")
+
+    # Re-check inside the lock (another process may have completed the download).
+    set(_ff_all_exist TRUE)
+    foreach(_ff_dst IN LISTS _ff_dst_files)
+        if (NOT EXISTS "${_ff_dst}")
+            set(_ff_all_exist FALSE)
+        endif()
+    endforeach()
+    if (_ff_all_exist)
+        message(STATUS "[${PROJECT_NAME}] Found external files ${FF_NAME} ${_ff_tag_dir} after sync")
+        set(${FF_OUT_DIR} "${_ff_dir}" PARENT_SCOPE)
+        return()
+    endif()
+
+    string(REGEX REPLACE "^https://github.com/" "https://raw.githubusercontent.com/" _ff_raw_repo "${FF_REPOSITORY}")
+    set(_ff_root "${_ff_raw_repo}/${FF_TAG}")
+
+    # Download to a staging dir first, then rename into place (atomic like use_or_fetch_package).
+    set(_ff_staging_dir "${CMAKE_BINARY_DIR}/_gdm_extract/${FF_NAME}-${FF_TAG}")
+    file(REMOVE_RECURSE "${_ff_staging_dir}")
+    file(MAKE_DIRECTORY "${_ff_staging_dir}")
+
+    message(STATUS "[${PROJECT_NAME}] Fetching files ${FF_NAME} ${FF_TAG}")
+
+    foreach(_ff_file IN LISTS FF_FILES)
+        get_filename_component(_ff_filename "${_ff_file}" NAME)
+        set(_ff_dst "${_ff_staging_dir}/${_ff_filename}")
+
+        file(DOWNLOAD "${_ff_root}/${_ff_file}" "${_ff_dst}"
+            STATUS _dl_status
+            TLS_VERIFY ${GDM_TLS_VERIFY}
+        )
+        list(GET _dl_status 0 _dl_code)
+        if(NOT _dl_code EQUAL 0)
+            list(GET _dl_status 1 _dl_msg)
+            file(REMOVE_RECURSE "${_ff_staging_dir}")
+            message(FATAL_ERROR
+                "[${PROJECT_NAME}] Failed to download file ${_ff_file} (${FF_NAME} ${FF_TAG}):\n"
+                "URL: ${_ff_root}/${_ff_file}\n"
+                "Reason: ${_dl_msg}"
+            )
+        endif()
+    endforeach()
+
+    # Replace any partial/old directory and move the staging dir into place
+    file(REMOVE_RECURSE "${_ff_dir}")
+    file(RENAME "${_ff_staging_dir}" "${_ff_dir}")
+    file(REMOVE_RECURSE "${_ff_staging_dir}")
+
+    message(STATUS "[${PROJECT_NAME}] Fetched files ${FF_NAME} ${_ff_tag_dir} -> ${_ff_dir}")
+    set(${FF_OUT_DIR} "${_ff_dir}" PARENT_SCOPE)
+endfunction()

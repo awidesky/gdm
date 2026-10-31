@@ -47,6 +47,8 @@ so that your dependencies would work..
     - [Feature macros (`gdm::defs`)](#feature-macros-gdmdefs)
   - [Configuration Options](#configuration-options)
     - [Per-provider version options](#per-provider-version-options)
+  - [CMake Utility Functions](#cmake-utility-functions)
+    - [gdm_fetch_files](#gdm_fetch_files)
 - [GLUtil - OpenGL Utility Library](#glutil---opengl-utility-library)
   - [Core Modules](#core-modules)
     - [Shader example](#shader-example)
@@ -385,6 +387,43 @@ These are created on-demand based on your provider selections. For GitHub-hosted
 | `GDM_GLAD_EXTENSION` | `GDM_GL_LOADER=glad` | `GL_KHR_debug;GL_EXT_texture_compression_s3tc` |
 | `GDM_GLEW_VERSION` | `GDM_GL_LOADER=glew` or `glew-glad` | Latest release tag |
 | `GDM_GLEW_STATIC` | `GDM_GL_LOADER=glew` | `ON` |
+
+
+## CMake Utility Functions
+
+### gdm_fetch_files
+
+For header-only libraries (stb, tiny_obj_loader, dds-ktx, etc.), use
+`gdm_fetch_files()` instead of `use_or_fetch_package()`.
+It downloads one or more individual files from a GitHub repository — headers, or
+any other resources — into `${GDM_EXTERNAL_DIR}/<name>-<tag>/`. No CMake target
+is created and no `add_subdirectory()` is performed; consume the result via the
+`OUT_DIR` it returns (for headers, add it to your target's include path).
+
+```cmake
+# Download stb_image.h and stb_image_write.h
+# (first run downloads; subsequent runs reuse the cache)
+gdm_fetch_files(
+    NAME stb_image
+    TAG 013ac3beddff3dbffafd5177e7972067cd2b5083   # v2.30; use tag, branch or commit hash.
+    REPOSITORY https://github.com/nothings/stb
+    FILES stb_image.h stb_image_write.h            # one or more files; each stored by base name
+    OUT_DIR STB_IMAGE_DIR                          # required; set to the fetched directory
+)
+
+# Add the header directory to your target's include path
+target_include_directories(my_target PRIVATE ${STB_IMAGE_DIR})
+```
+
+- All parameters (`NAME`, `TAG`, `REPOSITORY`, `FILES`, `OUT_DIR`) are required.
+- **FILES** takes one or more file paths (relative to the repository root).
+  Each file is downloaded and stored under its base name in the same directory.
+- **TAG** accepts a branch name, tag, or commit hash.
+- The cache is reused only when *all* requested files are already present;
+  otherwise the directory is re-fetched.
+- Thread-safe: concurrent CMake configures sharing the same `GDM_EXTERNAL_DIR`
+  are serialized via a file lock.
+
 
 # GLUtil - OpenGL Utility Library
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](CMakeLists.txt)

@@ -62,13 +62,41 @@ target_sources(glutil
     src/debug_info.cpp
     src/debug_snapshot.cpp
     src/hashing.hpp
+)
 
-    src/stb_image.h
-    src/dds-ktx.h
-    src/tiny_obj_loader.h
+# Header-only libraries (fetched into ${GDM_EXTERNAL_DIR}/<name>-<tag>/)
+gdm_fetch_files(
+    NAME stb_image
+    TAG 013ac3beddff3dbffafd5177e7972067cd2b5083    # v2.30 - stb has no versioned tag
+    REPOSITORY https://github.com/nothings/stb
+    FILES stb_image.h
+    OUT_DIR GLUTIL_STB_IMAGE_HEADER_DIR
+)
+
+# latest tag v2.0.0-rc4 is a few years ago.
+# We use release branch instead of tag since that's recommented by repo owner,
+# but note that it'll not be updated after downloaded.
+gdm_fetch_files(
+    NAME tiny_obj_loader
+    TAG release
+    REPOSITORY https://github.com/tinyobjloader/tinyobjloader
+    FILES tiny_obj_loader.h
+    OUT_DIR GLUTIL_TINY_OBJ_LOADER_HEADER_DIR
+)
+
+gdm_fetch_files(
+    NAME dds-ktx
+    TAG 5560d77b4432843b42282867c3c464e18f685bf3  #v1.2.1
+    REPOSITORY https://github.com/septag/dds-ktx
+    FILES dds-ktx.h
+    OUT_DIR GLUTIL_DDSKTX_HEADER_DIR
 )
 
 target_include_directories(glutil PRIVATE
+  ${GLUTIL_STB_IMAGE_HEADER_DIR}
+  ${GLUTIL_TINY_OBJ_LOADER_HEADER_DIR}
+  ${GLUTIL_DDSKTX_HEADER_DIR}
+  
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CMAKE_CURRENT_BINARY_DIR}
 )

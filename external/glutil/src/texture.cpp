@@ -55,6 +55,7 @@ TextureImage ImageLoader::loadImage(const std::filesystem::path& path, bool flip
 
     stbi_set_flip_vertically_on_load(flipV ? 1 : 0);
 
+    //TODO_easy : why these variables ar not used? maybe (void*) cast to remove warning?
     int w = 0, h = 0, c = 0;
     unsigned char* raw = stbi_load(pr.resolvedPath.c_str(), &w, &h, &c, desiredChannels);
     if (!raw) {
