@@ -1,47 +1,75 @@
-# gdm_get_latest_version(owner repo result_var)
-# Fetches the latest release tag from a GitHub repository.
-# Normalizes the version: strips leading 'v', appends '.0' if only two components (e.g. 3.4 -> 3.4.0).
-# On failure, aborts configuration with FATAL_ERROR.
-function(gdm_get_latest_version owner repo result_var)
-    set(API_URL "https://api.github.com/repos/${owner}/${repo}/releases/latest")
-    set(json_file "${CMAKE_BINARY_DIR}/_gdm_downloads/${repo}_latest_tag.json")
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_gdm_downloads")
+# gdm_get_latest_version(
+#   REPO        <owner>/<repo>    -- repository whose tags feed lists the versions
+#   TAG_RE      <regex>           -- one capture group: the version inside a tag
+#   OUT_VERSION <var>             -- newest version, to be used as the default
+# )
+#
+# Reads https://github.com/<REPO>/tags.atom: a plain Atom feed, so no GitHub
+# API, no rate limit and no authentication. The feed holds the 10 most recently
+# created tags; the newest one *by version* wins (not the first one), so
+# repositories that push tags out of order are fine. A two-component version is
+# padded to three, to match the version the package reports itself (GLFW tags
+# 3.4, but installs as 3.4.0).
+#
+# This only provides the value for an option that the user did not set; call it
+# from inside an `if(NOT DEFINED <option>)` guard.
+function(gdm_get_latest_version)
+    set(options)
+    set(oneValueArgs REPO TAG_RE OUT_VERSION)
+    cmake_parse_arguments(GV "${options}" "${oneValueArgs}" "" ${ARGN})
 
-    file(DOWNLOAD "${API_URL}" "${json_file}"
+    if(NOT GV_REPO OR NOT GV_TAG_RE OR NOT GV_OUT_VERSION)
+        message(FATAL_ERROR
+            "[${PROJECT_NAME}] gdm_get_latest_version requires REPO, TAG_RE and OUT_VERSION"
+        )
+    endif()
+
+    string(REGEX REPLACE "[^A-Za-z0-9._-]" "_" _slug "${GV_REPO}")
+    set(_feed_file "${CMAKE_BINARY_DIR}/_gdm_downloads/${_slug}_tags.atom")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_gdm_downloads")
+    file(DOWNLOAD "https://github.com/${GV_REPO}/tags.atom" "${_feed_file}"
         STATUS _dl_status
         TLS_VERIFY ${GDM_TLS_VERIFY}
         INACTIVITY_TIMEOUT 10
     )
-
     list(GET _dl_status 0 _dl_code)
     if(NOT _dl_code EQUAL 0)
         list(GET _dl_status 1 _dl_msg)
         message(FATAL_ERROR
-            "[${PROJECT_NAME}] Failed to get latest version for ${owner}/${repo}: ${_dl_msg}\n"
-            "[${PROJECT_NAME}] Set ${result_var} manually and re-configure."
+            "[${PROJECT_NAME}] Failed to read the tags feed of ${GV_REPO}: ${_dl_msg}\n"
+            "[${PROJECT_NAME}] URL: https://github.com/${GV_REPO}/tags.atom\n"
+            "[${PROJECT_NAME}] Set ${GV_OUT_VERSION} manually and re-configure."
         )
     endif()
 
-    file(READ "${json_file}" _json)
-    string(JSON _tag ERROR_VARIABLE _json_err GET "${_json}" tag_name)
-    if(_json_err OR _tag STREQUAL "")
+    file(READ "${_feed_file}" _feed)
+    string(REGEX MATCHALL "Repository/[0-9]+/[^<]+</id>" _feed_ids "${_feed}")
+    set(_versions "")
+    foreach(_id IN LISTS _feed_ids)
+        string(REGEX REPLACE "^Repository/[0-9]+/(.*)</id>$" "\\1" _tag "${_id}")
+        if(_tag MATCHES "${GV_TAG_RE}")
+            list(APPEND _versions "${CMAKE_MATCH_1}")
+        endif()
+    endforeach()
+    if(NOT _versions)
         message(FATAL_ERROR
-            "[${PROJECT_NAME}] Failed to parse latest release tag for ${owner}/${repo}\n"
-            "[${PROJECT_NAME}] Set ${result_var} manually and re-configure."
+            "[${PROJECT_NAME}] No tag of ${GV_REPO} matches '${GV_TAG_RE}'\n"
+            "[${PROJECT_NAME}] Set ${GV_OUT_VERSION} manually and re-configure."
         )
     endif()
+    list(SORT _versions COMPARE NATURAL) # 2.3.10 sorts above 2.3.9
+    list(REVERSE _versions)
+    list(GET _versions 0 _version)
 
-    # Strip leading 'v' if present
-    string(REGEX REPLACE "^v" "" _ver "${_tag}")
-
-    # If version has only one dot (e.g. 3.4), append .0
-    string(REGEX MATCHALL "\\." _dots "${_ver}")
+    # A two-component version is padded to three, to match the version the
+    # package reports itself (GLFW tags 3.4, but installs as 3.4.0).
+    string(REGEX MATCHALL "\\." _dots "${_version}")
     list(LENGTH _dots _dot_count)
     if(_dot_count EQUAL 1)
-        set(_ver "${_ver}.0")
+        set(_version "${_version}.0")
     endif()
 
-    set(${result_var} "${_ver}" PARENT_SCOPE)
+    set(${GV_OUT_VERSION} "${_version}" PARENT_SCOPE)
 endfunction()
 
 
