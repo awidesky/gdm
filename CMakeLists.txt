@@ -83,20 +83,20 @@ include(cmake/FetchGlad.cmake)
 # Create version/config cache variables only for selected dependencies
 if (GDM_WINDOW_BACKEND STREQUAL "glfw")
     if(NOT DEFINED GDM_GLFW_VERSION)
-        get_latest_version("glfw" "glfw" GDM_GLFW_VERSION)
+        gdm_get_latest_version("glfw" "glfw" GDM_GLFW_VERSION)
         set(GDM_GLFW_VERSION "${GDM_GLFW_VERSION}" CACHE STRING "GLFW version")
     endif()
     find_package(Threads REQUIRED) # pre-find threads
 elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
     if(NOT DEFINED GDM_FREEGLUT_VERSION)
-        get_latest_version("freeglut" "freeglut" GDM_FREEGLUT_VERSION)
+        gdm_get_latest_version("freeglut" "freeglut" GDM_FREEGLUT_VERSION)
         set(GDM_FREEGLUT_VERSION "${GDM_FREEGLUT_VERSION}" CACHE STRING "FreeGLUT version")
     endif()
 endif()
 
 if (GDM_USE_GLM)
     if(NOT DEFINED GDM_GLM_VERSION)
-        get_latest_version("g-truc" "glm" GDM_GLM_VERSION)
+        gdm_get_latest_version("g-truc" "glm" GDM_GLM_VERSION)
         set(GDM_GLM_VERSION "${GDM_GLM_VERSION}" CACHE STRING "GLM version")
     endif()
 endif()
@@ -121,15 +121,15 @@ if (GDM_GL_LOADER STREQUAL "glad")
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
     if(NOT DEFINED GDM_GLEW_VERSION)
-        get_latest_version("nigels-com" "glew" GDM_GLEW_VERSION)
+        gdm_get_latest_version("nigels-com" "glew" GDM_GLEW_VERSION)
         set(GDM_GLEW_VERSION "${GDM_GLEW_VERSION}" CACHE STRING "GLEW version")
     endif()
     option(GDM_GLEW_STATIC "Use static GLEW when available" ON)
 
 elseif (GDM_GL_LOADER STREQUAL "glew-glad")
-    # GLEW (public interface) + GLAD (actual GL entrypoints via fetch_glad_allEXT)
+    # GLEW (public interface) + GLAD (actual GL entrypoints via gdm_fetch_glad_allEXT)
     if(NOT DEFINED GDM_GLEW_VERSION)
-        get_latest_version("nigels-com" "glew" GDM_GLEW_VERSION)
+        gdm_get_latest_version("nigels-com" "glew" GDM_GLEW_VERSION)
         set(GDM_GLEW_VERSION "${GDM_GLEW_VERSION}" CACHE STRING "GLEW version")
     endif()
 
@@ -256,7 +256,7 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "glfw")
     set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(GLFW_LIBRARY_TYPE STATIC CACHE STRING "" FORCE)
 
-    use_or_fetch_package(
+    gdm_use_or_fetch_package(
         NAME glfw3
         VERSION ${GDM_GLFW_VERSION}
         GIT_REPOSITORY https://github.com/glfw/glfw
@@ -282,7 +282,7 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
 
     set(FREEGLUT_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
 
-    use_or_fetch_package(
+    gdm_use_or_fetch_package(
         NAME freeglut
         VERSION ${GDM_FREEGLUT_VERSION}
         GIT_REPOSITORY https://github.com/freeglut/freeglut
@@ -304,7 +304,7 @@ if (GDM_GL_LOADER STREQUAL "none")
     add_library(gdm::loader ALIAS gdm_loader)
     list(APPEND _gdm_defs GDM_HAS_LOADER_NONE)
 elseif (GDM_GL_LOADER STREQUAL "glad")
-    fetch_glad(
+    gdm_fetch_glad(
         OUT_VAR _glad_debug_dir
         BASE_DIR ${GDM_EXTERNAL_DIR}
         LANG "gl"
@@ -314,7 +314,7 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
         EXTENSIONS ${GDM_GLAD_EXTENSION}
     )
 
-    fetch_glad(
+    gdm_fetch_glad(
         OUT_VAR _glad_release_dir
         BASE_DIR ${GDM_EXTERNAL_DIR}
         LANG "gl"
@@ -374,7 +374,7 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
             set(_GDM_GLEW_CANDIDATES libglew_shared libglew_static GLEW::GLEW)
         endif()
 
-        use_or_fetch_package(
+        gdm_use_or_fetch_package(
             NAME glew-cmake
             VERSION ${GDM_GLEW_VERSION}
             GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
@@ -396,13 +396,13 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
     list(APPEND _gdm_defs GDM_HAS_GLEW)
 
 elseif (GDM_GL_LOADER STREQUAL "glew-glad")
-    fetch_glad_allEXT(
+    gdm_fetch_glad_allEXT(
         OUT_VAR _glad_allex_debug_dir
         BASE_DIR ${GDM_EXTERNAL_DIR}
         GLAD_OPTIONS DEBUG
     )
 
-    fetch_glad_allEXT(
+    gdm_fetch_glad_allEXT(
         OUT_VAR _glad_allex_release_dir
         BASE_DIR ${GDM_EXTERNAL_DIR}
     )
@@ -430,7 +430,7 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
     set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
     set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
 
-    use_or_fetch_package(
+    gdm_use_or_fetch_package(
         NAME glew-cmake
         VERSION ${GDM_GLEW_VERSION}
         GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
@@ -599,7 +599,7 @@ endif()
 # -----------------------
 if (GDM_USE_GLM)
     set(GLM_ENABLE_CXX_17 ON)
-    use_or_fetch_package(
+    gdm_use_or_fetch_package(
         NAME glm
         VERSION ${GDM_GLM_VERSION}
         GIT_REPOSITORY https://github.com/g-truc/glm
@@ -618,10 +618,10 @@ endif()
 
 if (GDM_USE_GLUTIL)
     if(NOT DEFINED GDM_CPPTRACE_VERSION)
-        get_latest_version("jeremy-rifkin" "cpptrace" GDM_CPPTRACE_VERSION)
+        gdm_get_latest_version("jeremy-rifkin" "cpptrace" GDM_CPPTRACE_VERSION)
         set(GDM_CPPTRACE_VERSION "${GDM_CPPTRACE_VERSION}" CACHE STRING "cpptrace version")
     endif()
-    use_or_fetch_package(
+    gdm_use_or_fetch_package(
         NAME cpptrace
         VERSION ${GDM_CPPTRACE_VERSION}
         GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace

@@ -1,8 +1,8 @@
-# get_latest_version(owner repo result_var)
+# gdm_get_latest_version(owner repo result_var)
 # Fetches the latest release tag from a GitHub repository.
 # Normalizes the version: strips leading 'v', appends '.0' if only two components (e.g. 3.4 -> 3.4.0).
 # On failure, aborts configuration with FATAL_ERROR.
-function(get_latest_version owner repo result_var)
+function(gdm_get_latest_version owner repo result_var)
     set(API_URL "https://api.github.com/repos/${owner}/${repo}/releases/latest")
     set(json_file "${CMAKE_BINARY_DIR}/_gdm_downloads/${repo}_latest_tag.json")
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_gdm_downloads")
@@ -46,7 +46,11 @@ endfunction()
 
 
 # How long (seconds) to wait for the GDM dependency lock before failing.
-set(GDM_LOCK_TIMEOUT 60)
+# Cache variable so it is visible to consumers calling the public API from their
+# own scope (gdm_lock_guard is a macro, so it expands into the caller's scope).
+set(GDM_LOCK_TIMEOUT 60 CACHE STRING
+    "Seconds to wait for the GDM dependency lock before failing"
+)
 
 # gdm_lock_guard(<lock_file>)
 # Expands to a file(LOCK ... GUARD FUNCTION) call so the lock is released automatically when function returns.
@@ -71,7 +75,7 @@ macro(gdm_lock_guard lock_file)
 endmacro()
 
 
-function(use_or_fetch_package)
+function(gdm_use_or_fetch_package)
     set(options)
     set(oneValueArgs
         NAME
@@ -91,9 +95,18 @@ function(use_or_fetch_package)
         ${ARGN}
     )
 
-    if (NOT PKG_NAME OR NOT PKG_VERSION OR NOT PKG_CANDIDATE_TARGETS)
+    if (NOT PKG_NAME OR NOT PKG_VERSION)
         message(FATAL_ERROR
-            "[${PROJECT_NAME}] use_or_fetch_package requires NAME, VERSION, and CANDIDATE_TARGETS"
+            "[${PROJECT_NAME}] gdm_use_or_fetch_package requires NAME and VERSION"
+        )
+    endif()
+
+    # CANDIDATE_TARGETS is optional. It is only needed when ALIAS_TARGET is set,
+    # to know which of the resolved targets the alias should point to.
+    if (PKG_ALIAS_TARGET AND NOT PKG_CANDIDATE_TARGETS)
+        message(FATAL_ERROR
+            "[${PROJECT_NAME}] gdm_use_or_fetch_package: ALIAS_TARGET '${PKG_ALIAS_TARGET}' "
+            "requires CANDIDATE_TARGETS to resolve which target to alias."
         )
     endif()
 
@@ -362,7 +375,7 @@ function(gdm_fetch_files)
     string(REGEX REPLACE "^https://github.com/" "https://raw.githubusercontent.com/" _ff_raw_repo "${FF_REPOSITORY}")
     set(_ff_root "${_ff_raw_repo}/${FF_TAG}")
 
-    # Download to a staging dir first, then rename into place (atomic like use_or_fetch_package).
+    # Download to a staging dir first, then rename into place (atomic like gdm_use_or_fetch_package).
     set(_ff_staging_dir "${CMAKE_BINARY_DIR}/_gdm_extract/${FF_NAME}-${FF_TAG}")
     file(REMOVE_RECURSE "${_ff_staging_dir}")
     file(MAKE_DIRECTORY "${_ff_staging_dir}")

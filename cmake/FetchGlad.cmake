@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 include(FetchContent)
-# fetch_glad(
+# gdm_fetch_glad(
 #   OUT_VAR    <var-to-set>             -- receives the output directory path
 #   BASE_DIR   <parent directory>       -- e.g. external/; output is BASE_DIR/glad-<config>
 #   [DEST_DIR  <explicit dir>]          -- if set, use this dir directly (skip CONFIG logic)
@@ -16,24 +16,24 @@ include(FetchContent)
 # A CONFIG file is written inside recording all parameters.  If the directory
 # already exists but its CONFIG differs, a numeric suffix (_2, _3, …) is
 # appended so that different configurations always use distinct directories.
-function(fetch_glad)
+function(gdm_fetch_glad)
   set(options SKIP_LOCK)
   set(oneValueArgs OUT_VAR BASE_DIR DEST_DIR LANG)
   set(multiValueArgs APIS PROFILES OPTIONS EXTENSIONS)
   cmake_parse_arguments(FG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if(NOT FG_OUT_VAR)
-    message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: OUT_VAR is required")
+    message(FATAL_ERROR "[${PROJECT_NAME}] gdm_fetch_glad: OUT_VAR is required")
   endif()
   if(NOT FG_LANG)
-    message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: LANG is required (ex: gl)")
+    message(FATAL_ERROR "[${PROJECT_NAME}] gdm_fetch_glad: LANG is required (ex: gl)")
   endif()
   if(NOT FG_APIS)
-    message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: APIS is required (ex: 4.6)")
+    message(FATAL_ERROR "[${PROJECT_NAME}] gdm_fetch_glad: APIS is required (ex: 4.6)")
   endif()
 
   # Lock the slot for glad download.
-  # SKIP_LOCK param is used by fetch_glad_allEXT, which already holds the lock for the whole operation.
+  # SKIP_LOCK param is used by gdm_fetch_glad_allEXT, which already holds the lock for the whole operation.
   if(NOT FG_SKIP_LOCK)
     if(FG_DEST_DIR)
       get_filename_component(_fg_lock_dir "${FG_DEST_DIR}" DIRECTORY)
@@ -78,16 +78,16 @@ function(fetch_glad)
     string(MD5 _fg_tail_hash "${_fg_suffix_tail}")
     string(SUBSTRING "${_fg_tail_hash}" 0 8 _fg_tail_hash_short)
     set(_fg_suffix "${_fg_suffix_trunc}_${_fg_tail_hash_short}")
-    message(STATUS "[${PROJECT_NAME}] fetch_glad: folder name too long; truncated to about ${_FG_MAX_SUFFIX_LEN} chars")
+    message(STATUS "[${PROJECT_NAME}] gdm_fetch_glad: folder name too long; truncated to about ${_FG_MAX_SUFFIX_LEN} chars")
   endif()
 
   # Decide output directory
   if(FG_DEST_DIR)
-    # Trust pre-selected directory(used in fetch_glad_allEXT).
+    # Trust pre-selected directory(used in gdm_fetch_glad_allEXT).
     set(_fg_out_dir "${FG_DEST_DIR}")
   else()
     if(NOT FG_BASE_DIR)
-      message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: BASE_DIR required when DEST_DIR is not given")
+      message(FATAL_ERROR "[${PROJECT_NAME}] gdm_fetch_glad: BASE_DIR required when DEST_DIR is not given")
     endif()
 
     set(_fg_base_dir "${FG_BASE_DIR}/glad-${_fg_suffix}")
@@ -193,7 +193,7 @@ function(fetch_glad)
 
   if(NOT CURL_RES EQUAL 0)
     message(FATAL_ERROR
-      "[${PROJECT_NAME}] fetch_glad: curl POST to gen.glad.sh failed (code ${CURL_RES}).\n"
+      "[${PROJECT_NAME}] gdm_fetch_glad: curl POST to gen.glad.sh failed (code ${CURL_RES}).\n"
       "curl stderr:\n${HTTP_ERR}\n"
       "curl/stdout(response):\n${HTTP_OUT}\n"
       "curl config path:\n${CURL_CFG_PATH}"
@@ -205,7 +205,7 @@ function(fetch_glad)
 
   if(NOT location OR location STREQUAL "/")
     message(FATAL_ERROR
-      "[${PROJECT_NAME}] fetch_glad: Could not extract Location header from gen.glad.sh response.\n"
+      "[${PROJECT_NAME}] gdm_fetch_glad: Could not extract Location header from gen.glad.sh response.\n"
       "curl/stdout(response):\n${HTTP_OUT}\n"
       "curl stderr:\n${HTTP_ERR}\n"
       "curl config path:\n${CURL_CFG_PATH}"
@@ -234,7 +234,7 @@ function(fetch_glad)
   if(NOT _dl_code EQUAL 0)
     file(REMOVE "${_zip_path}")
     list(GET _dl_status 1 _dl_msg)
-    message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad: Failed to download glad.zip: ${_dl_msg}\nURL=${zip_url}")
+    message(FATAL_ERROR "[${PROJECT_NAME}] gdm_fetch_glad: Failed to download glad.zip: ${_dl_msg}\nURL=${zip_url}")
   endif()
 
   # Extract into a staging dir first, then atomically rename into the final slot.
@@ -259,7 +259,7 @@ function(fetch_glad)
   set(${FG_OUT_VAR} "${_fg_out_dir}" PARENT_SCOPE)
 endfunction()
 
-# fetch_glad_allEXT(
+# gdm_fetch_glad_allEXT(
 #   OUT_VAR      <var-to-set>        -- receives the output directory path
 #   BASE_DIR     <parent directory>  -- output -> BASE_DIR/glad-<config>_allExt
 #   GLAD_OPTIONS <optional; list like STATUS;MX;...>
@@ -270,23 +270,23 @@ endfunction()
 #   generator=c
 #
 # The output directory is ${BASE_DIR}/glad-gl4.6core_allExt[_<OPTIONS>]
-# with CONFIG matching like fetch_glad().
+# with CONFIG matching like gdm_fetch_glad().
 # The extension list from gl.xml is NOT included in the config, and saved as EXTENSIONS=ALLEXT.
 # So even after gl.xml is updated in remote registry, the downloaded glad will reused.
 # Delete the glad directory manually to force a fresh fetch.
-function(fetch_glad_allEXT)
+function(gdm_fetch_glad_allEXT)
   set(oneValueArgs OUT_VAR BASE_DIR)
   set(multiValueArgs GLAD_OPTIONS)
   cmake_parse_arguments(FGAE "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if(NOT FGAE_OUT_VAR)
-    message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: OUT_VAR is required")
+    message(FATAL_ERROR "[${PROJECT_NAME}] gdm_fetch_glad_allEXT: OUT_VAR is required")
   endif()
   if(NOT FGAE_BASE_DIR)
-    message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: BASE_DIR is required")
+    message(FATAL_ERROR "[${PROJECT_NAME}] gdm_fetch_glad_allEXT: BASE_DIR is required")
   endif()
 
-  # Lock the slot. The inner fetch_glad() call passes SKIP_LOCK because this function already holds the lock.
+  # Lock the slot. The inner gdm_fetch_glad() call passes SKIP_LOCK because this function already holds the lock.
   gdm_lock_guard("${FGAE_BASE_DIR}/.gdm.lock")
 
   # Build config string (extensions excluded — they are dynamic)
@@ -316,11 +316,11 @@ function(fetch_glad_allEXT)
     string(MD5 _fg_tail_hash "${_fg_suffix_tail}")
     string(SUBSTRING "${_fg_tail_hash}" 0 8 _fg_tail_hash_short)
     set(_fg_suffix "${_fg_suffix_trunc}_${_fg_tail_hash_short}")
-    message(STATUS "[${PROJECT_NAME}] fetch_glad_allEXT: folder name too long; truncated to about ${_FG_MAX_SUFFIX_LEN} chars")
+    message(STATUS "[${PROJECT_NAME}] gdm_fetch_glad_allEXT: folder name too long; truncated to about ${_FG_MAX_SUFFIX_LEN} chars")
   endif()
   set(_fg_base_dir "${FGAE_BASE_DIR}/glad-${_fg_suffix}")
 
-  # Find a directory slot (same logic as fetch_glad)
+  # Find a directory slot (same logic as gdm_fetch_glad)
   set(_fg_out_dir "${_fg_base_dir}")
   set(_fg_suffix_num 0)
   while(EXISTS "${_fg_out_dir}")
@@ -355,7 +355,7 @@ function(fetch_glad_allEXT)
     if(NOT dl_code EQUAL 0)
       file(REMOVE "${GL_XML_PATH}")
       list(GET dl_status 1 dl_msg)
-      message(FATAL_ERROR "[${PROJECT_NAME}] fetch_glad_allEXT: Failed to download gl.xml: ${dl_msg}")
+      message(FATAL_ERROR "[${PROJECT_NAME}] gdm_fetch_glad_allEXT: Failed to download gl.xml: ${dl_msg}")
     endif()
 
     string(TIMESTAMP _xml_end_time "%s" UTC)
@@ -387,7 +387,7 @@ function(fetch_glad_allEXT)
 
   message(STATUS "[${PROJECT_NAME}] Parsed ${GL_EXTS_LEN} GL extensions from Khronos registry")
 
-  fetch_glad(
+  gdm_fetch_glad(
     OUT_VAR _glad_src
     DEST_DIR "${_fg_out_dir}"
     LANG "gl"

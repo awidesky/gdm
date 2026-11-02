@@ -48,6 +48,7 @@ so that your dependencies would work..
   - [Configuration Options](#configuration-options)
     - [Per-provider version options](#per-provider-version-options)
   - [CMake Utility Functions](#cmake-utility-functions)
+    - [gdm_use_or_fetch_package](#gdm_use_or_fetch_package)
     - [gdm_fetch_files](#gdm_fetch_files)
 - [GLUtil - OpenGL Utility Library](#glutil---opengl-utility-library)
   - [Core Modules](#core-modules)
@@ -156,7 +157,7 @@ At configure time GDM resolves each provider in this order:
 2. **Installed package** — otherwise GDM runs `find_package(<name> CONFIG EXACT <version>)`. If a system-installed library with required version exists, it will be used.
 3. **Download from GitHub** — otherwise GDM fetches the release tarball (`<repo>/archive/<tag>.tar.gz`), extracts it into `${GDM_EXTERNAL_DIR}/<name>-<version>/`. GDM downloads source archive instead of FetchContent, making it much faster(~1.8x).
    
-GLAD sources are generated on-demand (via `curl` to `gen.glad.sh`) by calling `fetch_glad()` **twice** — once with `OPTIONS DEBUG` (for `Debug`/`RelWithDebInfo`) and once without (for `Release`/`MinSizeRel`).  
+GLAD sources are generated on-demand (via `curl` to `gen.glad.sh`) by calling `gdm_fetch_glad()` **twice** — once with `OPTIONS DEBUG` (for `Debug`/`RelWithDebInfo`) and once without (for `Release`/`MinSizeRel`).  
 Examples with default options (`GDM_GLAD_API=4.6`, `GDM_GLAD_PROFILE=core`):
 - Debug:   `external/glad-gl4.6core_DEBUG`
 - Release: `external/glad-gl4.6core`
@@ -374,7 +375,7 @@ When GDM is included via `add_subdirectory()` or `FetchContent`, `GDM_STANDALONE
 
 ### Per-provider version options
 
-These are created on-demand based on your provider selections. For GitHub-hosted dependencies, the default is **the latest GitHub release tag at configure time** (queried via `get_latest_version()`), not a hardcoded value.
+These are created on-demand based on your provider selections. For GitHub-hosted dependencies, the default is **the latest GitHub release tag at configure time** (queried via `gdm_get_latest_version()`), not a hardcoded value.
 
 | Option | Applies when | Default |
 |--------|-------------|---------|
@@ -391,10 +392,76 @@ These are created on-demand based on your provider selections. For GitHub-hosted
 
 ## CMake Utility Functions
 
+### gdm_use_or_fetch_package
+
+Resolves a GitHub-hosted dependency using the exact same mechanism GDM uses for its own providers.
+This is a general-purpose helper; it does **not** mean GDM manages, supports, or acknowledges the library you pass to it.
+You pick the repository, the tag, and how you consume the resulting targets.
+
+```cmake
+gdm_use_or_fetch_package(
+    NAME              <name>            # required
+    VERSION           <version>         # required
+    GIT_REPOSITORY    <url>             # required
+    GIT_TAG           <tag>             # required
+    [CANDIDATE_TARGETS <target>...]     # optional
+    [ALIAS_TARGET     <target>]         # optional; requires CANDIDATE_TARGETS
+)
+```
+
+Resolution order (identical to GDM's own providers):
+
+1. **External sources** — if `${GDM_EXTERNAL_DIR}/<name>-<version>/CMakeLists.txt`
+   exists, it is used via `add_subdirectory()` and nothing is downloaded.
+2. **Installed package** — otherwise `find_package(<name> CONFIG EXACT <version>)`.
+3. **Download from GitHub** — otherwise `<GIT_REPOSITORY>/archive/<GIT_TAG>.tar.gz`
+   is fetched, extracted into `${GDM_EXTERNAL_DIR}/<name>-<version>/`, and added
+   via `add_subdirectory()`.
+
+```cmake
+# Fetch Dear ImGui, then link the target it exports itself.
+gdm_use_or_fetch_package(
+    NAME imgui
+    VERSION 1.91.5
+    GIT_REPOSITORY https://github.com/ocornut/imgui
+    GIT_TAG v1.91.5
+)
+
+target_link_libraries(my_target PRIVATE imgui)
+```
+
+- **NAME / VERSION** — identify the dependency. Together they name the
+  `${GDM_EXTERNAL_DIR}/<name>-<version>/` directory (so several versions can
+  coexist) and are passed to `find_package(<name> CONFIG EXACT <version>)`.
+- **GIT_REPOSITORY** — the GitHub repository URL, without a trailing slash.
+- **GIT_TAG** — the exact tag to download. Tag conventions differ per repo
+  (`1.2.3`, `v1.2.3`, `name-1.2.3`), so copy it verbatim from the repository's
+  releases page. `gdm_get_latest_version(<owner> <repo> <out_var>)` can query
+  the latest release tag for you.
+- **CANDIDATE_TARGETS** (optional) — one or more target names the library is
+  expected to export. The first candidate that exists after resolution is used.
+  Any of them that are imported targets are promoted with `IMPORTED_GLOBAL`, so
+  the parent project can see them. Omit this if you just want to fetch the
+  library and link against whatever target it exports itself — for example
+  `target_link_libraries(my_target PRIVATE imgui)`.
+- **ALIAS_TARGET** (optional) — if set, a target with this name is created as an
+  alias of the first matching candidate, giving you a stable name to link
+  against. Requires `CANDIDATE_TARGETS`.
+
+Notes:
+
+- The dependency must have a `CMakeLists.txt` at the archive root. For
+  header-only libraries with no build system, use `gdm_fetch_files()` below.
+- Build artifacts are isolated per dependency in
+  `${CMAKE_BINARY_DIR}/_gdm_deps/<name>-<version>/`, so source directories shared
+  with another project never collide.
+- Thread-safe: concurrent CMake configures sharing the same `GDM_EXTERNAL_DIR`
+  are serialized via a file lock.
+
 ### gdm_fetch_files
 
 For header-only libraries (stb, tiny_obj_loader, dds-ktx, etc.), use
-`gdm_fetch_files()` instead of `use_or_fetch_package()`.
+`gdm_fetch_files()` instead of `gdm_use_or_fetch_package()`.
 It downloads one or more individual files from a GitHub repository — headers, or
 any other resources — into `${GDM_EXTERNAL_DIR}/<name>-<tag>/`. No CMake target
 is created and no `add_subdirectory()` is performed; consume the result via the
@@ -800,7 +867,7 @@ One of the actual use cases of `glew-glad` mode is [ogl-gdm](http://github.com/a
 gdm/
 ├── CMakeLists.txt              # Main build (targets, options, provider logic)
 ├── cmake/
-│   ├── Dependencies.cmake      # use_or_fetch_package() - find or download dependencies
+│   ├── Dependencies.cmake      # gdm_use_or_fetch_package() - find or download dependencies
 │   └── FetchGlad.cmake         # GLAD code generation via gen.glad.sh(curl is required!)
 ├── src/
 │   └── glewToGlad.cpp          # glew-glad bridge implementation
