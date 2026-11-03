@@ -30,7 +30,7 @@ int main() {
     if (!glutil::debug::isGL_KHR_debugSupported())
         std::cout << "KHR_debug not supported; labels may be empty.\n";
 
-    const fs::path shaderDir = glutil::EXAMPLE_ASSET_DIR / "shader";
+    const fs::path shaderDir = glutil::exampleAssetDir() / "shader";
 
     std::cout << "\n=== Shader (ShaderLoader) ===\n";
     glutil::GLShader fileVertex = glutil::ShaderLoader::loadShaderToGL(

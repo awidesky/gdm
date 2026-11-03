@@ -57,7 +57,7 @@ int main()
     if (ctx == nullptr)
         return 1;
 
-    const std::filesystem::path objPath = glutil::EXAMPLE_ASSET_DIR / "model" / "cube_UVatlas.obj";
+    const std::filesystem::path objPath = glutil::exampleAssetDir() / "model" / "cube_UVatlas.obj";
 
     glutil::ModelData model = glutil::ModelLoader::loadOBJ(objPath, true);
 

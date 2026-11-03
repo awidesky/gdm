@@ -269,7 +269,7 @@ int main() {
     // register portable input callback
     glfwSetKeyCallback(window, keyCallback);
 
-    const fs::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
+    const fs::path textureDir = glutil::exampleAssetDir() / "texture";
     const fs::path diffusePath = textureDir / "diffuse.DDS";
     const fs::path normalPath = textureDir / "normal.bmp";
     const fs::path specularPath = textureDir / "specular.DDS";

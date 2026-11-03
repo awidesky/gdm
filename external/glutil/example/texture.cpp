@@ -86,7 +86,7 @@ int main() {
     if (ctx == nullptr)
         return 1;
 
-    const std::filesystem::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
+    const std::filesystem::path textureDir = glutil::exampleAssetDir() / "texture";
     const std::filesystem::path ddsPath = textureDir / "uvtemplate.DDS";
     const std::filesystem::path bmpPath = textureDir / "33.bmp";
 

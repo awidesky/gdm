@@ -135,7 +135,7 @@ int main(int argc, char** argv) {
     }
     glfwSetKeyCallback(window, keyCallback);
 
-    const fs::path shaderDir = glutil::EXAMPLE_ASSET_DIR / "shader";
+    const fs::path shaderDir = glutil::exampleAssetDir() / "shader";
     const fs::path vsPath = shaderDir / "manyCubes.vert";
     const fs::path fsPath = shaderDir / "manyCubes.frag";
 
@@ -236,7 +236,7 @@ int main(int argc, char** argv) {
     glBindVertexArray(0);
 
 
-    const fs::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
+    const fs::path textureDir = glutil::exampleAssetDir() / "texture";
     const fs::path diffusePath = textureDir / "diffuse.DDS";
     const fs::path normalPath = textureDir / "normal.bmp";
     const fs::path specularPath = textureDir / "specular.DDS";

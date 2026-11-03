@@ -44,6 +44,7 @@ Case x8
  */
 
 #include <glutil/shader.hpp>
+#include <glutil/path.hpp>
 
 #include <chrono>
 #include <cstdint>
@@ -185,7 +186,7 @@ static BenchResult benchmarkChecking(const std::string& source,
 
 int main() {
 #ifdef GLUTIL_ENABLE_BENCHMARKS
-    const std::filesystem::path ms949Path = glutil::TEST_ASSET_DIR / "shader" / "MS949.fs";
+    const std::filesystem::path ms949Path = glutil::testAssetDir() / "shader" / "MS949.fs";
     const std::string ms949 = readFileRaw(ms949Path);
 
     if (ms949.empty()) {

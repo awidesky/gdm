@@ -70,6 +70,23 @@ std::filesystem::path getExecutableDirectory() {
 
 std::filesystem::path getProjectRootDirectory() { return PROJECT_ROOT; }
 
+namespace {
+std::filesystem::path resolveAssetDir(const std::filesystem::path& compileTimeDir) {
+    std::error_code ec;
+    if (fs::exists(compileTimeDir, ec))
+        return compileTimeDir;
+
+    const PathResolveResult r = pathResolve("assets");
+    if (r.success)
+        return r.resolvedPath;
+
+    return compileTimeDir;
+}
+} // namespace
+
+std::filesystem::path exampleAssetDir() { return resolveAssetDir(EXAMPLE_ASSET_DIR); }
+std::filesystem::path testAssetDir()    { return resolveAssetDir(TEST_ASSET_DIR); }
+
 PathResolveResult pathResolve(const std::filesystem::path& inputPath) {
     PathResolveResult result;
 

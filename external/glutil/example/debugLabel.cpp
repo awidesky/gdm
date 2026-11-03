@@ -59,9 +59,10 @@ int main() {
     if (!window) return 1;
     glutil::debug::printRuntimeInfo(true);
 
-    const fs::path shaderDir = glutil::EXAMPLE_ASSET_DIR / "shader";
-    const fs::path textureDir = glutil::EXAMPLE_ASSET_DIR / "texture";
-    const fs::path modelDir = glutil::EXAMPLE_ASSET_DIR / "model";
+    const fs::path assetDir   = glutil::exampleAssetDir();
+    const fs::path shaderDir  = assetDir / "shader";
+    const fs::path textureDir = assetDir / "texture";
+    const fs::path modelDir   = assetDir / "model";
 
     glutil::GLProgram program = glutil::ShaderLoader::loadProgramToGL(shaderDir / "debugLabel.vert",
                                                                       shaderDir / "debugLabel.frag");

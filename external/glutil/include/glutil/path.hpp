@@ -49,6 +49,17 @@ std::filesystem::path getProjectRootDirectory();
  * - message contains full resolution trace
  */
 PathResolveResult pathResolve(const std::filesystem::path& inputPath);
+/**
+ * Returns the glutil example asset directory, tolerating shipped binaries.
+ * 1. Compile-time EXAMPLE_ASSET_DIR
+ * 2. pathResolve("assets") to check dir named "assets" in working dir / executable dir / project root
+ * Falls back to EXAMPLE_ASSET_DIR if neither exists.
+ */
+std::filesystem::path exampleAssetDir();
+/**
+ * Same as exampleAssetDir(), but keyed on TEST_ASSET_DIR.
+ */
+std::filesystem::path testAssetDir();
 
 } // namespace glutil
 
