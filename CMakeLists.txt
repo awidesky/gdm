@@ -313,6 +313,14 @@ endif()
 # OpenGL loader (GLAD, GLEW)
 # -----------------------
 
+# glew-cmake <= 2.3.1 on Apple it unconditionally links the long-dead AGL framework.
+# Upstream fixed this in PR #85 (USE_AGL option, default OFF), but that is not in
+# a released tag yet - see https://github.com/Perlmint/glew-cmake/issues/84 .
+if (APPLE AND (GDM_GL_LOADER STREQUAL "glew" OR GDM_GL_LOADER STREQUAL "glew-glad"))
+    set(AGL_LIBRARY "" CACHE FILEPATH
+        "AGL is deprecated and unused; skipped to work around glew-cmake linking it (issue #84)" FORCE)
+endif()
+
 if (GDM_GL_LOADER STREQUAL "none")
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)

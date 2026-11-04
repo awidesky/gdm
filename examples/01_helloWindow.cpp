@@ -131,7 +131,24 @@ void main() {
 }
 
 bool initializeLoader() {
-#ifdef GDM_HAS_GLAD
+    // GLEW must be checked before GLAD: glew-glad mode defines both
+    // GDM_HAS_GLEW and GDM_HAS_GLAD. In that mode the generated <GL/glew.h>
+    // shim redirects glewInit() to the GDM bridge.
+    // Calling gladLoadGL() directly here would skip GLEW entirely,
+    // so its version globals stay 0 ("Loaded GL Version" would print UNKNOWN)
+    // and the debug engine would never start.
+#if defined(GDM_HAS_GLEW)
+    glewExperimental = GL_TRUE;
+    const GLenum glewErr = glewInit();
+    std::cout << "GLEW init : " << glewGetErrorString(glewErr) << std::endl;
+    if (glewErr != GLEW_OK) {
+        std::cerr << "Failed to initialize GLEW: "
+                  << reinterpret_cast<const char*>(glewGetErrorString(glewErr))
+                  << std::endl;
+        return false;
+    }
+    return true;
+#elif defined(GDM_HAS_GLAD)
     int gladVersion = 0;
     #ifdef GDM_HAS_GLFW
     gladVersion = gladLoadGL(glfwGetProcAddress);
@@ -147,17 +164,6 @@ bool initializeLoader() {
     std::cout << "GLAD loaded OpenGL: "
               << GLAD_VERSION_MAJOR(gladVersion) << "."
               << GLAD_VERSION_MINOR(gladVersion) << std::endl;
-    return true;
-#elif defined(GDM_HAS_GLEW)
-    glewExperimental = GL_TRUE;
-    const GLenum glewErr = glewInit();
-    std::cout << "GLEW init : " << glewGetErrorString(glewErr) << std::endl;
-    if (glewErr != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW: "
-                  << reinterpret_cast<const char*>(glewGetErrorString(glewErr))
-                  << std::endl;
-        return false;
-    }
     return true;
 #else
     std::cerr << "No loader selected. (expected GLAD or GLEW)" << std::endl;
