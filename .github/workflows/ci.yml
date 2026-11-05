@@ -1,0 +1,325 @@
+name: ci
+
+# gdm is an OpenGL dependency manager, so this workflow checks that one thing:
+# that gdm resolves each dependency through every tier it has, and that whatever
+# it resolved builds and links. Two jobs per OS, no build artifacts required from
+# anywhere:
+#
+#   fetch     - nothing preinstalled: gdm must download and build glfw/freeglut/
+#               glm/glew-cmake/cpptrace from source and generate glad. This is
+#               the path every fresh user takes, so it runs on all three OSes.
+#   installed  - everything installed through the system package manager
+#               (apt / Homebrew / vcpkg): gdm must find it with find_package
+#               instead of downloading, and needs no network at all.
+#
+# The examples never run unattended: they open a window and loop until it is
+# closed. What CI can prove is that configuring succeeded, every target linked
+# and every executable exists; package.py then stages the binaries with their
+# assets, so the result can be run on a real machine (README.txt in the payload
+# explains what that machine needs).
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned where a version drift would only churn the artifact; freeglut and
+  # GLEW are deliberately left to gdm, because resolving their version is itself
+  # part of what this workflow checks:
+  #   - freeglut tags v3.8.0 -> gdm picks 3.8, whose native Cocoa backend is the
+  #     one macOS can build (3.4 needs X11, and macOS ships no GLX headers).
+  #   - GLEW is packaged for CMake by Perlmint/glew-cmake, whose tags are
+  #     glew-cmake-X.Y.Z; gdm reads that feed and derives both the version and
+  #     the download tag from it.
+  GDM_GLFW_VERSION: "3.5.1"
+  GDM_GLM_VERSION: "1.0.3"
+  GDM_CPPTRACE_VERSION: "1.0.4"
+
+jobs:
+  fetch:
+    name: fetch and build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2022]
+    steps:
+      - uses: actions/checkout@v4
+
+      # package.py stages the artifact payload.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # glfw compiles its X11 and Wayland backends on Linux, so those dev headers
+      # are needed to build it; xvfb and Mesa provide the software GL the example
+      # run at the end of this job uses.
+      - name: system OpenGL/X11 dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev \
+            libwayland-dev libxkbcommon-dev xvfb
+      - name: start a display
+        if: runner.os == 'Linux'
+        run: |
+          Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+
+      # The macOS images ship Homebrew, and CMake searches it by default, so a
+      # Homebrew package whose version matched the pin would take the "installed"
+      # tier and the download tier would go untested here.
+      - name: take Homebrew out of the search path
+        if: runner.os == 'macOS'
+        run: echo "GDM_IGNORE_SYSTEM_PREFIXES=/opt/homebrew;/usr/local" >> "$GITHUB_ENV"
+
+      # windows-latest is the Windows Server 2025 image, which ships only Visual
+      # Studio 2026; windows-2022/2025 carry 2022. Resolve the installed one
+      # instead of hardcoding a version that may not exist.
+      - name: resolve Visual Studio generator
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $tools = 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64'
+          $installPath = & $vswhere -latest -products * -requires $tools -property installationPath
+          if (-not $installPath) { throw "No Visual Studio with the VC++ x64 toolset found" }
+          $vsVersion = & $vswhere -latest -products * -requires $tools -property installationVersion
+          $major = [int]($vsVersion.Split('.')[0])
+          $generator = @{ 16 = 'Visual Studio 16 2019'; 17 = 'Visual Studio 17 2022'; 18 = 'Visual Studio 18 2026' }[$major]
+          if (-not $generator) { throw "Unsupported Visual Studio major version $major ($vsVersion)" }
+          $cmakeVersion = ((cmake --version | Select-Object -First 1) -replace '^cmake version ','')
+          Write-Host "Visual Studio $vsVersion at $installPath -> -G $generator (CMake $cmakeVersion)"
+          if ($major -ge 18 -and ([version]$cmakeVersion -lt [version]'4.1')) {
+            throw "Visual Studio 18 2026 needs CMake >= 4.1, found $cmakeVersion"
+          }
+          "VS_GENERATOR=$generator" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Nothing is installed and external/ is empty, so every dependency is
+      # fetched: gdm's download tier, and glad generated on the fly. This build
+      # also carries the warning flags, and it is what the Debug payload ships.
+      - name: "1 · default (glfw + glad + glm) · Debug · download tier"
+        shell: bash
+        run: |
+          source .github/scripts/ci-common.sh
+          gdm_configure b-dbg Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS"
+          gdm_build b-dbg Debug
+          gdm_require cfg-b-dbg.log "\[GDM\] Fetching glfw3" "glfw was fetched"
+          gdm_require cfg-b-dbg.log "\[GDM\] Fetching cpptrace" "cpptrace was fetched"
+          gdm_collect_warnings build-b-dbg.log
+
+      # Same external/ directory, so gdm's first tier wins and nothing is
+      # downloaded again - and the download itself never has to be repeated.
+      - name: "2 · default · Release · external directory tier"
+        shell: bash
+        run: |
+          source .github/scripts/ci-common.sh
+          gdm_configure b-rel Release
+          gdm_build b-rel Release
+          gdm_require cfg-b-rel.log "\[GDM\] Found external glfw3" "the fetched sources were reused"
+          gdm_forbid cfg-b-rel.log "Fetching" "nothing was downloaded a second time"
+
+      # A different window backend and loader, sharing the same external/
+      # directory: freeglut and glew-cmake are fetched next to the already
+      # downloaded glm/cpptrace, which proves the version-keyed layout coexists.
+      # gdm switches freeglut's macOS build to its native Cocoa backend, because
+      # the X11 one needs GLX headers macOS does not ship.
+      - name: "3 · freeglut + glew · Debug · build and run the example"
+        shell: bash
+        run: |
+          source .github/scripts/ci-common.sh
+          gdm_configure b-fg Debug -DGDM_WINDOW_BACKEND=freeglut -DGDM_GL_LOADER=glew
+          gdm_require cfg-b-fg.log "\[GDM\] Fetching freeglut" "freeglut was fetched"
+          gdm_require cfg-b-fg.log "\[GDM\] Fetching glew-cmake" "glew-cmake was fetched (version resolved from its tags)"
+          gdm_require cfg-b-fg.log "\[GDM\] Found external glm" "glm was reused from external/"
+          gdm_build b-fg Debug gdm_example_1_HelloWindow
+          gdm_run "$(gdm_exe b-fg gdm_example_1_HelloWindow)" 5 run-fg.log
+
+      # The hybrid loader: glew-cmake plus glad with every extension, the
+      # generated GL/glew.h wrapper and the glewToGlad bridge.
+      - name: "4 · glew-glad · Debug · run the example"
+        shell: bash
+        run: |
+          source .github/scripts/ci-common.sh
+          gdm_configure b-gw Debug -DGDM_GL_LOADER=glew-glad
+          # step 3 already downloaded glew-cmake (its version resolved from its own
+          # tags), so here it is reused - which is what proves the two providers
+          # share the version-keyed external directory
+          gdm_require cfg-b-gw.log "\[GDM\] Found external glew-cmake" "glew-cmake was reused from external/"
+          gdm_require cfg-b-gw.log "\[GDM\] Found external glm" "glm was reused from external/"
+          gdm_build b-gw Debug gdm_example_1_HelloWindow
+          gdm_run "$(gdm_exe b-gw gdm_example_1_HelloWindow)" 5 run-gw.log
+
+      # Verifies that every target of the default build produced an executable
+      # and stages them with their assets; the Debug payload keeps symbols, the
+      # Release payload is stripped.
+      - name: package
+        shell: bash
+        run: |
+          payload="${{ runner.temp }}/payload"
+          cfg=""
+          if [ "$RUNNER_OS" = "Windows" ]; then cfg="--config Debug"; fi
+          python .github/scripts/package.py --build-dir b-dbg $cfg --no-strip \
+            --payload-dir "$payload/gdm-examples-${{ runner.os }}-Debug"
+          cfg=""
+          if [ "$RUNNER_OS" = "Windows" ]; then cfg="--config Release"; fi
+          python .github/scripts/package.py --build-dir b-rel $cfg \
+            --payload-dir "$payload/gdm-examples-${{ runner.os }}-Release"
+
+      # upload-artifact always zips what it is handed, so hand it the unpacked
+      # payload: the download then expands straight into the executables and
+      # assets instead of into another archive.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gdm-examples-${{ runner.os }}-Debug
+          path: ${{ runner.temp }}/payload/gdm-examples-${{ runner.os }}-Debug
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gdm-examples-${{ runner.os }}-Release
+          path: ${{ runner.temp }}/payload/gdm-examples-${{ runner.os }}-Release
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gdm-warnings-${{ runner.os }}
+          path: warnings.txt
+          retention-days: 14
+          if-no-files-found: warn
+
+  installed:
+    name: installed dependencies (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2022]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: resolve Visual Studio generator
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $tools = 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64'
+          $installPath = & $vswhere -latest -products * -requires $tools -property installationPath
+          if (-not $installPath) { throw "No Visual Studio with the VC++ x64 toolset found" }
+          $vsVersion = & $vswhere -latest -products * -requires $tools -property installationVersion
+          $major = [int]($vsVersion.Split('.')[0])
+          $generator = @{ 16 = 'Visual Studio 16 2019'; 17 = 'Visual Studio 17 2022'; 18 = 'Visual Studio 18 2026' }[$major]
+          if (-not $generator) { throw "Unsupported Visual Studio major version $major ($vsVersion)" }
+          $cmakeVersion = ((cmake --version | Select-Object -First 1) -replace '^cmake version ','')
+          if ($major -ge 18 -and ([version]$cmakeVersion -lt [version]'4.1')) {
+            throw "Visual Studio 18 2026 needs CMake >= 4.1, found $cmakeVersion"
+          }
+          "VS_GENERATOR=$generator" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: install dependencies (linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcpptrace-dev libglfw3-dev libglm-dev libglew-dev \
+            mesa-utils libgl1-mesa-dri xvfb
+          Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+
+      - name: install dependencies (macos)
+        if: runner.os == 'macOS'
+        run: |
+          brew install glfw glm glew cpptrace
+          echo "PREFIX=/opt/homebrew" >> "$GITHUB_ENV"
+
+      - name: install dependencies (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          vcpkg install glfw3:x64-windows glew:x64-windows glm:x64-windows cpptrace:x64-windows
+          echo "PREFIX=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # gdm only uses an installed package when its version matches exactly, so
+      # ask the packages themselves what they are and pin gdm to that. The probe
+      # fails when a package ships no usable CMake config.
+      - name: probe the installed versions
+        shell: bash
+        run: |
+          if ! probe=$(cmake -S .github/scripts/probe -B "${{ runner.temp }}/probe" \
+                               -DCMAKE_PREFIX_PATH="$PREFIX" 2>&1); then
+            echo "$probe" >&2
+            echo "FAILED: the probe could not resolve the installed packages" >&2
+            exit 1
+          fi
+          echo "$probe"
+          # message(STATUS) prefixes every line with "-- ", so match on a suffix.
+          while IFS='|' read -r tag var value; do
+            case "$tag" in
+              *GDM_PROBE)
+                if [ -n "$value" ]; then
+                  echo "$var=$value" >> "$GITHUB_ENV"
+                fi
+                ;;
+            esac
+          done <<< "$probe"
+          # A usable target is what gdm needs: a version file is not, because its
+          # GLEW branch only looks for the target. Homebrew's GLEW, for example,
+          # imports fine but reports no version at all.
+          for required in GDM_GLFW_TARGET GDM_GLM_TARGET GDM_GLEW_TARGET; do
+            echo "$probe" | grep -q "^GDM_PROBE|$required|." \
+              || { echo "FAILED: $required was not installed (probe printed nothing)" >&2; exit 1; }
+          done
+
+      # No glad here: glad is generated over the network by gdm, never installed,
+      # and the fetch job already covers it - so this job needs no network once
+      # the packages are in, which is exactly what gdm promises users.
+      - name: configure and build through find_package
+        shell: bash
+        run: |
+          source .github/scripts/ci-common.sh
+          gdm_configure b-inst Release -DGDM_GL_LOADER=glew
+          gdm_require cfg-b-inst.log "\[GDM\] Found installed glfw3" "glfw came from the package"
+          gdm_require cfg-b-inst.log "\[GDM\] Found installed glm" "glm came from the package"
+          gdm_require cfg-b-inst.log "\[GDM\] Found installed GLEW" "GLEW came from the package"
+          if grep -q "\[GDM\] Found installed cpptrace" cfg-b-inst.log; then
+            echo "ok: cpptrace came from the package"
+          else
+            echo "ok: no cpptrace package on this OS, gdm fetched it instead"
+          fi
+          gdm_forbid cfg-b-inst.log "Found external" "no external/ dependency was used"
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
+          # GDM_GLEW_STATIC is what the probe said is available: with it asking for
+          # a variant the distro package lacks (Homebrew ships shared only), gdm
+          # falls back to building glew-cmake - correct behaviour, but it would
+          # silently turn this job into another download test.
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "the installed GLEW was used, not downloaded"
+          gdm_build b-inst Release glutil gdm_example_1_HelloWindow
+
+      # The one place a binary links against the system packages rather than
+      # gdm's own static builds. It reports only: a runner's software GL is not
+      # what this job is checking.
+      - name: run the example (informational)
+        continue-on-error: true
+        shell: bash
+        run: |
+          source .github/scripts/ci-common.sh
+          gdm_run "$(gdm_exe b-inst gdm_example_1_HelloWindow)" 5 run-inst.log
+
+      - name: re-configure (determinism)
+        shell: bash
+        run: |
+          source .github/scripts/ci-common.sh
+          gdm_configure b-inst2 Release -DGDM_GL_LOADER=glew
+          gdm_require cfg-b-inst2.log "\[GDM\] Found installed glfw3" "glfw came from the package"
+          gdm_forbid cfg-b-inst2.log "Found external" "no external/ dependency was used"

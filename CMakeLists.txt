@@ -90,6 +90,7 @@ if (GDM_WINDOW_BACKEND STREQUAL "glfw")
         )
         set(GDM_GLFW_VERSION "${GDM_GLFW_VERSION}" CACHE STRING "GLFW version")
     endif()
+    option(GDM_GLFW_STATIC "Use static GLFW when available" ON)
     find_package(Threads REQUIRED) # pre-find threads
 elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
     if(NOT DEFINED GDM_FREEGLUT_VERSION)
@@ -143,9 +144,9 @@ elseif (GDM_GL_LOADER STREQUAL "glew" OR GDM_GL_LOADER STREQUAL "glew-glad")
         set(GDM_GLEW_VERSION "${GDM_GLEW_VERSION}" CACHE STRING "GLEW version")
     endif()
 
-    if (GDM_GL_LOADER STREQUAL "glew")
-        option(GDM_GLEW_STATIC "Use static GLEW when available" ON)
-    else()
+    option(GDM_GLEW_STATIC "Use static GLEW when available" ON)
+
+    if (GDM_GL_LOADER STREQUAL "glew-glad")
         # GLEW (public interface) + GLAD (actual GL entrypoints via gdm_fetch_glad_allEXT)
         # glew-glad's bridge (glewToGlad.cpp) hard-depends on glutil::debug::init(),
         # GLUtil must be enabled, or glew-glad looses it's whole point.
@@ -159,6 +160,7 @@ endif()
 # Clean up stale cache variables when provider selection changes
 if (NOT GDM_WINDOW_BACKEND STREQUAL "glfw")
     unset(GDM_GLFW_VERSION CACHE)
+    unset(GDM_GLFW_STATIC CACHE)
 endif()
 
 if (NOT GDM_WINDOW_BACKEND STREQUAL "freeglut")
@@ -268,7 +270,11 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "glfw")
     set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
     set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(GLFW_LIBRARY_TYPE STATIC CACHE STRING "" FORCE)
+    if (GDM_GLFW_STATIC)
+        set(GLFW_LIBRARY_TYPE STATIC CACHE STRING "" FORCE)
+    else()
+        set(GLFW_LIBRARY_TYPE SHARED CACHE STRING "" FORCE)
+    endif()
 
     gdm_use_or_fetch_package(
         NAME glfw3
@@ -296,14 +302,49 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
 
     set(FREEGLUT_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
 
+    # freeglut's UNIX default backend is X11, and macOS ships no GLX headers
+    # (its OpenGL is OpenGL.framework), and the native Cocoa backend is used.
+    # That backend only exists from 3.8 on; a user who wants X11
+    # on a Mac after all can still ask for it with -DFREEGLUT_COCOA=OFF.
+    if(APPLE AND GDM_FREEGLUT_VERSION VERSION_GREATER_EQUAL 3.8 AND NOT DEFINED FREEGLUT_COCOA)
+        set(FREEGLUT_COCOA ON CACHE BOOL "Use freeglut's native Cocoa backend (macOS)")
+    endif()
+
+    set(_gdm_freeglut_targets
+        freeglut freeglut_static freeglut::freeglut freeglut::freeglut_static)
+
     gdm_use_or_fetch_package(
         NAME freeglut
         VERSION ${GDM_FREEGLUT_VERSION}
         GIT_REPOSITORY https://github.com/freeglut/freeglut
         GIT_TAG ${GDM_FREEGLUT_GIT_TAG}
         ALIAS_TARGET gdm::window
-        CANDIDATE_TARGETS freeglut freeglut_static freeglut::freeglut freeglut::freeglut_static
+        CANDIDATE_TARGETS ${_gdm_freeglut_targets}
     )
+
+    # freeglut declares no target_include_directories(); it only uses the legacy
+    # directory-scope INCLUDE_DIRECTORIES(), which never reaches to the consumer.
+    # So a freeglut built from the sources offers no path to GL/freeglut.h
+    # A package found by find_package does carry its own include directory.
+    foreach(_gdm_fg_target IN LISTS _gdm_freeglut_targets)
+        if(TARGET ${_gdm_fg_target})
+            get_target_property(_gdm_fg_includes ${_gdm_fg_target} INTERFACE_INCLUDE_DIRECTORIES)
+            if(NOT _gdm_fg_includes)
+                set(_gdm_fg_include_dir
+                    "${GDM_EXTERNAL_DIR}/freeglut-${GDM_FREEGLUT_VERSION}/include")
+                if(EXISTS "${_gdm_fg_include_dir}")
+                    target_include_directories(${_gdm_fg_target} INTERFACE "${_gdm_fg_include_dir}")
+                    message(STATUS
+                        "[${PROJECT_NAME}] ${_gdm_fg_target} exposes no include "
+                        "directory (freeglut's own CMake sets none); adding ${_gdm_fg_include_dir}"
+                    )
+                endif()
+                unset(_gdm_fg_include_dir)
+            endif()
+            unset(_gdm_fg_includes)
+        endif()
+    endforeach()
+    unset(_gdm_freeglut_targets)
     list(APPEND _gdm_defs GDM_HAS_FREEGLUT)
 else()
     message(FATAL_ERROR "[GDM] Unsupported GDM_WINDOW_BACKEND: ${GDM_WINDOW_BACKEND}")
@@ -370,17 +411,34 @@ elseif (GDM_GL_LOADER STREQUAL "glad")
 
 elseif (GDM_GL_LOADER STREQUAL "glew")
     if (GDM_WINDOW_BACKEND STREQUAL "none")
-        message(FATAL_ERROR "[GDM] GDM_GL_LOADER=glew-glad requires GDM_WINDOW_BACKEND=glfw or freeglut.")
+        message(FATAL_ERROR "[GDM] GDM_GL_LOADER=glew requires GDM_WINDOW_BACKEND=glfw or freeglut.")
     endif()
-    set(GLEW_USE_STATIC_LIBS ${GDM_GLEW_STATIC})
 
-    # Prefer system-installed GLEW package first.
+    # Prefer a system GLEW if actually provides the requested variant.
+    # GLEW's own config package hard-errors when asked for a variant it does not ship 
+    # (e.g. Homebrew installs shared-only).
+    # So we leave the GLEW_USE_STATIC_LIBS unset, find whichever variant exists,
+    # and pick the one matching GDM_GLEW_STATIC ourselves.
     find_package(GLEW QUIET)
 
+    set(_gdm_glew_target "")
     if (TARGET GLEW::GLEW)
-        message(STATUS "[GDM] Found installed GLEW target: GLEW::GLEW")
+        if (GDM_GLEW_STATIC AND TARGET GLEW::glew_s)
+            set(_gdm_glew_target GLEW::glew_s)
+        elseif (NOT GDM_GLEW_STATIC AND TARGET GLEW::glew)
+            set(_gdm_glew_target GLEW::glew)
+        endif()
+    endif()
+
+    if (_gdm_glew_target)
+        message(STATUS "[GDM] Found installed GLEW target: ${_gdm_glew_target}")
     else()
-        # Fallback to fetching glew-cmake.
+        if (TARGET GLEW::GLEW)
+            message(STATUS
+                "[GDM] GDM_GLEW_STATIC is ${GDM_GLEW_STATIC} but installed GLEW does not provide that build type. Falling back to glew-cmake."
+            )
+        endif()
+        # Fallback: build the requested variant from source with glew-cmake.
         set(GDM_GLEW_GIT_TAG "glew-cmake-${GDM_GLEW_VERSION}")
 
         # Configure glew-cmake to build only libs (no glewinfo/visualinfo)
@@ -389,32 +447,29 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
         if (GDM_GLEW_STATIC)
             set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
             set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
-            set(_GDM_GLEW_CANDIDATES libglew_static libglew_shared GLEW::GLEW)
         else()
             set(glew-cmake_BUILD_SHARED ON CACHE BOOL "" FORCE)
             set(glew-cmake_BUILD_STATIC OFF CACHE BOOL "" FORCE)
-            set(_GDM_GLEW_CANDIDATES libglew_shared libglew_static GLEW::GLEW)
         endif()
 
+        # Link through a private alias: the probe above may already have created
+        # the public GLEW::GLEW target, which would stop gdm_use_or_fetch_package
+        # from aliasing the freshly built one.
         gdm_use_or_fetch_package(
             NAME glew-cmake
             VERSION ${GDM_GLEW_VERSION}
             GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
             GIT_TAG ${GDM_GLEW_GIT_TAG}
-            ALIAS_TARGET GLEW::GLEW
-            CANDIDATE_TARGETS ${_GDM_GLEW_CANDIDATES}
+            ALIAS_TARGET gdm::glew
+            CANDIDATE_TARGETS libglew_static libglew_shared
         )
-
-        unset(_GDM_GLEW_CANDIDATES)
-    endif()
-
-    if (NOT TARGET GLEW::GLEW)
-        message(FATAL_ERROR "[GDM] Failed to resolve GLEW target (expected GLEW::GLEW).")
+        set(_gdm_glew_target gdm::glew)
     endif()
 
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
-    target_link_libraries(gdm_loader INTERFACE GLEW::GLEW)
+    target_link_libraries(gdm_loader INTERFACE ${_gdm_glew_target})
+    unset(_gdm_glew_target)
     list(APPEND _gdm_defs GDM_HAS_GLEW)
 
 elseif (GDM_GL_LOADER STREQUAL "glew-glad")
@@ -449,18 +504,26 @@ elseif (GDM_GL_LOADER STREQUAL "glew-glad")
     # Configure glew-cmake to build only libs (no glewinfo/visualinfo)
     set(ONLY_LIBS ON CACHE BOOL "" FORCE)
 
-    set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-    set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
+    if (GDM_GLEW_STATIC)
+        set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
+        set(_gdm_glewglad_glew_target libglew_static)
+    else()
+        set(glew-cmake_BUILD_SHARED ON CACHE BOOL "" FORCE)
+        set(glew-cmake_BUILD_STATIC OFF CACHE BOOL "" FORCE)
+        set(_gdm_glewglad_glew_target libglew_shared)
+    endif()
 
     gdm_use_or_fetch_package(
         NAME glew-cmake
         VERSION ${GDM_GLEW_VERSION}
         GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
         GIT_TAG ${GDM_GLEW_GIT_TAG}
-        CANDIDATE_TARGETS libglew_static
+        CANDIDATE_TARGETS ${_gdm_glewglad_glew_target}
     )
-    if (NOT TARGET libglew_static)
-        message(FATAL_ERROR "[GDM] Failed to resolve glew-cmake target for glew-glad.")
+    if (NOT TARGET ${_gdm_glewglad_glew_target})
+        message(FATAL_ERROR
+            "[GDM] Failed to resolve glew-cmake target '${_gdm_glewglad_glew_target}' for glew-glad.")
     endif()
 
 
@@ -585,7 +648,7 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
             gdm_glewglad_glad
         PRIVATE
             gdm::window
-            libglew_static
+            ${_gdm_glewglad_glew_target}
     )
 
     add_library(gdm_loader INTERFACE)
@@ -598,8 +661,9 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
 
     set_target_properties(gdm_glad_allext_debug   PROPERTIES FOLDER "GLEW_GLAD")
     set_target_properties(gdm_glad_allext_release PROPERTIES FOLDER "GLEW_GLAD")
-    set_target_properties(libglew_static          PROPERTIES FOLDER "GLEW_GLAD")
+    set_target_properties(${_gdm_glewglad_glew_target} PROPERTIES FOLDER "GLEW_GLAD")
     set_target_properties(gdm_glew_glad           PROPERTIES FOLDER "GLEW_GLAD")
+    unset(_gdm_glewglad_glew_target)
 
 else()
     message(FATAL_ERROR "[GDM] Unsupported GDM_GL_LOADER: ${GDM_GL_LOADER}")
