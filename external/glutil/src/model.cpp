@@ -1,5 +1,6 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
+// TODO_easy : parseRawTriple, parseTriple, parseTagTriple functions are not used in this project. maybe (void*) cast to remove warning?
 
 #include <glutil/path.hpp>
 #include <glutil/model.hpp>
