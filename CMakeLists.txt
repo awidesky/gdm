@@ -333,7 +333,11 @@ elseif (GDM_WINDOW_BACKEND STREQUAL "freeglut")
                 set(_gdm_fg_include_dir
                     "${GDM_EXTERNAL_DIR}/freeglut-${GDM_FREEGLUT_VERSION}/include")
                 if(EXISTS "${_gdm_fg_include_dir}")
-                    target_include_directories(${_gdm_fg_target} INTERFACE "${_gdm_fg_include_dir}")
+                    # BUILD_INTERFACE, because freeglut's targets are exported (install(EXPORT ...))
+                    # and CMake refuses a source-tree path in an exported interface.
+                    # The generator expression marks the path as build-tree-only
+                    target_include_directories(${_gdm_fg_target} INTERFACE
+                        "$<BUILD_INTERFACE:${_gdm_fg_include_dir}>")
                     message(STATUS
                         "[${PROJECT_NAME}] ${_gdm_fg_target} exposes no include "
                         "directory (freeglut's own CMake sets none); adding ${_gdm_fg_include_dir}"
