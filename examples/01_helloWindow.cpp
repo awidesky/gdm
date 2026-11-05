@@ -34,6 +34,10 @@ void onFreeglutKeyboard(unsigned char key, int, int) {
         g_shouldClose = true;
     }
 }
+
+// freeglut aborts the run when a window has no display callback, even though
+// every frame is drawn by the loop below (which polls with glutMainLoopEvent()).
+void onFreeglutDisplay() {}
 #endif
 
 GLuint compileShader(GLenum type, const char* source) {
@@ -173,7 +177,10 @@ bool initializeLoader() {
 
 } // namespace
 
-int main() {
+// argc/argv are only used by freeglut's glutInit()
+int main(int argc, char** argv) {
+    (void)argc; (void)argv;    // only freeglut requires them
+
     int context_version_major = 3;
     int context_version_minor = 3;
 
@@ -210,13 +217,10 @@ int main() {
 
 #elif defined(GDM_HAS_FREEGLUT)
     glutInit(&argc, argv);
-#ifdef GDM_HAS_GLUTIL
-    auto version = glutil::debug::availableGLversion();
-    context_version_major = version.major;
-    context_version_minor = version.minor;
-#endif
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
+    // freeglut can't probe available OpenGL version, so use default 3.3 core.
+    // If no glutInitContextVersion is given, freeglut defaults legacy 1.x ~ 2.x
     glutInitContextVersion(context_version_major, context_version_minor);
 #ifdef GLUT_CORE_PROFILE
     glutInitContextProfile(GLUT_CORE_PROFILE);
@@ -229,6 +233,7 @@ int main() {
     }
 
     glutKeyboardFunc(onFreeglutKeyboard);
+    glutDisplayFunc(onFreeglutDisplay);
 
 #else
     std::cerr << "No window backend selected. (expected GLFW or FreeGLUT)" << std::endl;

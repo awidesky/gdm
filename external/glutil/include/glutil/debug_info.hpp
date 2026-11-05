@@ -64,7 +64,13 @@ public:
 };
 /** Get current OpenGL context version */
 GLVersion getOpenGLVersion();
-/** Query best available OpenGL version supported by system (via GLFW/FreeGLUT probing) */
+/**
+ * Query the best available OpenGL version the system can provide, by creating a context per candidate.
+ * Returns {-1, -1} when that is impossible;
+ * freeglut exits the process on the first context it cannot provide,
+ * so the probe cannot run and reports {-1, -1}.
+ */
+GLVersion availableGLversion();
 inline GLVersion parseGLVersion(const char* version) {
     GLVersion ret;
 
@@ -78,6 +84,5 @@ inline GLVersion parseGLVersion(const char* version) {
 
     return ret;
 }
-GLVersion availableGLversion();
 }
 #endif // GLUTIL_DEBUG_INFO_HPP

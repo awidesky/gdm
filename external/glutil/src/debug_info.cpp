@@ -441,6 +441,14 @@ GLVersion getOpenGLVersion() {
 }
 
 GLVersion availableGLversion() {
+#if defined(GDM_HAS_FREEGLUT)
+    // The probing creates a context per candidate, which freeglut cannot survive.
+    // Every context it cannot provide goes through fgError() (src/fg_main.c),
+    // which calls exit(1) as soon as the caller's error handler returns.
+    // Every platform would abort on the first unsupported candidate,
+    // so "the highest version the driver offers" is unknowable, return {-1, -1}.
+    return GLVersion{};
+#else
     constexpr GLVersion versions[] = {{4, 6}, {4, 5}, {4, 4}, {4, 3}, {4, 2}, {4, 1}, {4, 0}, {3, 3}, {3, 2},
                                       {3, 1}, {3, 0}, {2, 1}, {2, 0}, {1, 5}, {1, 4}, {1, 3}, {1, 2}, {1, 1}};
 
@@ -490,6 +498,7 @@ GLVersion availableGLversion() {
 
     LOG_ERROR() << "No available OpenGL version is found from glfw!";
     return {};
+#endif // GDM_HAS_FREEGLUT (on the top of the function)
 }
 
 
