@@ -69,6 +69,13 @@ gdm_configure() {
     if [ -n "${GDM_IGNORE_SYSTEM_PREFIXES:-}" ]; then
         versions+=("-DCMAKE_IGNORE_PREFIX_PATH=${GDM_IGNORE_SYSTEM_PREFIXES}")
     fi
+    # The installed job's probe resolves the packages through $PREFIX, so gdm has
+    # to search the same one - on macOS it is /opt/homebrew, which CMake already
+    # knows (Darwin's system prefix list), but on Windows vcpkg's triplet directory
+    # is not in any default list, and gdm would download what the probe just found.
+    if [ -n "${PREFIX:-}" ]; then
+        versions+=("-DCMAKE_PREFIX_PATH=${PREFIX}")
+    fi
     # The ${array[@]+...} form is not decoration: an empty array expansion is an
     # "unbound variable" error under `set -u` on the bash 3.2 macOS still ships,
     # which is what a developer sourcing this file can be running.

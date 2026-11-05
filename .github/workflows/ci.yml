@@ -81,6 +81,15 @@ jobs:
           Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
 
+      # glew-cmake's non-Windows build does find_package(X11 REQUIRED) and links
+      # X11::X11/Xext, so building GLEW from source on a Mac needs the X11 client
+      # libraries - which the runner image does not ship, and a Mac gets from
+      # Homebrew or XQuartz. The consumer itself needs none of it: the built
+      # static lib leaves only dlopen/dlsym undefined.
+      - name: install X11 client libraries (macos)
+        if: runner.os == 'macOS'
+        run: brew install libx11 libxext
+
       # The macOS images ship Homebrew, and CMake searches it by default, so a
       # Homebrew package whose version matched the pin would take the "installed"
       # tier and the download tier would go untested here.
@@ -316,7 +325,11 @@ jobs:
             echo "      dependency is packaged (see the strategy comment); if this"
             echo "      keeps happening, the OS entry above needs revisiting."
           fi
-          gdm_forbid cfg-b-inst.log "Found external" "no external/ dependency was used"
+          # glutil's header-only stb_image / tiny_obj_loader / dds-ktx are fetched
+          # into external/ and then reported as "[glutil] Found external files ..."
+          # there, so the pattern must be gdm's own tier message, or this would
+          # trip over the headers on the second configure.
+          gdm_forbid cfg-b-inst.log "\[GDM\] Found external" "no external/ dependency was used"
           gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
           # GDM_GLEW_STATIC is what the probe said is available: with it asking for
           # a variant the distro package lacks (Homebrew ships shared only), gdm
@@ -341,4 +354,4 @@ jobs:
           source .github/scripts/ci-common.sh
           gdm_configure b-inst2 Release -DGDM_GL_LOADER=glew
           gdm_require cfg-b-inst2.log "\[GDM\] Found installed glfw3" "glfw came from the package"
-          gdm_forbid cfg-b-inst2.log "Found external" "no external/ dependency was used"
+          gdm_forbid cfg-b-inst2.log "\[GDM\] Found external" "no external/ dependency was used"
