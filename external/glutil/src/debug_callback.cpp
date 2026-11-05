@@ -1,4 +1,4 @@
-#if GDM_DEBUG
+﻿#if GDM_DEBUG
 
 #include <glutil/debug.hpp>
 #include <glutil/inspector.hpp>
@@ -698,21 +698,25 @@ static void fullPostCallback(void* ret, const char* name, GLADapiproc apiproc, i
 #endif
 } // namespace callbacks
 
-GLenum debugCallbackSeverityThreshold = GL_DEBUG_SEVERITY_NOTIFICATION;
+// Internal state; only exposed through setDebugCallbackSeverityThreshold().
+static GLenum debugCallbackSeverityThreshold = GL_DEBUG_SEVERITY_LOW;
 void setDebugCallbackSeverityThreshold(GLenum severityThreshold) { debugCallbackSeverityThreshold = severityThreshold; }
 #if defined(GDM_HAS_GLEW) || defined(GDM_HAS_GLAD)
+// Maps a GL debug severity to an ordered rank: HIGH > MEDIUM > LOW > NOTIFICATION.
+// Unknown severities return -1 so they are never filtered out.
+static constexpr int severityRank(GLenum severity) {
+    switch (severity) {
+        case GL_DEBUG_SEVERITY_NOTIFICATION: return 0;
+        case GL_DEBUG_SEVERITY_LOW: return 1;
+        case GL_DEBUG_SEVERITY_MEDIUM: return 2;
+        case GL_DEBUG_SEVERITY_HIGH: return 3;
+        default: return -1;
+    }
+}
+// Messages at or above this rank are logged as errors; lower ones as info.
+static constexpr int kErrorSeverityRank = severityRank(GL_DEBUG_SEVERITY_MEDIUM);
 static bool severityThresholdCheck(GLenum severity) {
-    // Order: HIGH > MEDIUM > LOW > NOTIFICATION
-    auto SeverityRank = [](GLenum sev) {
-        switch (sev) {
-            case GL_DEBUG_SEVERITY_NOTIFICATION: return 0;
-            case GL_DEBUG_SEVERITY_LOW: return 1;
-            case GL_DEBUG_SEVERITY_MEDIUM: return 2;
-            case GL_DEBUG_SEVERITY_HIGH: return 3;
-            default: return -1;
-        }
-    };
-    return SeverityRank(severity) < SeverityRank(debugCallbackSeverityThreshold);
+    return severityRank(severity) < severityRank(debugCallbackSeverityThreshold);
 }
 static void noopDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                                  const GLchar* message, const void* userParam) {
@@ -771,7 +775,13 @@ static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum s
     }
     ss << '\n';
     ss << "---------------------gldebugCallback-end------------------";
-    LOG_ERROR() << ss.str();
+
+    // Severity-appropriate log level: real problems (MEDIUM/HIGH) are logged as errors,
+    // minor/notification messages as info so they don't look like failures.
+    if (severityRank(severity) >= kErrorSeverityRank)
+        LOG_ERROR() << ss.str();
+    else
+        LOG_INFO() << ss.str();
 }
 #endif
 
