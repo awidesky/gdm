@@ -52,6 +52,11 @@ jobs:
     name: fetch and build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    env:
+      # A concrete version, because this job has to prove the download/build
+      # path. The installed job leaves it unset, so gdm takes the "installed"
+      # default there.
+      GDM_GLEW_VERSION: "2.3.1"
     strategy:
       fail-fast: false
       matrix:
@@ -81,12 +86,14 @@ jobs:
           Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
 
-      # The macOS images ship Homebrew, and CMake searches it by default, so a
-      # Homebrew package whose version matched the pin would take the "installed"
-      # tier and the download tier would go untested here.
-      - name: take Homebrew out of the search path
-        if: runner.os == 'macOS'
-        run: echo "GDM_IGNORE_SYSTEM_PREFIXES=/opt/homebrew;/usr/local" >> "$GITHUB_ENV"
+      # Nothing is installed on this runner, on purpose: the runner's macOS image
+      # provides no OpenGL development packages (no glfw/glm/cpptrace/glew), so
+      # every dependency is downloaded and built from source - which is what this
+      # job exists to check. ogl-gdm's CI does the same thing with the same loader
+      # (glew-glad) and installs nothing here either.
+
+      # steps below: "build" (blocking on every OS) and "run the example" (only
+      # where the runner can create an OpenGL context - see those steps)
 
       # windows-latest is the Windows Server 2025 image, which ships only Visual
       # Studio 2026, and VS2026 needs CMake >= 4.1. Resolve the installed toolset
@@ -148,7 +155,13 @@ jobs:
           gdm_require cfg-b-fg.log "\[GDM\] Fetching glew-cmake" "glew-cmake was fetched (version resolved from its tags)"
           gdm_require cfg-b-fg.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-fg Debug gdm_example_1_HelloWindow
-          gdm_run "$(gdm_exe b-fg gdm_example_1_HelloWindow)" 5 run-fg.log
+          # An attempted run that fails fails the job. It is attempted on Linux only:
+          # the macOS runners create no OpenGL context at all (every version, down to
+          # 2.1 compat, fails as "NSGL: Failed to find a suitable pixel format") and
+          # the Windows runner's display driver reports none either ("WGL: The driver
+          # does not appear to support OpenGL"). Linux has Xvfb + Mesa llvmpipe, where
+          # the run does work - so that is the one place it is checked.
+          gdm_run_example b-fg
 
       # The hybrid loader: glew-cmake plus glad with every extension, the
       # generated GL/glew.h wrapper and the glewToGlad bridge.
@@ -163,7 +176,7 @@ jobs:
           gdm_require cfg-b-gw.log "\[GDM\] Found external glew-cmake" "glew-cmake was reused from external/"
           gdm_require cfg-b-gw.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-gw Debug gdm_example_1_HelloWindow
-          gdm_run "$(gdm_exe b-gw gdm_example_1_HelloWindow)" 5 run-gw.log
+          gdm_run_example b-gw
 
       # Verifies that every target of the default build produced an executable
       # and stages them with their assets; the Debug payload keeps symbols, the
@@ -201,7 +214,7 @@ jobs:
           name: gdm-warnings-${{ runner.os }}
           path: warnings.txt
           retention-days: 14
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   installed:
     name: installed dependencies (${{ matrix.os }})
@@ -243,7 +256,15 @@ jobs:
           # has it and fall back to gdm's own download when it does not - a
           # separate command, because one unknown package fails the whole install.
           sudo apt-get update
+          # GLEW is installed as well, and gdm's default (GDM_GLEW_VERSION
+          # "installed") prefers it - building glew-cmake is the documented
+          # fallback, so this job exercises both. It needs the same X11 client and
+          # GL headers the fetch job installs (glew-cmake does find_package(X11
+          # REQUIRED) and links X11::X11/Xext; "Target libglew_static links to
+          # X11::Xext but the target was not found" is a missing libxext-dev).
           sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev \
             libglfw3-dev libglm-dev libglew-dev \
             mesa-utils libgl1-mesa-dri xvfb
           if sudo apt-get install -y --no-install-recommends libcpptrace-dev; then
@@ -257,6 +278,9 @@ jobs:
       - name: install dependencies (macos)
         if: runner.os == 'macOS'
         run: |
+          # glew too: gdm's default prefers the system GLEW, and Homebrew ships a
+          # shared-only one, so GDM_GLEW_STATIC (which the probe sets) decides
+          # between that and falling back to building glew-cmake.
           brew install glfw glm glew cpptrace
           echo "PREFIX=/opt/homebrew" >> "$GITHUB_ENV"
 
@@ -264,6 +288,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          # glew too: vcpkg defines the static target, so GDM_GLEW_STATIC=ON finds
+          # it and no second GLEW is built.
           vcpkg install glfw3:x64-windows glew:x64-windows glm:x64-windows cpptrace:x64-windows
           echo "PREFIX=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -290,17 +316,15 @@ jobs:
                 ;;
             esac
           done <<< "$probe"
-          # A usable target is what gdm needs: a version file is not, because its
-          # GLEW branch only looks for the target. Homebrew's GLEW, for example,
-          # imports fine but reports no version at all.
-          for required in GDM_GLFW_TARGET GDM_GLM_TARGET GDM_GLEW_TARGET; do
+          # A usable target is what gdm needs: a version file is not, because gdm
+          # links the target the config provides.
+          for required in GDM_GLFW_TARGET GDM_GLM_TARGET; do
             echo "$probe" | grep -q "GDM_PROBE|$required|." \
               || { echo "FAILED: $required was not installed (probe printed nothing)" >&2; exit 1; }
           done
 
-      # No glad here: glad is generated over the network by gdm, never installed,
-      # and the fetch job already covers it. Apart from cpptrace on the distros
-      # that do not package it, everything comes from the archive.
+      # Everything the platform packages comes from the archive (glfw, glm,
+      # cpptrace and - with gdm's default GDM_GLEW_VERSION="installed" - GLEW)
       - name: configure and build through find_package
         shell: bash
         run: |
@@ -308,32 +332,43 @@ jobs:
           gdm_configure b-inst Release -DGDM_GL_LOADER=glew
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glfw3" "glfw came from the package"
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glm" "glm came from the package"
-          gdm_require cfg-b-inst.log "\[GDM\] Found installed GLEW" "GLEW came from the package"
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glm" "glm was not downloaded"
+          # Either outcome is correct here: "installed" prefers the system package,
+          # and falls back to the latest glew-cmake with a warning. Both are
+          # gdm working as documented; what would be wrong is a surprise.
+          # gdm is left at its default (GDM_GLEW_VERSION="installed"), so the
+          # system package must be used - the variant comes from GDM_GLEW_STATIC,
+          # which the probe set to whatever this package actually defines (shared
+          # only on Homebrew and Ubuntu, static on vcpkg). Building glew-cmake
+          # here instead would mean the package failed to be found, which is a
+          # defect this job exists to catch, not a fallback to shrug at.
+          gdm_require cfg-b-inst.log "\[GDM\] Found installed GLEW" "glew came from the system package"
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "glew-cmake was not built (the system package was used)"
           if grep -q "\[GDM\] Found installed cpptrace" cfg-b-inst.log; then
             echo "ok: cpptrace came from the package"
           else
-            echo "NOTE: cpptrace was fetched. This matrix is chosen so that every"
-            echo "      dependency is packaged (see the strategy comment); if this"
-            echo "      keeps happening, the OS entry above needs revisiting."
+            echo "NOTE: cpptrace was fetched - this platform does not package it"
           fi
-          gdm_forbid cfg-b-inst.log "Found external" "no external/ dependency was used"
-          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
-          # GDM_GLEW_STATIC is what the probe said is available: with it asking for
-          # a variant the distro package lacks (Homebrew ships shared only), gdm
-          # falls back to building glew-cmake - correct behaviour, but it would
-          # silently turn this job into another download test.
-          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "the installed GLEW was used, not downloaded"
+          # glutil's header-only stb_image / tiny_obj_loader / dds-ktx are fetched
+          # into external/ and then reported as "[glutil] Found external files ..."
+          # there, so the pattern must be gdm's own tier message, or this would
+          # trip over the headers on the second configure.
+          gdm_forbid cfg-b-inst.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"
           gdm_build b-inst Release glutil gdm_example_1_HelloWindow
 
       # The one place a binary links against the system packages rather than
       # gdm's own static builds. It reports only: a runner's software GL is not
       # what this job is checking.
-      - name: run the example (informational)
-        continue-on-error: true
+      # A failed run fails the job: the DLLs the example needs are staged next to it
+      # by gdm_run (freeglut, and any shared package library), so a missing
+      # dependency here is a real defect. Linux only, for the same reason as the
+      # fetch job's runs.
+      - name: run the example
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_run "$(gdm_exe b-inst gdm_example_1_HelloWindow)" 5 run-inst.log
+          gdm_run_example b-inst
 
       - name: re-configure (determinism)
         shell: bash
@@ -341,4 +376,4 @@ jobs:
           source .github/scripts/ci-common.sh
           gdm_configure b-inst2 Release -DGDM_GL_LOADER=glew
           gdm_require cfg-b-inst2.log "\[GDM\] Found installed glfw3" "glfw came from the package"
-          gdm_forbid cfg-b-inst2.log "Found external" "no external/ dependency was used"
+          gdm_forbid cfg-b-inst2.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"

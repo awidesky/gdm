@@ -20,11 +20,14 @@ project(gdm_dependency_probe LANGUAGES C CXX)
 #     GDM_PROBE|<cache variable>|<value>
 #
 # The workflow turns each line into an environment variable, which overrides the
-# workflow's pinned default, and fails when glfw3/glm/GLEW report nothing.
+# workflow's pinned default, and fails when glfw3/glm report nothing.
 
 find_package(glfw3 QUIET CONFIG)
 find_package(glm QUIET CONFIG)
 find_package(GLEW QUIET CONFIG)
+# Ubuntu installs GLEW's package as lib/<arch>/cmake/glew/glew-config.cmake -
+# lowercase, which CMake's find_package(GLEW) does match through its config-mode
+# search, so the target is reported here. (It carries no version file.)
 find_package(cpptrace QUIET CONFIG)
 
 # gdm accepts either target name (see use_or_fetch_package CANDIDATE_TARGETS),
@@ -46,19 +49,37 @@ endif()
 
 if (TARGET GLEW::GLEW)
     set(_glew_target "GLEW::GLEW")
+elseif (TARGET GLEW::glew)
+    set(_glew_target "GLEW::glew")
 else()
     set(_glew_target "")
 endif()
 
-# gdm sets GLEW_USE_STATIC_LIBS from GDM_GLEW_STATIC before find_package(GLEW),
-# and a config package then copies GLEW::GLEW out of the static target - which
-# some packages do not ship (Homebrew's glew, for one, has only the shared one)
-# and which then fails the configure outright. gdm's option is documented as
-# "use static GLEW when available", so the probe answers that question.
-set(_glew_static "OFF")
-foreach(_static GLEW::glew_s GLEW::GLEW_static libglew_static)
+# Report the version even though the package cannot: its config file has no
+# version file (find_package(GLEW CONFIG EXACT 2.3.1) fails on a machine that
+# has 2.3.1), and it would still be nice to know which GLEW is installed. The
+# version is in the library name - libGLEW.so.2.3.1, libGLEW.2.3.1.dylib - and
+# LOCATION resolves it even when only a per-config location is set. Empty where
+# the name holds no version (GLEW32.lib).
+set(_glew_version "")
+if (_glew_target)
+    get_target_property(_glew_lib ${_glew_target} LOCATION)
+    if (_glew_lib MATCHES "[0-9]+\\.[0-9]+(\\.[0-9]+)*")
+        set(_glew_version "${CMAKE_MATCH_0}")
+    endif()
+    unset(_glew_lib)
+endif()
+
+# gdm accepts an installed GLEW only when it ships the variant GDM_GLEW_STATIC
+# asks for, and the packages are not consistent about it: Ubuntu ships both
+# libGLEW.a and libGLEW.so but only defines the shared target, Homebrew defines
+# only the shared one, vcpkg defines the static one. So the probe answers the
+# question this job's configure depends on, and gdm falls back to building
+# glew-cmake when the answer is "no".
+set(_glev_static "OFF")
+foreach(_static GLEW::glev_s GLEW::GLEW_static libglew_static)
     if (TARGET ${_static})
-        set(_glew_static "ON")
+        set(_glev_static "ON")
         break()
     endif()
 endforeach()
@@ -73,15 +94,18 @@ message(STATUS "GDM_PROBE|GDM_GLFW_VERSION|${glfw3_VERSION}")
 message(STATUS "GDM_PROBE|GDM_GLFW_TARGET|${_glfw_target}")
 message(STATUS "GDM_PROBE|GDM_GLM_VERSION|${glm_VERSION}")
 message(STATUS "GDM_PROBE|GDM_GLM_TARGET|${_glm_target}")
-message(STATUS "GDM_PROBE|GDM_GLEW_VERSION|${GLEW_VERSION}")
+# Informational only: the workflow exports lines tagged GDM_PROBE as gdm options,
+# and exporting this one would set GDM_GLEW_VERSION to a concrete version - which
+# means "always build from source" and silently defeats the "installed" default
+# this job is testing. A distinct tag keeps it out of the way.
+message(STATUS "INFO|GLEW_VERSION|${_glew_version}")
 message(STATUS "GDM_PROBE|GDM_GLEW_TARGET|${_glew_target}")
-message(STATUS "GDM_PROBE|GDM_GLEW_STATIC|${_glew_static}")
+message(STATUS "GDM_PROBE|GDM_GLEW_STATIC|${_glev_static}")
 message(STATUS "GDM_PROBE|GDM_CPPTRACE_VERSION|${cpptrace_VERSION}")
 message(STATUS "GDM_PROBE|GDM_CPPTRACE_TARGET|${_cpptrace_target}")
 
-if (NOT _glfw_target OR NOT _glm_target OR NOT _glew_target)
+if (NOT _glfw_target OR NOT _glm_target)
     message(FATAL_ERROR
         "the system packages are missing a usable CMake config; "
-        "glfw3=${glfw3_VERSION}(${_glfw_target}) glm=${glm_VERSION}(${_glm_target}) "
-        "GLEW=${GLEW_VERSION}(${_glew_target})")
+        "glfw3=${glfw3_VERSION}(${_glfw_target}) glm=${glm_VERSION}(${_glm_target})")
 endif()

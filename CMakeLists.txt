@@ -418,62 +418,38 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
         message(FATAL_ERROR "[GDM] GDM_GL_LOADER=glew requires GDM_WINDOW_BACKEND=glfw or freeglut.")
     endif()
 
-    # Prefer a system GLEW if actually provides the requested variant.
-    # GLEW's own config package hard-errors when asked for a variant it does not ship 
-    # (e.g. Homebrew installs shared-only).
-    # So we leave the GLEW_USE_STATIC_LIBS unset, find whichever variant exists,
-    # and pick the one matching GDM_GLEW_STATIC ourselves.
-    find_package(GLEW QUIET)
+    # GLEW is always built from source with glew-cmake.
+    # Unlike glfw3/glm (whose configs carry a version file, so find_package
+    # can honour GDM_*_VERSION exactly), GLEW's config packages carry none at all.
+    # So an installed GLEW cannot be the version you want, but whatever there is.
+    # glew-glad already worked this way; the two loaders are consistent now.
+    set(GDM_GLEW_GIT_TAG "glew-cmake-${GDM_GLEW_VERSION}")
 
-    set(_gdm_glew_target "")
-    if (TARGET GLEW::GLEW)
-        if (GDM_GLEW_STATIC AND TARGET GLEW::glew_s)
-            set(_gdm_glew_target GLEW::glew_s)
-        elseif (NOT GDM_GLEW_STATIC AND TARGET GLEW::glew)
-            set(_gdm_glew_target GLEW::glew)
-        endif()
-    endif()
+    # Configure glew-cmake to build only libs (no glewinfo/visualinfo)
+    set(ONLY_LIBS ON CACHE BOOL "" FORCE)
 
-    if (_gdm_glew_target)
-        message(STATUS "[GDM] Found installed GLEW target: ${_gdm_glew_target}")
+    if (GDM_GLEW_STATIC)
+        set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
     else()
-        if (TARGET GLEW::GLEW)
-            message(STATUS
-                "[GDM] GDM_GLEW_STATIC is ${GDM_GLEW_STATIC} but installed GLEW does not provide that build type. Falling back to glew-cmake."
-            )
-        endif()
-        # Fallback: build the requested variant from source with glew-cmake.
-        set(GDM_GLEW_GIT_TAG "glew-cmake-${GDM_GLEW_VERSION}")
-
-        # Configure glew-cmake to build only libs (no glewinfo/visualinfo)
-        set(ONLY_LIBS ON CACHE BOOL "" FORCE)
-
-        if (GDM_GLEW_STATIC)
-            set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-            set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
-        else()
-            set(glew-cmake_BUILD_SHARED ON CACHE BOOL "" FORCE)
-            set(glew-cmake_BUILD_STATIC OFF CACHE BOOL "" FORCE)
-        endif()
-
-        # Link through a private alias: the probe above may already have created
-        # the public GLEW::GLEW target, which would stop gdm_use_or_fetch_package
-        # from aliasing the freshly built one.
-        gdm_use_or_fetch_package(
-            NAME glew-cmake
-            VERSION ${GDM_GLEW_VERSION}
-            GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
-            GIT_TAG ${GDM_GLEW_GIT_TAG}
-            ALIAS_TARGET gdm::glew
-            CANDIDATE_TARGETS libglew_static libglew_shared
-        )
-        set(_gdm_glew_target gdm::glew)
+        set(glew-cmake_BUILD_SHARED ON CACHE BOOL "" FORCE)
+        set(glew-cmake_BUILD_STATIC OFF CACHE BOOL "" FORCE)
     endif()
+
+    # Link through a private alias, so it cannot collide with a GLEW::GLEW target
+    # that anything else (the user's project, another dependency) may have created.
+    gdm_use_or_fetch_package(
+        NAME glew-cmake
+        VERSION ${GDM_GLEW_VERSION}
+        GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
+        GIT_TAG ${GDM_GLEW_GIT_TAG}
+        ALIAS_TARGET gdm::glew
+        CANDIDATE_TARGETS libglew_static libglew_shared
+    )
 
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
-    target_link_libraries(gdm_loader INTERFACE ${_gdm_glew_target})
-    unset(_gdm_glew_target)
+    target_link_libraries(gdm_loader INTERFACE gdm::glew)
     list(APPEND _gdm_defs GDM_HAS_GLEW)
 
 elseif (GDM_GL_LOADER STREQUAL "glew-glad")
@@ -654,6 +630,16 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
             gdm::window
             ${_gdm_glewglad_glew_target}
     )
+
+    # GLEW's headers declare every entry point __declspec(dllimport)
+    # on Windows unless GLEW_STATIC is defined.
+    # The static GLEW is linked privately, so the definition on its target
+    # does not reach the code that includes the header (the example, glutil)
+    # They would look for the DLL's import symbols and fail to link with
+    # a pile of unresolved __imp_* externals.
+    if (GDM_GLEW_STATIC)
+        target_compile_definitions(gdm_glew_glad PUBLIC GLEW_STATIC)
+    endif()
 
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
