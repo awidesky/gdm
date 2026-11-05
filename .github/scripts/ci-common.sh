@@ -6,10 +6,22 @@
 # Warning flags for the build that collects warnings: gdm compiles with these
 # once (Debug), because a Debug build compiles the superset of the source (every
 # `#if GDM_DEBUG` branch), and Release repeats it.
+# MSVC's warning level is spelled with a dash on purpose: git-bash rewrites
+# arguments that look like Unix paths when it hands them to a native program, so
+# "/W4" reaches cl.exe as "C:/Program Files/Git/W4" - a source file that cannot be
+# opened. "-W4" is the same flag (cl accepts either form) and is left alone.
 if [ "${RUNNER_OS:-}" = "Windows" ]; then
-    WARN_FLAGS="/W4"
+    WARN_FLAGS="-W4"
 else
     WARN_FLAGS="-Wall -Wextra -Wpedantic"
+fi
+
+# General guard for the same class of problem: any argument that looks like a
+# Unix path is left alone here, so a later "/"-prefixed compiler or generator
+# option cannot be turned into a Windows path either.
+if [ "${RUNNER_OS:-}" = "Windows" ]; then
+    export MSYS_NO_PATHCONV=1
+    export MSYS2_ARG_CONV_EXCL='*'
 fi
 
 # gdm_configure <build-dir> <Debug|Release> [extra cmake args...]
@@ -83,7 +95,9 @@ gdm_build() {
 # Prints the built executable, wherever this generator put it.
 gdm_exe() {
     local bd="$1" name="$2" hit
-    hit=$(find "${bd}" -type f -name "${name}*" ! -name "*.log" 2>/dev/null | head -n 1)
+    # "|| true": head exits after the first match, find then dies of SIGPIPE, and
+    # a step running under `bash -eo pipefail` would abort on that alone.
+    hit=$(find "${bd}" -type f -name "${name}*" ! -name "*.log" 2>/dev/null | head -n 1 || true)
     printf '%s\n' "${hit}"
 }
 
@@ -150,10 +164,14 @@ gdm_forbid() {
 # glm, cpptrace, stb, tiny_obj_loader, dds-ktx) are not gdm's to fix.
 gdm_collect_warnings() {
     local log="$1"
+    # One pipeline with one trailing "|| true": grep exits 1 when a filter matches
+    # nothing, and a step running under `bash -e` aborts on that. Note that `||`
+    # must come after the whole pipeline - inside it, "A | B || true | C" parses
+    # as "(A | B) || (true | C)" and C silently never runs.
     grep -E "warning" "${log}" 2>/dev/null \
-        | grep -E "(include|src|examples)[/\\]|glutil[/\\]" \
+        | grep -E "(include|src|examples)[/\]|glutil[/\]" \
         | grep -viE "external[/\\](glfw3|freeglut|glad-|glew-cmake|glm-|cpptrace|stb_image|tiny_obj_loader|dds-ktx)" \
-        > warnings.txt
+        > warnings.txt || true
     local count
     count=$(wc -l < warnings.txt | tr -d ' ')
     echo "gdm warnings: ${count} (see warnings.txt)"

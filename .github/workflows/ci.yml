@@ -8,9 +8,11 @@ name: ci
 #   fetch     - nothing preinstalled: gdm must download and build glfw/freeglut/
 #               glm/glew-cmake/cpptrace from source and generate glad. This is
 #               the path every fresh user takes, so it runs on all three OSes.
-#   installed  - everything installed through the system package manager
-#               (apt / Homebrew / vcpkg): gdm must find it with find_package
-#               instead of downloading, and needs no network at all.
+#   installed  - everything the system package manager provides (apt / Homebrew /
+#               vcpkg, versions and GLEW's variant taken from the probe): gdm must
+#               find it with find_package instead of downloading. The exceptions,
+#               because nothing packages them for a distro: cpptrace and the
+#               header-only stb_image / tiny_obj_loader / dds-ktx.
 #
 # The examples never run unattended: they open a window and loop until it is
 # closed. What CI can prove is that configuring succeeded, every target linked
@@ -230,10 +232,19 @@ jobs:
       - name: install dependencies (linux)
         if: runner.os == 'Linux'
         run: |
+          # cpptrace has no package in noble (24.04); universe carries
+          # libcpptrace-dev from 26.04 (tenacious) on. Install it when the image
+          # has it and fall back to gdm's own download when it does not - a
+          # separate command, because one unknown package fails the whole install.
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libcpptrace-dev libglfw3-dev libglm-dev libglew-dev \
+            libglfw3-dev libglm-dev libglew-dev \
             mesa-utils libgl1-mesa-dri xvfb
+          if sudo apt-get install -y --no-install-recommends libcpptrace-dev; then
+            echo "ok: libcpptrace-dev came from the archive"
+          else
+            echo "ok: no libcpptrace-dev in this image; gdm will fetch cpptrace"
+          fi
           Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
 
@@ -276,8 +287,10 @@ jobs:
           # A usable target is what gdm needs: a version file is not, because its
           # GLEW branch only looks for the target. Homebrew's GLEW, for example,
           # imports fine but reports no version at all.
+          # message(STATUS) prefixes every line with "-- ", so the check must not
+          # anchor at the start of the line.
           for required in GDM_GLFW_TARGET GDM_GLM_TARGET GDM_GLEW_TARGET; do
-            echo "$probe" | grep -q "^GDM_PROBE|$required|." \
+            echo "$probe" | grep -q "GDM_PROBE|$required|." \
               || { echo "FAILED: $required was not installed (probe printed nothing)" >&2; exit 1; }
           done
 
