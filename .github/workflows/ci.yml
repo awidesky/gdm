@@ -11,8 +11,11 @@ name: ci
 #   installed  - everything the system package manager provides (apt / Homebrew /
 #               vcpkg, versions and GLEW's variant taken from the probe): gdm must
 #               find it with find_package instead of downloading. The exceptions,
-#               because nothing packages them for a distro: cpptrace and the
-#               header-only stb_image / tiny_obj_loader / dds-ktx.
+#               because nothing packages them for a distro: the header-only
+#               stb_image / tiny_obj_loader / dds-ktx, and cpptrace on the
+#               distros that lack it. "A package the distro does not have" is
+#               already covered by the fetch job, so this one runs on the newest
+#               Ubuntu, whose archive does package cpptrace.
 #
 # The examples never run unattended: they open a window and loop until it is
 # closed. What CI can prove is that configuring succeeded, every target linked
@@ -52,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14, windows-2022]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -86,7 +89,7 @@ jobs:
         run: echo "GDM_IGNORE_SYSTEM_PREFIXES=/opt/homebrew;/usr/local" >> "$GITHUB_ENV"
 
       # windows-latest is the Windows Server 2025 image, which ships only Visual
-      # Studio 2026; windows-2022/2025 carry 2022. Resolve the installed one
+      # Studio 2026, and VS2026 needs CMake >= 4.1. Resolve the installed toolset
       # instead of hardcoding a version that may not exist.
       - name: resolve Visual Studio generator
         if: runner.os == 'Windows'
@@ -204,10 +207,13 @@ jobs:
     name: installed dependencies (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    # ubuntu-latest still mapped to 24.04, that has no cpptrace package.
+    # Use 26.04 that ships libcpptrace-dev in apt.
+    # May need update; ubuntu-latest may bump up to 26.04 in future.
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14, windows-2022]
+        os: [ubuntu-26.04, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -287,16 +293,14 @@ jobs:
           # A usable target is what gdm needs: a version file is not, because its
           # GLEW branch only looks for the target. Homebrew's GLEW, for example,
           # imports fine but reports no version at all.
-          # message(STATUS) prefixes every line with "-- ", so the check must not
-          # anchor at the start of the line.
           for required in GDM_GLFW_TARGET GDM_GLM_TARGET GDM_GLEW_TARGET; do
             echo "$probe" | grep -q "GDM_PROBE|$required|." \
               || { echo "FAILED: $required was not installed (probe printed nothing)" >&2; exit 1; }
           done
 
       # No glad here: glad is generated over the network by gdm, never installed,
-      # and the fetch job already covers it - so this job needs no network once
-      # the packages are in, which is exactly what gdm promises users.
+      # and the fetch job already covers it. Apart from cpptrace on the distros
+      # that do not package it, everything comes from the archive.
       - name: configure and build through find_package
         shell: bash
         run: |
@@ -308,7 +312,9 @@ jobs:
           if grep -q "\[GDM\] Found installed cpptrace" cfg-b-inst.log; then
             echo "ok: cpptrace came from the package"
           else
-            echo "ok: no cpptrace package on this OS, gdm fetched it instead"
+            echo "NOTE: cpptrace was fetched. This matrix is chosen so that every"
+            echo "      dependency is packaged (see the strategy comment); if this"
+            echo "      keeps happening, the OS entry above needs revisiting."
           fi
           gdm_forbid cfg-b-inst.log "Found external" "no external/ dependency was used"
           gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
