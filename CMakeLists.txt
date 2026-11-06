@@ -631,6 +631,16 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
             ${_gdm_glewglad_glew_target}
     )
 
+    # GLEW's headers declare every entry point __declspec(dllimport)
+    # on Windows unless GLEW_STATIC is defined.
+    # The static GLEW is linked privately, so the definition on its target
+    # does not reach the code that includes the header (the example, glutil)
+    # They would look for the DLL's import symbols and fail to link with
+    # a pile of unresolved __imp_* externals.
+    if (GDM_GLEW_STATIC)
+        target_compile_definitions(gdm_glew_glad PUBLIC GLEW_STATIC)
+    endif()
+
     add_library(gdm_loader INTERFACE)
     add_library(gdm::loader ALIAS gdm_loader)
     target_link_libraries(gdm_loader INTERFACE gdm_glew_glad)

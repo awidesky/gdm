@@ -252,8 +252,14 @@ jobs:
           # separate command, because one unknown package fails the whole install.
           sudo apt-get update
           # no libglew-dev: gdm builds GLEW from source (glew-cmake, at the
-          # version it resolves), so the distro package would be ignored anyway
+          # version it resolves), so the distro package would be ignored anyway -
+          # and building it needs the same X11 client headers and GL headers the
+          # fetch job installs (glew-cmake does find_package(X11 REQUIRED) and
+          # links X11::X11/Xext; "Target libglew_static links to X11::Xext but the
+          # target was not found" is what a missing libxext-dev looks like).
           sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev \
             libglfw3-dev libglm-dev \
             mesa-utils libgl1-mesa-dri xvfb
           if sudo apt-get install -y --no-install-recommends libcpptrace-dev; then
