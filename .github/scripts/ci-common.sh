@@ -50,24 +50,59 @@ gdm_configure() {
     # what the package manager actually has), so forward them as -D here, once,
     # instead of repeating every name in every step. Callers' own -D comes last
     # and therefore still wins.
+    # Only the variables that apply to this configuration are forwarded: a
+    # variable gdm would not use for the selected provider sits in the cache
+    # unused, and CMake reports "Manually-specified variables were not used by
+    # the project" for every one of them.
     local versions=() var value
+    local backend="${GDM_WINDOW_BACKEND:-glfw}" loader="${GDM_GL_LOADER:-glad}"
+    local have_glm="${GDM_USE_GLM:-ON}" have_glutil="${GDM_USE_GLUTIL:-ON}"
+    local arg
+    # The provider selection can also arrive on this very command line (the
+    # workflow's steps pass -DGDM_WINDOW_BACKEND=freeglut -DGDM_GL_LOADER=glew),
+    # and a command-line value overrides the environment for what is relevant.
+    for arg in "$@"; do
+        case "${arg}" in
+            -DGDM_WINDOW_BACKEND=*) backend="${arg#-DGDM_WINDOW_BACKEND=}" ;;
+            -DGDM_GL_LOADER=*)      loader="${arg#-DGDM_GL_LOADER=}" ;;
+            -DGDM_USE_GLM=*)        have_glm="${arg#-DGDM_USE_GLM=}" ;;
+            -DGDM_USE_GLUTIL=*)     have_glutil="${arg#-DGDM_USE_GLUTIL=}" ;;
+        esac
+    done
+
+    forward() {   # forward <name>: only when set, and only when apply says yes
+        eval "value=\${${1}:-}"
+        [ -n "${value}" ] || return 0
+        local want=yes
+        case "${1}" in
+            GDM_GLFW_VERSION|GDM_GLFW_STATIC) [ "$backend" = glfw ] || want=no ;;
+            GDM_FREEGLUT_VERSION)  [ "$backend" = freeglut ] || want=no ;;
+            GDM_GLM_VERSION)       [ "$have_glm" != "OFF" ] || want=no ;;
+            GDM_CPPTRACE_VERSION)  [ "$have_glutil" != "OFF" ] || want=no ;;
+            GDM_GLEW_VERSION|GDM_GLEW_STATIC)
+                case "$loader" in glew|glew-glad) ;; *) want=no ;; esac ;;
+            GDM_GLAD_API|GDM_GLAD_PROFILE|GDM_GLAD_EXTENSION)
+                [ "$loader" = glad ] || want=no ;;
+        esac
+        [ "$want" = yes ] && versions+=("-D${1}=${value}")
+    }
+
     for var in GDM_WINDOW_BACKEND GDM_GL_LOADER GDM_USE_GLM GDM_USE_GLUTIL \
                GDM_BUILD_EXAMPLES GDM_BUILD_TESTS GDM_EXTERNAL_DIR \
                GDM_GLFW_VERSION GDM_FREEGLUT_VERSION GDM_GLM_VERSION \
                GDM_CPPTRACE_VERSION GDM_GLEW_VERSION GDM_GLEW_STATIC \
                GDM_GLAD_API GDM_GLAD_PROFILE GDM_GLAD_EXTENSION GDM_TLS_VERIFY; do
-        eval "value=\${${var}:-}"     # works in bash and zsh; the list is fixed
-        if [ -n "${value}" ]; then
-            versions+=("-D${var}=${value}")
-        fi
+        forward "${var}"
     done
-    # The fetch job has to prove the download tier, and CMake searches Homebrew
-    # by default on macOS, where a system package whose version happens to match
-    # the pin would quietly take the installed tier instead. Set
-    # GDM_IGNORE_SYSTEM_PREFIXES (;-separated) to take those prefixes out of the
-    # search; the installed job leaves it unset.
-    if [ -n "${GDM_IGNORE_SYSTEM_PREFIXES:-}" ]; then
-        versions+=("-DCMAKE_IGNORE_PREFIX_PATH=${GDM_IGNORE_SYSTEM_PREFIXES}")
+    # The fetch job has to prove the download tier, and the macOS image ships
+    # Homebrew packages (glfw 3.5.1, glm, cpptrace) that a pin can match, so those
+    # must be invisible. The ignore list holds CMake package directories, not
+    # prefixes: CMAKE_IGNORE_PREFIX_PATH=/opt/homebrew would also hide Homebrew's
+    # libx11/libeXt, which glew-cmake needs (its non-Windows build does
+    # find_package(X11 REQUIRED)) - exactly the "Could NOT find X11" failure.
+    # find_path/find_library searches are untouched, so X11 stays findable.
+    if [ -n "${GDM_IGNORE_PATHS:-}" ]; then
+        versions+=("-DCMAKE_IGNORE_PATH=${GDM_IGNORE_PATHS}")
     fi
     # The installed job's probe resolves the packages through $PREFIX, so gdm has
     # to search the same one - on macOS it is /opt/homebrew, which CMake already
@@ -101,14 +136,17 @@ gdm_build() {
 # gdm_exe <build-dir> <name-without-extension>
 # Prints the built executable, wherever this generator put it.
 gdm_exe() {
+    # The exact name, on purpose: a glob like "name*" also matches the MSBuild
+    # sidecars that carry the target's name (gdm_example_1_HelloWindow.exe's
+    # .lastbuildstate and .tlog files), and running one of those is a bizarre
+    # failure rather than a clear one.
     local bd="$1" name="$2" hit
-    # "|| true": head exits after the first match, find then dies of SIGPIPE, and
-    # a step running under `bash -eo pipefail` would abort on that alone.
-    hit=$(find "${bd}" -type f -name "${name}*" ! -name "*.log" 2>/dev/null | head -n 1 || true)
+    hit=$(find "${bd}" -type f \( -name "${name}" -o -name "${name}.exe" \) 2>/dev/null \
+          | head -n 1 || true)
     printf '%s\n' "${hit}"
 }
 
-# gdm_run <exe> <seconds> <log-file>
+# gdm_run <exe> <seconds> <log-file> [build-dir]
 # Starts the executable, lets it run, then decides:
 #   still alive after <seconds>  -> PASS, it reached its render loop
 #   exited before that           -> FAIL, its exit code is the failure
@@ -116,12 +154,25 @@ gdm_exe() {
 # exiting at all is either a real error (bad context, missing assets, ...) or a
 # clean run that finished on its own, which is reported separately.
 gdm_run() {
-    local exe="$1" secs="$2" log="$3"
+    local exe="$1" secs="$2" log="$3" bd="${4:-}"
     [ -n "${exe}" ] || { echo "gdm_run: no executable"; return 1; }
     [ -x "${exe}" ] || [ -f "${exe}" ] || { echo "gdm_run: ${exe} not found"; return 1; }
+
+    # Windows: freeglut is built as a shared library, and the loader resolves a
+    # DLL from the executable's own directory only, so the DLLs gdm built have to
+    # sit next to the example before it can start. (Same as package.py's collect.)
+    if [ -n "${bd}" ] && [ -d "${bd}" ]; then
+        local dll
+        while IFS= read -r dll; do
+            [ -n "${dll}" ] || continue
+            cp -f "${dll}" "$(dirname "${exe}")" 2>/dev/null || true
+        done < <(find "${bd}" -type f -name "*.dll" 2>/dev/null)
+    fi
+
     "${exe}" >"${log}" 2>&1 &
     local pid=$!
     sleep "${secs}"
+    local rc=0
     if kill -0 "${pid}" 2>/dev/null; then
         # disown before killing: bash otherwise reports every terminated
         # background job ("Terminated: 15"), which buries the actual result
@@ -132,7 +183,6 @@ gdm_run() {
         wait "${pid}" 2>/dev/null || true
         echo "PASS: still running after ${secs}s (render loop reached)"
     else
-        local rc=0
         wait "${pid}" || rc=$?
         if [ "${rc}" -eq 0 ]; then
             echo "PASS: exited cleanly on its own"
@@ -141,7 +191,14 @@ gdm_run() {
         fi
     fi
     cat "${log}"
-    [ "${rc:-0}" -eq 0 ]
+    # The macOS runners cannot create an OpenGL context at all (every version
+    # fails as "NSGL: Failed to find a suitable pixel format"), so a failed *run*
+    # there says nothing about gdm - the build above is the part that matters.
+    if [ "${rc}" -ne 0 ] && [ "${RUNNER_OS:-}" = "macOS" ]; then
+        echo "NOTE: run on macOS is informational (no GL context on this runner)"
+        rc=0
+    fi
+    [ "${rc}" -eq 0 ]
 }
 
 # gdm_require <file> <pattern> <message>

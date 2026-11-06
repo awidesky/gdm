@@ -93,9 +93,16 @@ jobs:
       # The macOS images ship Homebrew, and CMake searches it by default, so a
       # Homebrew package whose version matched the pin would take the "installed"
       # tier and the download tier would go untested here.
-      - name: take Homebrew out of the search path
+      # The macOS image ships Homebrew's glfw 3.5.1, glm and cpptrace - the same
+      # versions gdm is pinned to, so find_package would take the installed tier
+      # and the download tier would go untested. Only the CMake *package*
+      # directories are ignored (CMAKE_IGNORE_PATH), never the prefix: ignoring
+      # /opt/homebrew itself would hide Homebrew's libx11 from glew-cmake, whose
+      # non-Windows build needs X11, and glfw/GLEW still need to find each other.
+      - name: hide Homebrew's CMake packages
         if: runner.os == 'macOS'
-        run: echo "GDM_IGNORE_SYSTEM_PREFIXES=/opt/homebrew;/usr/local" >> "$GITHUB_ENV"
+        run: |
+          echo "GDM_IGNORE_PATHS=/opt/homebrew/lib/cmake/glfw3;/opt/homebrew/lib/cmake/glev;/opt/homebrew/lib/cmake/cpptrace;/opt/homebrew/share/glm" >> "$GITHUB_ENV"
 
       # windows-latest is the Windows Server 2025 image, which ships only Visual
       # Studio 2026, and VS2026 needs CMake >= 4.1. Resolve the installed toolset
@@ -157,7 +164,7 @@ jobs:
           gdm_require cfg-b-fg.log "\[GDM\] Fetching glew-cmake" "glew-cmake was fetched (version resolved from its tags)"
           gdm_require cfg-b-fg.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-fg Debug gdm_example_1_HelloWindow
-          gdm_run "$(gdm_exe b-fg gdm_example_1_HelloWindow)" 5 run-fg.log
+          gdm_run "$(gdm_exe b-fg gdm_example_1_HelloWindow)" 5 run-fg.log b-fg
 
       # The hybrid loader: glew-cmake plus glad with every extension, the
       # generated GL/glew.h wrapper and the glewToGlad bridge.
@@ -172,7 +179,7 @@ jobs:
           gdm_require cfg-b-gw.log "\[GDM\] Found external glew-cmake" "glew-cmake was reused from external/"
           gdm_require cfg-b-gw.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-gw Debug gdm_example_1_HelloWindow
-          gdm_run "$(gdm_exe b-gw gdm_example_1_HelloWindow)" 5 run-gw.log
+          gdm_run "$(gdm_exe b-gw gdm_example_1_HelloWindow)" 5 run-gw.log b-gw
 
       # Verifies that every target of the default build produced an executable
       # and stages them with their assets; the Debug payload keeps symbols, the
@@ -346,7 +353,7 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_run "$(gdm_exe b-inst gdm_example_1_HelloWindow)" 5 run-inst.log
+          gdm_run "$(gdm_exe b-inst gdm_example_1_HelloWindow)" 5 run-inst.log b-inst
 
       - name: re-configure (determinism)
         shell: bash

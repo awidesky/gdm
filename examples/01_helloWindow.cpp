@@ -21,6 +21,7 @@
 #endif
 
 #include <array>
+#include <cstdio>
 #include <iostream>
 #include <string>
 
@@ -346,5 +347,6 @@ int main(int argc, char** argv) {
     glutDestroyWindow(glutGetWindow());
 #endif
 
+    std::cout << std::endl; // in case the output is not flushed in CI
     return 0;
 }
