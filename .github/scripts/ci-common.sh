@@ -94,16 +94,6 @@ gdm_configure() {
                GDM_GLAD_API GDM_GLAD_PROFILE GDM_GLAD_EXTENSION GDM_TLS_VERIFY; do
         forward "${var}"
     done
-    # The fetch job has to prove the download tier, and the macOS image ships
-    # Homebrew packages (glfw 3.5.1, glm, cpptrace) that a pin can match, so those
-    # must be invisible. The ignore list holds CMake package directories, not
-    # prefixes: CMAKE_IGNORE_PREFIX_PATH=/opt/homebrew would also hide Homebrew's
-    # libx11/libeXt, which glew-cmake needs (its non-Windows build does
-    # find_package(X11 REQUIRED)) - exactly the "Could NOT find X11" failure.
-    # find_path/find_library searches are untouched, so X11 stays findable.
-    if [ -n "${GDM_IGNORE_PATHS:-}" ]; then
-        versions+=("-DCMAKE_IGNORE_PATH=${GDM_IGNORE_PATHS}")
-    fi
     # The installed job's probe resolves the packages through $PREFIX, so gdm has
     # to search the same one - on macOS it is /opt/homebrew, which CMake already
     # knows (Darwin's system prefix list), but on Windows vcpkg's triplet directory
@@ -158,15 +148,19 @@ gdm_run() {
     [ -n "${exe}" ] || { echo "gdm_run: no executable"; return 1; }
     [ -x "${exe}" ] || [ -f "${exe}" ] || { echo "gdm_run: ${exe} not found"; return 1; }
 
-    # Windows: freeglut is built as a shared library, and the loader resolves a
-    # DLL from the executable's own directory only, so the DLLs gdm built have to
-    # sit next to the example before it can start. (Same as package.py's collect.)
-    if [ -n "${bd}" ] && [ -d "${bd}" ]; then
-        local dll
-        while IFS= read -r dll; do
-            [ -n "${dll}" ] || continue
-            cp -f "${dll}" "$(dirname "${exe}")" 2>/dev/null || true
-        done < <(find "${bd}" -type f -name "*.dll" 2>/dev/null)
+    # Windows: dependencies built as shared libraries (freeglut, and GLEW when the
+    # probe chose a shared package) are resolved from the executable's own
+    # directory only, so their DLLs have to sit next to it. They come from the
+    # build tree and, for the installed job, from the package prefix's bin dir.
+    if [ "${RUNNER_OS:-}" = "Windows" ]; then
+        local dll src
+        for src in "${bd}" "${PREFIX:-/nonexistent}/bin"; do
+            [ -d "${src}" ] || continue
+            while IFS= read -r dll; do
+                [ -n "${dll}" ] || continue
+                cp -f "${dll}" "$(dirname "${exe}")" 2>/dev/null || true
+            done < <(find "${src}" -type f -name "*.dll" 2>/dev/null)
+        done
     fi
 
     "${exe}" >"${log}" 2>&1 &
@@ -191,13 +185,6 @@ gdm_run() {
         fi
     fi
     cat "${log}"
-    # The macOS runners cannot create an OpenGL context at all (every version
-    # fails as "NSGL: Failed to find a suitable pixel format"), so a failed *run*
-    # there says nothing about gdm - the build above is the part that matters.
-    if [ "${rc}" -ne 0 ] && [ "${RUNNER_OS:-}" = "macOS" ]; then
-        echo "NOTE: run on macOS is informational (no GL context on this runner)"
-        rc=0
-    fi
     [ "${rc}" -eq 0 ]
 }
 

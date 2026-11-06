@@ -81,28 +81,14 @@ jobs:
           Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
 
-      # glew-cmake's non-Windows build does find_package(X11 REQUIRED) and links
-      # X11::X11/Xext, so building GLEW from source on a Mac needs the X11 client
-      # libraries - which the runner image does not ship, and a Mac gets from
-      # Homebrew or XQuartz. The consumer itself needs none of it: the built
-      # static lib leaves only dlopen/dlsym undefined.
-      - name: install X11 client libraries (macos)
-        if: runner.os == 'macOS'
-        run: brew install libx11 libxext
+      # Nothing is installed on this runner, on purpose: the runner's macOS image
+      # provides no OpenGL development packages (no glfw/glm/cpptrace/glev), so
+      # every dependency is downloaded and built from source - which is what this
+      # job exists to check. ogl-gdm's CI does the same thing with the same loader
+      # (glew-glad) and installs nothing here either.
 
-      # The macOS images ship Homebrew, and CMake searches it by default, so a
-      # Homebrew package whose version matched the pin would take the "installed"
-      # tier and the download tier would go untested here.
-      # The macOS image ships Homebrew's glfw 3.5.1, glm and cpptrace - the same
-      # versions gdm is pinned to, so find_package would take the installed tier
-      # and the download tier would go untested. Only the CMake *package*
-      # directories are ignored (CMAKE_IGNORE_PATH), never the prefix: ignoring
-      # /opt/homebrew itself would hide Homebrew's libx11 from glew-cmake, whose
-      # non-Windows build needs X11, and glfw/GLEW still need to find each other.
-      - name: hide Homebrew's CMake packages
-        if: runner.os == 'macOS'
-        run: |
-          echo "GDM_IGNORE_PATHS=/opt/homebrew/lib/cmake/glfw3;/opt/homebrew/lib/cmake/glev;/opt/homebrew/lib/cmake/cpptrace;/opt/homebrew/share/glm" >> "$GITHUB_ENV"
+      # steps below: "build" (blocking on every OS) and "run the example" (only
+      # where the runner can create an OpenGL context - see those steps)
 
       # windows-latest is the Windows Server 2025 image, which ships only Visual
       # Studio 2026, and VS2026 needs CMake >= 4.1. Resolve the installed toolset
@@ -164,7 +150,16 @@ jobs:
           gdm_require cfg-b-fg.log "\[GDM\] Fetching glew-cmake" "glew-cmake was fetched (version resolved from its tags)"
           gdm_require cfg-b-fg.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-fg Debug gdm_example_1_HelloWindow
-          gdm_run "$(gdm_exe b-fg gdm_example_1_HelloWindow)" 5 run-fg.log b-fg
+          # A failed run fails the job - everywhere it can be attempted. The macOS
+          # runners cannot create an OpenGL context at all (every version, down to
+          # 2.1 compat, fails as "NSGL: Failed to find a suitable pixel format"), so
+          # there is nothing to run there and the run is skipped rather than
+          # excused; the build above is the part that has to hold.
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            echo "SKIP: this runner has no OpenGL context, so the example cannot be run here (the build above is what counts)"
+          else
+            gdm_run "$(gdm_exe b-fg gdm_example_1_HelloWindow)" 5 run-fg.log b-fg
+          fi
 
       # The hybrid loader: glew-cmake plus glad with every extension, the
       # generated GL/glew.h wrapper and the glewToGlad bridge.
@@ -179,7 +174,11 @@ jobs:
           gdm_require cfg-b-gw.log "\[GDM\] Found external glew-cmake" "glew-cmake was reused from external/"
           gdm_require cfg-b-gw.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-gw Debug gdm_example_1_HelloWindow
-          gdm_run "$(gdm_exe b-gw gdm_example_1_HelloWindow)" 5 run-gw.log b-gw
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            echo "SKIP: no OpenGL context on this runner (see step 3)"
+          else
+            gdm_run "$(gdm_exe b-gw gdm_example_1_HelloWindow)" 5 run-gw.log b-gw
+          fi
 
       # Verifies that every target of the default build produced an executable
       # and stages them with their assets; the Debug payload keeps symbols, the
@@ -348,8 +347,12 @@ jobs:
       # The one place a binary links against the system packages rather than
       # gdm's own static builds. It reports only: a runner's software GL is not
       # what this job is checking.
-      - name: run the example (informational)
-        continue-on-error: true
+      # A failed run fails this job: the DLLs the example needs are staged next to
+      # it by gdm_run (vcpkg's shared GLEW, freeglut), so a missing-dependency
+      # failure here is a real defect. Skipped only on macOS, whose runners cannot
+      # create an OpenGL context at all.
+      - name: run the example
+        if: runner.os != 'macOS'
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
