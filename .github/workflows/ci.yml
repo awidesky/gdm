@@ -150,16 +150,13 @@ jobs:
           gdm_require cfg-b-fg.log "\[GDM\] Fetching glew-cmake" "glew-cmake was fetched (version resolved from its tags)"
           gdm_require cfg-b-fg.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-fg Debug gdm_example_1_HelloWindow
-          # A failed run fails the job - everywhere it can be attempted. The macOS
-          # runners cannot create an OpenGL context at all (every version, down to
-          # 2.1 compat, fails as "NSGL: Failed to find a suitable pixel format"), so
-          # there is nothing to run there and the run is skipped rather than
-          # excused; the build above is the part that has to hold.
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            echo "SKIP: this runner has no OpenGL context, so the example cannot be run here (the build above is what counts)"
-          else
-            gdm_run "$(gdm_exe b-fg gdm_example_1_HelloWindow)" 5 run-fg.log b-fg
-          fi
+          # An attempted run that fails fails the job. It is attempted on Linux only:
+          # the macOS runners create no OpenGL context at all (every version, down to
+          # 2.1 compat, fails as "NSGL: Failed to find a suitable pixel format") and
+          # the Windows runner's display driver reports none either ("WGL: The driver
+          # does not appear to support OpenGL"). Linux has Xvfb + Mesa llvmpipe, where
+          # the run does work - so that is the one place it is checked.
+          gdm_run_example b-fg
 
       # The hybrid loader: glew-cmake plus glad with every extension, the
       # generated GL/glew.h wrapper and the glewToGlad bridge.
@@ -174,11 +171,7 @@ jobs:
           gdm_require cfg-b-gw.log "\[GDM\] Found external glew-cmake" "glew-cmake was reused from external/"
           gdm_require cfg-b-gw.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-gw Debug gdm_example_1_HelloWindow
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            echo "SKIP: no OpenGL context on this runner (see step 3)"
-          else
-            gdm_run "$(gdm_exe b-gw gdm_example_1_HelloWindow)" 5 run-gw.log b-gw
-          fi
+          gdm_run_example b-gw
 
       # Verifies that every target of the default build produced an executable
       # and stages them with their assets; the Debug payload keeps symbols, the
@@ -258,8 +251,10 @@ jobs:
           # has it and fall back to gdm's own download when it does not - a
           # separate command, because one unknown package fails the whole install.
           sudo apt-get update
+          # no libglew-dev: gdm builds GLEW from source (glew-cmake, at the
+          # version it resolves), so the distro package would be ignored anyway
           sudo apt-get install -y --no-install-recommends \
-            libglfw3-dev libglm-dev libglew-dev \
+            libglfw3-dev libglm-dev \
             mesa-utils libgl1-mesa-dri xvfb
           if sudo apt-get install -y --no-install-recommends libcpptrace-dev; then
             echo "ok: libcpptrace-dev came from the archive"
@@ -272,14 +267,14 @@ jobs:
       - name: install dependencies (macos)
         if: runner.os == 'macOS'
         run: |
-          brew install glfw glm glew cpptrace
+          brew install glfw glm cpptrace
           echo "PREFIX=/opt/homebrew" >> "$GITHUB_ENV"
 
       - name: install dependencies (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          vcpkg install glfw3:x64-windows glew:x64-windows glm:x64-windows cpptrace:x64-windows
+          vcpkg install glfw3:x64-windows glm:x64-windows cpptrace:x64-windows
           echo "PREFIX=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       # gdm only uses an installed package when its version matches exactly, so
@@ -305,17 +300,17 @@ jobs:
                 ;;
             esac
           done <<< "$probe"
-          # A usable target is what gdm needs: a version file is not, because its
-          # GLEW branch only looks for the target. Homebrew's GLEW, for example,
-          # imports fine but reports no version at all.
-          for required in GDM_GLFW_TARGET GDM_GLM_TARGET GDM_GLEW_TARGET; do
+          # A usable target is what gdm needs: a version file is not, because gdm
+          # links the target the config provides.
+          for required in GDM_GLFW_TARGET GDM_GLM_TARGET; do
             echo "$probe" | grep -q "GDM_PROBE|$required|." \
               || { echo "FAILED: $required was not installed (probe printed nothing)" >&2; exit 1; }
           done
 
-      # No glad here: glad is generated over the network by gdm, never installed,
-      # and the fetch job already covers it. Apart from cpptrace on the distros
-      # that do not package it, everything comes from the archive.
+      # Everything the platform packages comes from the archive (glfw, glm and
+      # cpptrace), and the two that gdm builds itself - GLEW, which is always
+      # built from source at the version it resolves, and glad, which no platform
+      # packages at all - come from its own download.
       - name: configure and build through find_package
         shell: bash
         run: |
@@ -323,40 +318,35 @@ jobs:
           gdm_configure b-inst Release -DGDM_GL_LOADER=glew
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glfw3" "glfw came from the package"
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glm" "glm came from the package"
-          gdm_require cfg-b-inst.log "\[GDM\] Found installed GLEW" "GLEW came from the package"
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glm" "glm was not downloaded"
+          # GLEW is built from source by design, so seeing glew-cmake fetched here
+          # is the expected outcome, not a regression
+          gdm_require cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "glew-cmake was built from source at the resolved version"
           if grep -q "\[GDM\] Found installed cpptrace" cfg-b-inst.log; then
             echo "ok: cpptrace came from the package"
           else
-            echo "NOTE: cpptrace was fetched. This matrix is chosen so that every"
-            echo "      dependency is packaged (see the strategy comment); if this"
-            echo "      keeps happening, the OS entry above needs revisiting."
+            echo "NOTE: cpptrace was fetched - this platform does not package it"
           fi
           # glutil's header-only stb_image / tiny_obj_loader / dds-ktx are fetched
           # into external/ and then reported as "[glutil] Found external files ..."
           # there, so the pattern must be gdm's own tier message, or this would
           # trip over the headers on the second configure.
-          gdm_forbid cfg-b-inst.log "\[GDM\] Found external" "no external/ dependency was used"
-          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
-          # GDM_GLEW_STATIC is what the probe said is available: with it asking for
-          # a variant the distro package lacks (Homebrew ships shared only), gdm
-          # falls back to building glew-cmake - correct behaviour, but it would
-          # silently turn this job into another download test.
-          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "the installed GLEW was used, not downloaded"
+          gdm_forbid cfg-b-inst.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"
           gdm_build b-inst Release glutil gdm_example_1_HelloWindow
 
       # The one place a binary links against the system packages rather than
       # gdm's own static builds. It reports only: a runner's software GL is not
       # what this job is checking.
-      # A failed run fails this job: the DLLs the example needs are staged next to
-      # it by gdm_run (vcpkg's shared GLEW, freeglut), so a missing-dependency
-      # failure here is a real defect. Skipped only on macOS, whose runners cannot
-      # create an OpenGL context at all.
+      # A failed run fails the job: the DLLs the example needs are staged next to it
+      # by gdm_run (freeglut, and any shared package library), so a missing
+      # dependency here is a real defect. Linux only, for the same reason as the
+      # fetch job's runs.
       - name: run the example
-        if: runner.os != 'macOS'
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_run "$(gdm_exe b-inst gdm_example_1_HelloWindow)" 5 run-inst.log b-inst
+          gdm_run_example b-inst
 
       - name: re-configure (determinism)
         shell: bash
@@ -364,4 +354,4 @@ jobs:
           source .github/scripts/ci-common.sh
           gdm_configure b-inst2 Release -DGDM_GL_LOADER=glew
           gdm_require cfg-b-inst2.log "\[GDM\] Found installed glfw3" "glfw came from the package"
-          gdm_forbid cfg-b-inst2.log "\[GDM\] Found external" "no external/ dependency was used"
+          gdm_forbid cfg-b-inst2.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"

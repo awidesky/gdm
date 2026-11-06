@@ -84,7 +84,10 @@ gdm_configure() {
             GDM_GLAD_API|GDM_GLAD_PROFILE|GDM_GLAD_EXTENSION)
                 [ "$loader" = glad ] || want=no ;;
         esac
-        [ "$want" = yes ] && versions+=("-D${1}=${value}")
+        if [ "$want" = yes ]; then
+            versions+=("-D${1}=${value}")
+        fi
+        return 0
     }
 
     for var in GDM_WINDOW_BACKEND GDM_GL_LOADER GDM_USE_GLM GDM_USE_GLUTIL \
@@ -134,6 +137,24 @@ gdm_exe() {
     hit=$(find "${bd}" -type f \( -name "${name}" -o -name "${name}.exe" \) 2>/dev/null \
           | head -n 1 || true)
     printf '%s\n' "${hit}"
+}
+
+# gdm_run_example <build-dir>
+# Runs the built gdm example. A run that is attempted and fails fails the step/
+# It is attempted on Linux only, because that is where the hosted runners can
+# actually create an OpenGL context (Xvfb + Mesa's software renderer):
+# the macOS runners report "NSGL: Failed to find a suitable pixel format" for every
+# context version, and the Windows runner's driver reports "The driver does not
+# appear to support OpenGL". Build and link are still checked on all three, so the
+# skip costs no coverage of gdm's own code.
+gdm_run_example() {
+    local bd="$1"
+    if [ "${RUNNER_OS:-}" = "Linux" ]; then
+        gdm_run "$(gdm_exe "${bd}" gdm_example_1_HelloWindow)" 5 "run-$(basename "${bd}").log" "${bd}"
+    else
+        echo "SKIP: this runner cannot create an OpenGL context, so the example is"
+        echo "      not run here (the build above is what this platform checks)"
+    fi
 }
 
 # gdm_run <exe> <seconds> <log-file> [build-dir]

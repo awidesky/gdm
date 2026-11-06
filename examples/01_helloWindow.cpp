@@ -21,7 +21,6 @@
 #endif
 
 #include <array>
-#include <cstdio>
 #include <iostream>
 #include <string>
 
@@ -181,6 +180,10 @@ bool initializeLoader() {
 // argc/argv are only used by freeglut's glutInit()
 int main(int argc, char** argv) {
     (void)argc; (void)argv;    // only freeglut requires them
+
+    // The report below is written with '\n', which does not flush.
+    // A CI runner kills this process after a few seconds may discards whole report.
+    std::cout << std::unitbuf;
 
     int context_version_major = 3;
     int context_version_minor = 3;
@@ -347,6 +350,5 @@ int main(int argc, char** argv) {
     glutDestroyWindow(glutGetWindow());
 #endif
 
-    std::cout << std::endl; // in case the output is not flushed in CI
     return 0;
 }
