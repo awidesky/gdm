@@ -222,7 +222,8 @@ jobs:
     timeout-minutes: 30
     # ubuntu-latest still mapped to 24.04, that has no cpptrace package.
     # Use 26.04 that ships libcpptrace-dev in apt.
-    # May need update; ubuntu-latest may bump up to 26.04 in future.
+    # Note : ubuntu-latest label will use Ubuntu 26.04 in November 19, 2026.
+    # see : https://github.com/actions/runner-images/issues/14748
     strategy:
       fail-fast: false
       matrix:
@@ -262,10 +263,13 @@ jobs:
           # GL headers the fetch job installs (glew-cmake does find_package(X11
           # REQUIRED) and links X11::X11/Xext; "Target libglew_static links to
           # X11::Xext but the target was not found" is a missing libxext-dev).
+          # libcpptrace-dev is not in this image's archive, so gdm builds cpptrace
+          # from source - and cpptrace only uses a system libdwarf when asked to
+          # (CPPTRACE_USE_EXTERNAL_LIBDWARF below), otherwise it clones it.
           sudo apt-get install -y --no-install-recommends \
             libgl1-mesa-dev libglu1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev \
-            libglfw3-dev libglm-dev libglew-dev \
+            libglfw3-dev libglm-dev libglew-dev libdwarf-dev libzstd-dev \
             mesa-utils libgl1-mesa-dri xvfb
           if sudo apt-get install -y --no-install-recommends libcpptrace-dev; then
             echo "ok: libcpptrace-dev came from the archive"
@@ -278,9 +282,10 @@ jobs:
       - name: install dependencies (macos)
         if: runner.os == 'macOS'
         run: |
-          # glew too: gdm's default prefers the system GLEW, and Homebrew ships a
-          # shared-only one, so GDM_GLEW_STATIC (which the probe sets) decides
-          # between that and falling back to building glew-cmake.
+          # glew too: gdm's default prefers the system GLEW, and the probe sets
+          # GDM_GLEW_STATIC to the variant Homebrew actually defines.
+          # Homebrew's cpptrace is prebuilt and bundles its libdwarf, so nothing
+          # else is needed for it.
           brew install glfw glm glew cpptrace
           echo "PREFIX=/opt/homebrew" >> "$GITHUB_ENV"
 
@@ -288,8 +293,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          # glew too: vcpkg defines the static target, so GDM_GLEW_STATIC=ON finds
-          # it and no second GLEW is built.
+          # glew too: vcpkg defines a static target, so GDM_GLEW_STATIC=ON finds
+          # it and no second GLEW is built. vcpkg's cpptrace is prebuilt and
+          # bundles its libdwarf, so nothing else is needed for it.
           vcpkg install glfw3:x64-windows glew:x64-windows glm:x64-windows cpptrace:x64-windows
           echo "PREFIX=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -329,11 +335,14 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-inst Release -DGDM_GL_LOADER=glew
+          # cpptrace is built from source here, and this is the only way it uses
+          # the system libdwarf instead of cloning libdwarf-lite (its default).
+          gdm_configure b-inst Release -DGDM_GL_LOADER=glew -DCPPTRACE_USE_EXTERNAL_LIBDWARF=ON
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glfw3" "glfw came from the package"
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glm" "glm came from the package"
           gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
           gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glm" "glm was not downloaded"
+          gdm_forbid cfg-b-inst.log "Cloning into" "nothing was cloned at configure time"
           # Either outcome is correct here: "installed" prefers the system package,
           # and falls back to the latest glew-cmake with a warning. Both are
           # gdm working as documented; what would be wrong is a surprise.
@@ -374,6 +383,6 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-inst2 Release -DGDM_GL_LOADER=glew
+          gdm_configure b-inst2 Release -DGDM_GL_LOADER=glew -DCPPTRACE_USE_EXTERNAL_LIBDWARF=ON
           gdm_require cfg-b-inst2.log "\[GDM\] Found installed glfw3" "glfw came from the package"
           gdm_forbid cfg-b-inst2.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"

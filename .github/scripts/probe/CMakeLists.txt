@@ -24,10 +24,10 @@ project(gdm_dependency_probe LANGUAGES C CXX)
 
 find_package(glfw3 QUIET CONFIG)
 find_package(glm QUIET CONFIG)
-find_package(GLEW QUIET CONFIG)
-# Ubuntu installs GLEW's package as lib/<arch>/cmake/glew/glew-config.cmake -
-# lowercase, which CMake's find_package(GLEW) does match through its config-mode
-# search, so the target is reported here. (It carries no version file.)
+# The same lookup gdm performs, module-first: CMake's own FindGLEW is what finds
+# the system package on Debian/Ubuntu, whose lib/<arch>/cmake/glev/ directory
+# does not match a config-mode GLEW* search on a case-sensitive filesystem.
+find_package(GLEW QUIET)
 find_package(cpptrace QUIET CONFIG)
 
 # gdm accepts either target name (see use_or_fetch_package CANDIDATE_TARGETS),
@@ -55,27 +55,31 @@ else()
     set(_glew_target "")
 endif()
 
-# Report the version even though the package cannot: its config file has no
-# version file (find_package(GLEW CONFIG EXACT 2.3.1) fails on a machine that
-# has 2.3.1), and it would still be nice to know which GLEW is installed. The
-# version is in the library name - libGLEW.so.2.3.1, libGLEW.2.3.1.dylib - and
-# LOCATION resolves it even when only a per-config location is set. Empty where
-# the name holds no version (GLEW32.lib).
-set(_glew_version "")
-if (_glew_target)
-    get_target_property(_glew_lib ${_glew_target} LOCATION)
-    if (_glew_lib MATCHES "[0-9]+\\.[0-9]+(\\.[0-9]+)*")
-        set(_glew_version "${CMAKE_MATCH_0}")
+# Report the version even though the config package cannot: it has no version
+# file (find_package(GLEW CONFIG EXACT 2.3.1) fails on a machine that has
+# 2.3.1), and it would still be nice to know which GLEW is installed. Two
+# sources: CMake's own FindGLEW reads the version out of the headers
+# (GLEW_VERSION, set when the system package is found through module mode), and
+# the library name carries it otherwise (libGLEW.so.2.3.1, libGLEW.2.3.1.dylib).
+# Empty where neither knows (GLEW32.lib).
+set(_glev_version "")
+if (_glev_target)
+    if (GLEW_VERSION)
+        set(_glev_version "${GLEW_VERSION}")
+    else()
+        get_target_property(_glev_lib ${_glev_target} LOCATION)
+        if (_glev_lib MATCHES "[0-9]+\\.[0-9]+(\\.[0-9]+)*")
+            set(_glev_version "${CMAKE_MATCH_0}")
+        endif()
+        unset(_glev_lib)
     endif()
-    unset(_glew_lib)
 endif()
 
-# gdm accepts an installed GLEW only when it ships the variant GDM_GLEW_STATIC
-# asks for, and the packages are not consistent about it: Ubuntu ships both
-# libGLEW.a and libGLEW.so but only defines the shared target, Homebrew defines
-# only the shared one, vcpkg defines the static one. So the probe answers the
-# question this job's configure depends on, and gdm falls back to building
-# glew-cmake when the answer is "no".
+# GDM_GLEW_STATIC is a requirement: gdm only uses an installed GLEW that ships
+# that exact build type, and builds glew-cmake otherwise. The packages disagree
+# about what they define - vcpkg static, Homebrew and module-mode(Debian/Ubuntu)
+# shared-only - so the probe answers the question this job's configure depends on:
+# ON when a static target exists, OFF to ask for the shared one.
 set(_glev_static "OFF")
 foreach(_static GLEW::glev_s GLEW::GLEW_static libglew_static)
     if (TARGET ${_static})
