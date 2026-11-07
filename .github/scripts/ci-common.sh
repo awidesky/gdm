@@ -8,10 +8,14 @@
 # `#if GDM_DEBUG` branch), and Release repeats it.
 # MSVC's warning level is spelled with a dash on purpose: git-bash rewrites
 # arguments that look like Unix paths when it hands them to a native program, so
-# "/W4" reaches cl.exe as "C:/Program Files/Git/W4" - a source file that cannot be
-# opened. "-W4" is the same flag (cl accepts either form) and is left alone.
+# "/W4" reaches cl.exe as "C:/Program Files/Git/W4" - a source file that cannot
+# be opened. "-W4" is the same flag (cl accepts either form) and is left alone.
+# /EHsc goes here too: MSVC's default has no unwind semantics, and any C++ code
+# that throws or catches (cpptrace does, and so does shaderTest.cpp) then draws
+# C4530 "C++ exception handler used, but unwind semantics are not enabled" - it
+# is the flag the standard intends, not a problem to be coded around.
 if [ "${RUNNER_OS:-}" = "Windows" ]; then
-    WARN_FLAGS="-W4"
+    WARN_FLAGS="-W4 -EHsc"
 else
     WARN_FLAGS="-Wall -Wextra -Wpedantic"
 fi
@@ -244,14 +248,19 @@ gdm_collect_warnings() {
         | grep -E "(include|src|examples)[/\]|glutil[/\]" \
         | grep -viE "external[/\\](glfw3|freeglut|glad-|glew-cmake|glm-|cpptrace|stb_image|tiny_obj_loader|dds-ktx)" \
         > warnings.txt || true
-    local count
-    count=$(wc -l < warnings.txt | tr -d ' ')
-    echo "gdm warnings: ${count} (see warnings.txt)"
+    # No warnings means no file, so the artifact step has nothing to upload - an
+    # artifact that only exists to be empty is not worth a name.
+    if [ ! -s warnings.txt ]; then
+        rm -f warnings.txt
+    fi
+    local count=0
+    [ -s warnings.txt ] && count=$(grep -c "" warnings.txt)
+    echo "gdm warnings: ${count}"
     if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         {
             echo "## gdm warnings (${RUNNER_OS}, Debug): ${count}"
             echo '```'
-            cat warnings.txt
+            [ -s warnings.txt ] && cat warnings.txt
             echo '```'
         } >>"${GITHUB_STEP_SUMMARY}"
     fi

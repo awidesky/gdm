@@ -52,6 +52,11 @@ jobs:
     name: fetch and build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    env:
+      # A concrete version, because this job has to prove the download/build
+      # path. The installed job leaves it unset, so gdm takes the "installed"
+      # default there.
+      GDM_GLEW_VERSION: "2.3.1"
     strategy:
       fail-fast: false
       matrix:
@@ -82,7 +87,7 @@ jobs:
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
 
       # Nothing is installed on this runner, on purpose: the runner's macOS image
-      # provides no OpenGL development packages (no glfw/glm/cpptrace/glev), so
+      # provides no OpenGL development packages (no glfw/glm/cpptrace/glew), so
       # every dependency is downloaded and built from source - which is what this
       # job exists to check. ogl-gdm's CI does the same thing with the same loader
       # (glew-glad) and installs nothing here either.
@@ -209,7 +214,7 @@ jobs:
           name: gdm-warnings-${{ runner.os }}
           path: warnings.txt
           retention-days: 14
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   installed:
     name: installed dependencies (${{ matrix.os }})
@@ -251,16 +256,16 @@ jobs:
           # has it and fall back to gdm's own download when it does not - a
           # separate command, because one unknown package fails the whole install.
           sudo apt-get update
-          # no libglew-dev: gdm builds GLEW from source (glew-cmake, at the
-          # version it resolves), so the distro package would be ignored anyway -
-          # and building it needs the same X11 client headers and GL headers the
-          # fetch job installs (glew-cmake does find_package(X11 REQUIRED) and
-          # links X11::X11/Xext; "Target libglew_static links to X11::Xext but the
-          # target was not found" is what a missing libxext-dev looks like).
+          # GLEW is installed as well, and gdm's default (GDM_GLEW_VERSION
+          # "installed") prefers it - building glew-cmake is the documented
+          # fallback, so this job exercises both. It needs the same X11 client and
+          # GL headers the fetch job installs (glew-cmake does find_package(X11
+          # REQUIRED) and links X11::X11/Xext; "Target libglew_static links to
+          # X11::Xext but the target was not found" is a missing libxext-dev).
           sudo apt-get install -y --no-install-recommends \
             libgl1-mesa-dev libglu1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev \
-            libglfw3-dev libglm-dev \
+            libglfw3-dev libglm-dev libglew-dev \
             mesa-utils libgl1-mesa-dri xvfb
           if sudo apt-get install -y --no-install-recommends libcpptrace-dev; then
             echo "ok: libcpptrace-dev came from the archive"
@@ -273,14 +278,19 @@ jobs:
       - name: install dependencies (macos)
         if: runner.os == 'macOS'
         run: |
-          brew install glfw glm cpptrace
+          # glew too: gdm's default prefers the system GLEW, and Homebrew ships a
+          # shared-only one, so GDM_GLEW_STATIC (which the probe sets) decides
+          # between that and falling back to building glew-cmake.
+          brew install glfw glm glew cpptrace
           echo "PREFIX=/opt/homebrew" >> "$GITHUB_ENV"
 
       - name: install dependencies (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          vcpkg install glfw3:x64-windows glm:x64-windows cpptrace:x64-windows
+          # glew too: vcpkg defines the static target, so GDM_GLEW_STATIC=ON finds
+          # it and no second GLEW is built.
+          vcpkg install glfw3:x64-windows glew:x64-windows glm:x64-windows cpptrace:x64-windows
           echo "PREFIX=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       # gdm only uses an installed package when its version matches exactly, so
@@ -313,10 +323,8 @@ jobs:
               || { echo "FAILED: $required was not installed (probe printed nothing)" >&2; exit 1; }
           done
 
-      # Everything the platform packages comes from the archive (glfw, glm and
-      # cpptrace), and the two that gdm builds itself - GLEW, which is always
-      # built from source at the version it resolves, and glad, which no platform
-      # packages at all - come from its own download.
+      # Everything the platform packages comes from the archive (glfw, glm,
+      # cpptrace and - with gdm's default GDM_GLEW_VERSION="installed" - GLEW)
       - name: configure and build through find_package
         shell: bash
         run: |
@@ -326,9 +334,17 @@ jobs:
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glm" "glm came from the package"
           gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
           gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glm" "glm was not downloaded"
-          # GLEW is built from source by design, so seeing glew-cmake fetched here
-          # is the expected outcome, not a regression
-          gdm_require cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "glew-cmake was built from source at the resolved version"
+          # Either outcome is correct here: "installed" prefers the system package,
+          # and falls back to the latest glew-cmake with a warning. Both are
+          # gdm working as documented; what would be wrong is a surprise.
+          # gdm is left at its default (GDM_GLEW_VERSION="installed"), so the
+          # system package must be used - the variant comes from GDM_GLEW_STATIC,
+          # which the probe set to whatever this package actually defines (shared
+          # only on Homebrew and Ubuntu, static on vcpkg). Building glew-cmake
+          # here instead would mean the package failed to be found, which is a
+          # defect this job exists to catch, not a fallback to shrug at.
+          gdm_require cfg-b-inst.log "\[GDM\] Found installed GLEW" "glew came from the system package"
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "glew-cmake was not built (the system package was used)"
           if grep -q "\[GDM\] Found installed cpptrace" cfg-b-inst.log; then
             echo "ok: cpptrace came from the package"
           else

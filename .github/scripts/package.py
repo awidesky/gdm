@@ -763,11 +763,11 @@ def main(argv=None):
         for suffix in (".pdb", ".ilk", ".exp"):
             candidate = exe.with_suffix(suffix)
             if candidate.is_file():
-                shutil.copy2(candidate, dest / candidate.name)
+                shutil.copy2(candidate, stage_root / candidate.name)
             elif config:
                 candidate = build_dir / config / (name + suffix)
                 if candidate.is_file():
-                    shutil.copy2(candidate, dest / candidate.name)
+                    shutil.copy2(candidate, stage_root / candidate.name)
         for dll in dlls:
             target = dest / dll.name
             if not target.exists():
