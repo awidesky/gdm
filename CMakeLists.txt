@@ -424,15 +424,22 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
     # A concrete version means "use exactly this version of glew", so glew-cmake is used,
     # since it's hard to find specific version of installed glew.
     # "installed" means "prefer the system package, and fall back to the latest glew-cmake"
+    # Note that some system packages provides only static or shared version of glew.
+    # e.g. if GDM_GLEW_STATIC is ON but only shared version of glew is installed (like homebrew),
+    # the search will fail and fall back to use glew-cmake.
     set(_gdm_glew_target "")
     if (GDM_GLEW_VERSION STREQUAL "installed")
         find_package(GLEW QUIET)
 
         if (TARGET GLEW::GLEW)
+            # GDM_GLEW_STATIC is a requirement, not a preference: when the package
+            # does not provide that build type, glew-cmake is built instead.
             if (GDM_GLEW_STATIC AND TARGET GLEW::glew_s)
                 set(_gdm_glew_target GLEW::glew_s)
             elseif (NOT GDM_GLEW_STATIC AND TARGET GLEW::glew)
                 set(_gdm_glew_target GLEW::glew)
+            elseif (NOT GDM_GLEW_STATIC AND TARGET GLEW::GLEW)
+                set(_gdm_glew_target GLEW::GLEW)
             endif()
         endif()
     endif()
@@ -440,17 +447,24 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
     # Whatever was chosen (an installed target, or the alias for the freshly built one)
     # is what the gdm::loader links.
     if (_gdm_glew_target)
-        # GLEW's config package has no version file, so the version is read from
-        # the library name (libGLEW.so.2.3.1, libGLEW.2.3.1.dylib).
-        # It stays empty where the name holds no version (GLEW32.lib on Windows)
+        # GLEW's config package carries no version file at all, so the version
+        # comes from where one exists: CMake's own FindGLEW reads it out of the
+        # headers (GLEW_VERSION, set when the system package is found through
+        # module mode), and the library name carries it otherwise
+        # (libGLEW.so.2.3.1). It stays empty where neither knows (GLEW32.lib on
+        # Windows), and the message then reads as it did before.
         set(_gdm_glew_version "")
-        get_target_property(_gdm_glew_lib ${_gdm_glew_target} LOCATION)
-        if (_gdm_glew_lib MATCHES "[0-9]+\\.[0-9]+(\\.[0-9]+)*")
-            set(_gdm_glew_version " ${CMAKE_MATCH_0}")
+        if (GLEW_VERSION)
+            set(_gdm_glew_version " ${GLEW_VERSION}")
+        else()
+            get_target_property(_gdm_glew_lib ${_gdm_glew_target} LOCATION)
+            if (_gdm_glew_lib MATCHES "[0-9]+\\.[0-9]+(\\.[0-9]+)*")
+                set(_gdm_glew_version " ${CMAKE_MATCH_0}")
+            endif()
+            unset(_gdm_glew_lib)
         endif()
         message(STATUS "[GDM] Found installed GLEW${_gdm_glew_version} target: ${_gdm_glew_target}")
         unset(_gdm_glew_version)
-        unset(_gdm_glew_lib)
     else()
         if (TARGET GLEW::GLEW)
             message(STATUS
