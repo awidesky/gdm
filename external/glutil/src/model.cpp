@@ -1,6 +1,5 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
-// TODO_easy : parseRawTriple, parseTriple, parseTagTriple functions are not used in this project. maybe (void*) cast to remove warning?
 
 #include <glutil/path.hpp>
 #include <glutil/model.hpp>
@@ -37,6 +36,12 @@ static std::string pathToUtf8(const std::filesystem::path& path) {
 }
 
 ModelData ModelLoader::loadOBJ(const std::filesystem::path& path, bool deduplicate) {
+    // tiny_obj_loader.h defines these static helpers, but nothing calls them.
+    // -Wall/-Wextra reports them as -Wunused-function, MSVC /W4 as C4505.
+    (void)&tinyobj::parseRawTriple;
+    (void)&tinyobj::parseTriple;
+    (void)&tinyobj::parseTagTriple;
+
     ModelData result;
 
     const PathResolveResult pathResult = pathResolve(path);
