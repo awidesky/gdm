@@ -104,7 +104,9 @@ endmacro()
 
 
 function(gdm_use_or_fetch_package)
-    set(options)
+    set(options
+        EXCLUDE_FROM_ALL
+    )
     set(oneValueArgs
         NAME
         VERSION
@@ -147,18 +149,24 @@ function(gdm_use_or_fetch_package)
         ${GDM_EXTERNAL_DIR}/${PKG_NAME}-${PKG_VERSION}
     )
 
-    # When dependency sources live outside the current source tree 
+    # When dependency sources live outside the current source tree
     # (e.g. GDM_EXTERNAL_DIR points to a parent project's external/),
     # CMake requires an explicit binary directory argument to add_subdirectory().
     # Keep builds isolated per-dependency in the top-level build tree.
     set(_gdm_pkg_binary_dir "${CMAKE_BINARY_DIR}/_gdm_deps/${PKG_NAME}-${PKG_VERSION}")
+
+    # EXCLUDE_FROM_ALL keeps the subproject's targets out of the "all" target.
+    set(_gdm_subdir_args "")
+    if (PKG_EXCLUDE_FROM_ALL)
+        list(APPEND _gdm_subdir_args EXCLUDE_FROM_ALL)
+    endif()
 
     set(USE_EXTERNAL_PACKAGE FALSE)
 
     # 1. Prefer external/<name>-<version>
     if (EXISTS ${PKG_EXTERNAL_DIR}/CMakeLists.txt)
         message(STATUS "[${PROJECT_NAME}] Found external ${PKG_NAME} ${PKG_VERSION}" )
-        add_subdirectory("${PKG_EXTERNAL_DIR}" "${_gdm_pkg_binary_dir}")
+        add_subdirectory("${PKG_EXTERNAL_DIR}" "${_gdm_pkg_binary_dir}" ${_gdm_subdir_args})
         set(USE_EXTERNAL_PACKAGE TRUE)
     endif()
 
@@ -261,7 +269,7 @@ function(gdm_use_or_fetch_package)
                 "[${PROJECT_NAME}] ${PKG_NAME}: extracted directory does not contain CMakeLists.txt: ${PKG_EXTERNAL_DIR}"
             )
         endif()
-        add_subdirectory("${PKG_EXTERNAL_DIR}" "${_gdm_pkg_binary_dir}")
+        add_subdirectory("${PKG_EXTERNAL_DIR}" "${_gdm_pkg_binary_dir}" ${_gdm_subdir_args})
 
         string(TIMESTAMP _pkg_end_time "%s" UTC)
         math(EXPR _pkg_elapsed_time "${_pkg_end_time} - ${_pkg_start_time}")
@@ -307,6 +315,7 @@ function(gdm_use_or_fetch_package)
     endif()
 
     unset(_gdm_pkg_binary_dir)
+    unset(_gdm_subdir_args)
 endfunction()
 
 

@@ -764,12 +764,17 @@ if (GDM_USE_GLUTIL)
         )
         set(GDM_CPPTRACE_VERSION "${GDM_CPPTRACE_VERSION}" CACHE STRING "cpptrace version")
     endif()
+    # cpptrace is a debug-only dependency of glutil; glutil links cpptrace::cpptrace
+    # only for the Debug/RelWithDebInfo configurations (see the link line below).
+    # A Release "all" build no longer compiles cpptrace and it's dependencies
+    # (possibly libdwarf and zstd), and it only builds when needed.
     gdm_use_or_fetch_package(
         NAME cpptrace
         VERSION ${GDM_CPPTRACE_VERSION}
         GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace
         GIT_TAG v${GDM_CPPTRACE_VERSION}
         CANDIDATE_TARGETS cpptrace::cpptrace
+        EXCLUDE_FROM_ALL
     )
 endif()
 
