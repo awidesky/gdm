@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <ostream>
+#include <string>
 
 namespace glutil::debug {
 
@@ -520,46 +521,71 @@ bool printGpuMemoryInfo(std::ostream& os) {
     bool printed = false;
     os << "Vendor : " << glGetString(GL_VENDOR) << ", Renderer : " << glGetString(GL_RENDERER) << '\n';
 
-    // NVIDIA
+    // A GL query is only meaningful when the driver actually answered it: an
+    // unsupported pname leaves the buffer untouched and raises GL_INVALID_ENUM.
+    //
+    // None of these vendor queries can legitimately answer a negative number
+    // (memory is kB, the other is a count), so a negative result means no answer.
+    // So the return value(answered) will be false if the query raised GL error,
+    // or the value is negative(in case the GL error flag is reset by glutil debug callback).
+    auto query = [](GLenum pname, GLint* values, GLsizei count) {
+        for (GLsizei i = 0; i < count; ++i) values[i] = -1;
+        glGetIntegerv(pname, values);
+
+        bool answered = true;
+        for (GLsizei i = 0; i < count; ++i)
+            if (values[i] < 0) answered = false;
+#if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
+        return answered; // the glad post-callback already read the error flag
+#else
+        if (glGetError() != GL_NO_ERROR) answered = false;
+        return answered;
+#endif
+    };
+    // Vendor memory queries answer in kB; the eviction count is a plain count.
+    auto printQuery = [&os, &query](const char* label, GLenum pname, bool inKb) {
+        GLint value = -1;
+        const bool answered = query(pname, &value, 1);
+        os << label << " : ";
+        if (!answered) os << "(not supported by this driver)\n";
+        else if (inKb) os << (value / 1024) << " MB\n";
+        else os << value << '\n';
+    };
+
+    // NVIDIA. The extension name can be advertised while the queries behind it
+    // are not implemented (Mesa llvmpipe does exactly that), so the query
+    // result decides what is printed, not the extension string alone.
     if (hasGLExtension("GL_NVX_gpu_memory_info")) {
         printed = true;
-        GLint v;
-        glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &v);
-        os << "NV Dedicated VRAM  : " << v / 1024 << " MB\n"; // total VRAM
-        glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &v);
-        os << "NV Total Available : " << v / 1024 << " MB\n"; // available total vram
-        glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &v);
-        os << "NV Current Free    : " << v / 1024 << " MB\n";
-        glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX, &v);
-        os << "NV Evictions Count : " << v << '\n';
-        glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, &v);
-        os << "NV Evicted Memory  : " << v / 1024 << " MB\n";
+        printQuery("NV Dedicated VRAM ", GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX,         true);
+        printQuery("NV Total Available", GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX,   true);
+        printQuery("NV Current Free   ", GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, true);
+        printQuery("NV Evictions Count", GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX,           false);
+        printQuery("NV Evicted Memory ", GL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX,           true);
     } else
         os << "(GL_NVX_gpu_memory_info not available)\n";
 
-    // AMD
+    // AMD: four ints per query (local/aux pool, free/total), all in kB.
     if (hasGLExtension("GL_ATI_meminfo")) {
         printed = true;
-        GLint tex[4], vbo[4], rb[4];
-
-        glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, tex);
-        glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, vbo);
-        glGetIntegerv(GL_RENDERBUFFER_FREE_MEMORY_ATI, rb);
-
-        os << "ATI Texture Local Free  : " << tex[0] / 1024 << " MB\n"
-           << "ATI Texture Local Block : " << tex[1] / 1024 << " MB\n"
-           << "ATI Texture Aux Free    : " << tex[2] / 1024 << " MB\n"
-           << "ATI Texture Aux Block   : " << tex[3] / 1024 << " MB\n"
-
-           << "ATI VBO Local Free      : " << vbo[0] / 1024 << " MB\n"
-           << "ATI VBO Local Block     : " << vbo[1] / 1024 << " MB\n"
-           << "ATI VBO Aux Free        : " << vbo[2] / 1024 << " MB\n"
-           << "ATI VBO Aux Block       : " << vbo[3] / 1024 << " MB\n"
-
-           << "ATI RB Local Free       : " << rb[0] / 1024 << " MB\n"
-           << "ATI RB Local Block      : " << rb[1] / 1024 << " MB\n"
-           << "ATI RB Aux Free         : " << rb[2] / 1024 << " MB\n"
-           << "ATI RB Aux Block        : " << rb[3] / 1024 << " MB\n";
+        auto printAti = [&os, &query](const char* const labels[4], GLenum pname) {
+            GLint v[4];
+            const bool answered = query(pname, v, 4);
+            for (int i = 0; i < 4; ++i) {
+                os << labels[i] << " : ";
+                if (answered) os << (v[i] / 1024) << " MB\n";
+                else os << "(not supported by this driver)\n";
+            }
+        };
+        const char* tex[4] = {"ATI Texture Local Free", "ATI Texture Local Block",
+                              "ATI Texture Aux Free", "ATI Texture Aux Block"};
+        printAti(tex, GL_TEXTURE_FREE_MEMORY_ATI);
+        const char* vbo[4] = {"ATI VBO Local Free", "ATI VBO Local Block",
+                              "ATI VBO Aux Free", "ATI VBO Aux Block"};
+        printAti(vbo, GL_VBO_FREE_MEMORY_ATI);
+        const char* rb[4] = {"ATI RB Local Free", "ATI RB Local Block",
+                             "ATI RB Aux Free", "ATI RB Aux Block"};
+        printAti(rb, GL_RENDERBUFFER_FREE_MEMORY_ATI);
     } else
         os << "(GL_ATI_meminfo not available)\n";
 
