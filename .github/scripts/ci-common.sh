@@ -144,21 +144,30 @@ gdm_exe() {
 }
 
 # gdm_run_example <build-dir>
-# Runs the built gdm example. A run that is attempted and fails fails the step/
-# It is attempted on Linux only, because that is where the hosted runners can
-# actually create an OpenGL context (Xvfb + Mesa's software renderer):
-# the macOS runners report "NSGL: Failed to find a suitable pixel format" for every
-# context version, and the Windows runner's driver reports "The driver does not
-# appear to support OpenGL". Build and link are still checked on all three, so the
-# skip costs no coverage of gdm's own code.
+# Runs the built gdm example. A run that is attempted and fails fails the step.
+# It is attempted on Linux and Windows:
+#   Linux   - Xvfb + Mesa's llvmpipe give a real GL 4.5 context.
+#   Windows - the runner has no OpenGL driver at all, so a step installs Mesa
+#             llvmpipe's per-application opengl32.dll (+ libgallium_wgl.dll) into
+#             $MESA_DLL_DIR; gdm_run copies those next to the executable and sets
+#             GALLIUM_DRIVER=llvmpipe, which is enough for a software WGL context.
+#   macOS   - NSGL needs an accelerated renderer (GLFW adds NSOpenGLPFAAccelerated
+#             unconditionally, freeglut does too), the runners have no GPU, and
+#             Apple's software renderer tops out at 2.1 compat - so the example
+#             cannot create a context there. Running it would need an OSMesa
+#             offscreen harness (GL 4.6, no window), which is a different program
+#             from this example, so macOS stays build-and-link only.
 gdm_run_example() {
     local bd="$1"
-    if [ "${RUNNER_OS:-}" = "Linux" ]; then
-        gdm_run "$(gdm_exe "${bd}" gdm_example_1_HelloWindow)" 5 "run-$(basename "${bd}").log" "${bd}"
-    else
-        echo "SKIP: this runner cannot create an OpenGL context, so the example is"
-        echo "      not run here (the build above is what this platform checks)"
-    fi
+    case "${RUNNER_OS:-}" in
+        Linux|Windows)
+            gdm_run "$(gdm_exe "${bd}" gdm_example_1_HelloWindow)" 5 "run-$(basename "${bd}").log" "${bd}"
+            ;;
+        *)
+            echo "SKIP: this runner cannot create an OpenGL context (see gdm_run_example),"
+            echo "      so the example is not run here (the build above is what this platform checks)"
+            ;;
+    esac
 }
 
 # gdm_run <exe> <seconds> <log-file> [build-dir]
@@ -176,10 +185,13 @@ gdm_run() {
     # Windows: dependencies built as shared libraries (freeglut, and GLEW when the
     # probe chose a shared package) are resolved from the executable's own
     # directory only, so their DLLs have to sit next to it. They come from the
-    # build tree and, for the installed job, from the package prefix's bin dir.
+    # build tree, from the package prefix's bin dir for the installed job, and -
+    # for the software OpenGL driver - from $MESA_DLL_DIR, which the workflow's
+    # "Mesa llvmpipe" step fills. That directory only exists on Windows runs that
+    # installed it, hence the /nonexistent default for every other caller.
     if [ "${RUNNER_OS:-}" = "Windows" ]; then
         local dll src
-        for src in "${bd}" "${PREFIX:-/nonexistent}/bin"; do
+        for src in "${bd}" "${PREFIX:-/nonexistent}/bin" "${MESA_DLL_DIR:-/nonexistent}"; do
             [ -d "${src}" ] || continue
             while IFS= read -r dll; do
                 [ -n "${dll}" ] || continue
@@ -233,21 +245,28 @@ gdm_forbid() {
     echo "ok: $3"
 }
 
-# gdm_collect_warnings <build-log>
+# gdm_collect_warnings <build-log>...
 # Collects compiler warnings that belong to gdm itself (gdm's sources, gdm's
 # example, glutil) into warnings.txt and appends a section to the job summary.
 # Warnings of fetched dependencies (glad's generated gl.c, glfw, glew-cmake,
 # glm, cpptrace, stb, tiny_obj_loader, dds-ktx) are not gdm's to fix.
+# More than one log may be given, and the collection accumulates across calls:
+# every build directory compiles gdm's own sources again (the freeglut /
+# glew-glad configs build the glewToGlad bridge and the example's freeglut
+# path, which b-dbg alone does not cover), so a later call must not discard
+# what an earlier one found.
 gdm_collect_warnings() {
-    local log="$1"
-    # One pipeline with one trailing "|| true": grep exits 1 when a filter matches
-    # nothing, and a step running under `bash -e` aborts on that. Note that `||`
-    # must come after the whole pipeline - inside it, "A | B || true | C" parses
-    # as "(A | B) || (true | C)" and C silently never runs.
-    grep -E "warning" "${log}" 2>/dev/null \
-        | grep -E "(include|src|examples)[/\]|glutil[/\]" \
-        | grep -viE "external[/\\](glfw3|freeglut|glad-|glew-cmake|glm-|cpptrace|stb_image|tiny_obj_loader|dds-ktx)" \
-        > warnings.txt || true
+    local log
+    for log in "$@"; do
+        # One pipeline with one trailing "|| true": grep exits 1 when a filter matches
+        # nothing, and a step running under `bash -e` aborts on that. Note that `||`
+        # must come after the whole pipeline - inside it, "A | B || true | C" parses
+        # as "(A | B) || (true | C)" and C silently never runs.
+        grep -E "warning" "${log}" 2>/dev/null \
+            | grep -E "(include|src|examples)[/\]|glutil[/\]" \
+            | grep -viE "external[/\\](glfw3|freeglut|glad-|glew-cmake|glm-|cpptrace|stb_image|tiny_obj_loader|dds-ktx)" \
+            >> warnings.txt || true
+    done
     # No warnings means no file, so the artifact step has nothing to upload - an
     # artifact that only exists to be empty is not worth a name.
     if [ ! -s warnings.txt ]; then
@@ -255,10 +274,10 @@ gdm_collect_warnings() {
     fi
     local count=0
     [ -s warnings.txt ] && count=$(grep -c "" warnings.txt)
-    echo "gdm warnings: ${count}"
+    echo "gdm warnings: ${count} (collected from: $*)"
     if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         {
-            echo "## gdm warnings (${RUNNER_OS}, Debug): ${count}"
+            echo "## gdm warnings (${RUNNER_OS}): ${count} - collected from: $*"
             echo '```'
             [ -s warnings.txt ] && cat warnings.txt
             echo '```'

@@ -10,12 +10,12 @@ name: ci
 #               the path every fresh user takes, so it runs on all three OSes.
 #   installed  - everything the system package manager provides (apt / Homebrew /
 #               vcpkg, versions and GLEW's variant taken from the probe): gdm must
-#               find it with find_package instead of downloading. The exceptions,
-#               because nothing packages them for a distro: the header-only
-#               stb_image / tiny_obj_loader / dds-ktx, and cpptrace on the
-#               distros that lack it. "A package the distro does not have" is
-#               already covered by the fetch job, so this one runs on the newest
-#               Ubuntu, whose archive does package cpptrace.
+#               find it with find_package instead of downloading, and a download
+#               fails the job. The one exception, because nothing packages it for
+#               a distro: the header-only stb_image / tiny_obj_loader / dds-ktx,
+#               which glutil fetches itself. cpptrace is NOT an exception: it is
+#               packaged everywhere this job runs (see the notes in the installed
+#               job), and where it is not, the job must say so by failing.
 #
 # The examples never run unattended: they open a window and loop until it is
 # closed. What CI can prove is that configuring succeeded, every target linked
@@ -60,10 +60,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # package.py stages the artifact payload.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.x'
 
@@ -115,6 +115,33 @@ jobs:
           }
           "VS_GENERATOR=$generator" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      # The windows runner has no OpenGL driver at all ("WGL: The driver does not
+      # appear to support OpenGL"), so the example could never run here. Mesa's
+      # llvmpipe provides a software WGL implementation (certified OpenGL 4.5):
+      # its opengl32.dll + libgallium_wgl.dll are loaded per-application when they
+      # sit next to the executable, which gdm_run already arranges (it copies every
+      # *.dll from the build dir, from $PREFIX/bin and from $MESA_DLL_DIR).
+      # Version is pinned on purpose: the 26.2.6 msvc release archive is currently
+      # missing its OpenGL bundle (pal1000/mesa-dist-win#249), so 26.2.5 is the
+      # newest verified one. GALLIUM_DRIVER=llvmpipe selects the software
+      # rasterizer explicitly instead of probing for hardware first.
+      - name: Mesa llvmpipe (software OpenGL, Windows only)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = "26.2.5"
+          $archive = "$env:RUNNER_TEMP\mesa3d-$version-release-msvc.7z"
+          Invoke-WebRequest "https://github.com/pal1000/mesa-dist-win/releases/download/$version/mesa3d-$version-release-msvc.7z" -OutFile $archive
+          $sevenZip = "C:\Program Files\7-Zip\7z.exe"
+          if (-not (Test-Path $sevenZip)) { $sevenZip = "7z" }
+          & $sevenZip x $archive -o"$env:RUNNER_TEMP\mesa" -y | Out-Null
+          if (-not (Test-Path "$env:RUNNER_TEMP\mesa\x64\opengl32.dll")) {
+            throw "Mesa archive did not contain x64/opengl32.dll - check the pinned version"
+          }
+          "MESA_DLL_DIR=$env:RUNNER_TEMP\mesa\x64" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "GALLIUM_DRIVER=llvmpipe" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Mesa llvmpipe staged in $env:RUNNER_TEMP\mesa\x64"
+
       # Nothing is installed and external/ is empty, so every dependency is
       # fetched: gdm's download tier, and glad generated on the fly.
       # cpptrace cloning libdwarf-lite at configure time, 
@@ -145,38 +172,43 @@ jobs:
       # A different window backend and loader, sharing the same external/
       # directory: freeglut and glew-cmake are fetched next to the already
       # downloaded glm/cpptrace, which proves the version-keyed layout coexists.
+      # This config is also warning-checked: it compiles gdm's own code that
+      # step 1 does not (the example's freeglut path), so it carries the warning
+      # flags too and its log is collected as well.
       # gdm switches freeglut's macOS build to its native Cocoa backend, because
       # the X11 one needs GLX headers macOS does not ship.
       - name: "3 · freeglut + glew · Debug · build and run the example"
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-fg Debug -DGDM_WINDOW_BACKEND=freeglut -DGDM_GL_LOADER=glew
+          gdm_configure b-fg Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS" -DGDM_WINDOW_BACKEND=freeglut -DGDM_GL_LOADER=glew
           gdm_require cfg-b-fg.log "\[GDM\] Fetching freeglut" "freeglut was fetched"
           gdm_require cfg-b-fg.log "\[GDM\] Fetching glew-cmake" "glew-cmake was fetched (version resolved from its tags)"
           gdm_require cfg-b-fg.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-fg Debug gdm_example_1_HelloWindow
-          # An attempted run that fails fails the job. It is attempted on Linux only:
-          # the macOS runners create no OpenGL context at all (every version, down to
-          # 2.1 compat, fails as "NSGL: Failed to find a suitable pixel format") and
-          # the Windows runner's display driver reports none either ("WGL: The driver
-          # does not appear to support OpenGL"). Linux has Xvfb + Mesa llvmpipe, where
-          # the run does work - so that is the one place it is checked.
+          gdm_collect_warnings build-b-fg.log
+          # An attempted run that fails fails the job. It is attempted on Linux and
+          # Windows: Linux has Xvfb + Mesa llvmpipe, and the "Mesa llvmpipe" step
+          # above gives the Windows runner a software WGL driver. The macOS runners
+          # cannot create a context at all (NSGL requires an accelerated renderer
+          # and Apple's software renderer is 2.1 compat), so macOS stays build+link.
           gdm_run_example b-fg
 
       # The hybrid loader: glew-cmake plus glad with every extension, the
-      # generated GL/glew.h wrapper and the glewToGlad bridge.
+      # generated GL/glew.h wrapper and the glewToGlad bridge. The bridge is
+      # gdm's own source, so this build carries the warning flags as well.
       - name: "4 · glew-glad · Debug · run the example"
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-gw Debug -DGDM_GL_LOADER=glew-glad
+          gdm_configure b-gw Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS" -DGDM_GL_LOADER=glew-glad
           # step 3 already downloaded glew-cmake (its version resolved from its own
           # tags), so here it is reused - which is what proves the two providers
           # share the version-keyed external directory
           gdm_require cfg-b-gw.log "\[GDM\] Found external glew-cmake" "glew-cmake was reused from external/"
           gdm_require cfg-b-gw.log "\[GDM\] Found external glm" "glm was reused from external/"
           gdm_build b-gw Debug gdm_example_1_HelloWindow
+          gdm_collect_warnings build-b-gw.log
           gdm_run_example b-gw
 
       # Verifies that every target of the default build produced an executable
@@ -198,19 +230,19 @@ jobs:
       # upload-artifact always zips what it is handed, so hand it the unpacked
       # payload: the download then expands straight into the executables and
       # assets instead of into another archive.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: gdm-examples-${{ runner.os }}-Debug
           path: ${{ runner.temp }}/payload/gdm-examples-${{ runner.os }}-Debug
           retention-days: 14
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: gdm-examples-${{ runner.os }}-Release
           path: ${{ runner.temp }}/payload/gdm-examples-${{ runner.os }}-Release
           retention-days: 14
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: gdm-warnings-${{ runner.os }}
           path: warnings.txt
@@ -221,16 +253,16 @@ jobs:
     name: installed dependencies (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    # ubuntu-latest still mapped to 24.04, that has no cpptrace package.
-    # Use 26.04 that ships libcpptrace-dev in apt.
-    # Note : ubuntu-latest label will use Ubuntu 26.04 in November 19, 2026.
-    # see : https://github.com/actions/runner-images/issues/14748
+    # Ubuntu 26.04 ("resolute") is the newest Ubuntu image GitHub hosts (only
+    # 26.04 / 24.04 exist - there is no ubuntu-26.10 and none is scheduled;
+    # The cpptrace package only exists from Ubuntu 26.10 ("stonking") on,
+    # So libcpptrace-dev is not installable here and cpptrace comes from vcpkg instead
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-26.04, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: resolve Visual Studio generator
         if: runner.os == 'Windows'
@@ -254,30 +286,35 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           # Everything this platform packages: glfw3, glm, glew (which gdm's
-          # default prefers over building glew-cmake), libdwarf + zstd, and
-          # cpptrace when the archive has it. X11 client and GL headers because
-          # glew-cmake - the fallback when the installed GLEW cannot be used -
-          # does find_package(X11 REQUIRED) and links X11::X11/Xext; a missing
-          # libxext-dev is what "Target libglew_static links to X11::Xext but the
-          # target was not found" means.
+          # default prefers over building glew-cmake), libdwarf + zstd, and the
+          # X11 client/GL headers, because glew-cmake - the fallback when the
+          # installed GLEW cannot be used - does find_package(X11 REQUIRED) and
+          # links X11::X11/Xext; a missing libxext-dev is what "Target libglew_static
+          # links to X11::Xext but the target was not found" means.
           sudo apt-get install -y --no-install-recommends \
             libgl1-mesa-dev libglu1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev \
             libglfw3-dev libglm-dev libglew-dev libdwarf-dev libzstd-dev pkg-config \
             mesa-utils libgl1-mesa-dri xvfb
-          # Ubuntu has no libcpptrace-dev, so gdm builds cpptrace from source -
-          # and those flags make it link the system libdwarf (via pkg-config,
-          # because libdwarf-dev ships no CMake config) instead of cloning
-          # libdwarf-lite into the build. Empty when the package exists, so the
-          # flags are never passed to a configure that would ignore them.
-          CPPTRACE_ARGS=""
-          if sudo apt-get install -y --no-install-recommends libcpptrace-dev; then
-            echo "ok: libcpptrace-dev came from the archive"
-          else
-            echo "ok: no libcpptrace-dev in this image; gdm will build cpptrace from source"
-            CPPTRACE_ARGS="-DCPPTRACE_USE_EXTERNAL_LIBDWARF=ON -DCPPTRACE_FIND_LIBDWARF_WITH_PKGCONFIG=ON"
-          fi
-          echo "CPPTRACE_ARGS=$CPPTRACE_ARGS" >> "$GITHUB_ENV"
+          # cpptrace is the one dependency this distro does not ship: Ubuntu only
+          # has libcpptrace-dev from 26.10 on (packages.ubuntu.com: stonking and
+          # tenacious, 1.0.4-2), and 26.04 - the newest Ubuntu image GitHub hosts -
+          # predates Debian's first upload (2026-03-13). Take it from vcpkg, the
+          # same package manager the windows entry of this matrix uses, so the job
+          # stays "everything from a package manager" and the gate above (no
+          # "[GDM] Fetching" in the configure log) holds. vcpkg's cpptrace is
+          # prebuilt with its own libdwarf/zstd, so there is no source build and no
+          # libdwarf-lite clone here either.
+          vcpkg_triplet="x64-linux"
+          vcpkg_bin="$VCPKG_INSTALLATION_ROOT/vcpkg"
+          [ -x "$vcpkg_bin" ] || vcpkg_bin="vcpkg" # the image ships a prebuilt copy
+          "$vcpkg_bin" install "cpptrace:${vcpkg_triplet}"
+          # PREFIX only adds vcpkg's install root to the search path: the apt
+          # packages above are still found through the system prefixes, and vcpkg
+          # provides cpptrace alone, so nothing is installed twice and vcpkg can
+          # never shadow an apt package the probe and the build should use.
+          echo "PREFIX=$VCPKG_INSTALLATION_ROOT/installed/${vcpkg_triplet}" >> "$GITHUB_ENV"
+          echo "CPPTRACE_ARGS=" >> "$GITHUB_ENV"
           Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
 
@@ -303,6 +340,29 @@ jobs:
           vcpkg install glfw3:x64-windows glew:x64-windows glm:x64-windows cpptrace:x64-windows
           echo "PREFIX=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Append
           "CPPTRACE_ARGS=" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Same reason as the fetch job's step of the same name, and needed for the
+      # same reason: the example in this job links shared vcpkg GLEW/glfw DLLs,
+      # so without a software OpenGL driver the "run the example" step below
+      # could never pass. gdm_run stages $PREFIX/bin and $MESA_DLL_DIR next to
+      # the executable, which is exactly the shared-package path this job wants
+      # to exercise.
+      - name: Mesa llvmpipe (software OpenGL, Windows only)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = "26.2.5"
+          $archive = "$env:RUNNER_TEMP\mesa3d-$version-release-msvc.7z"
+          Invoke-WebRequest "https://github.com/pal1000/mesa-dist-win/releases/download/$version/mesa3d-$version-release-msvc.7z" -OutFile $archive
+          $sevenZip = "C:\Program Files\7-Zip\7z.exe"
+          if (-not (Test-Path $sevenZip)) { $sevenZip = "7z" }
+          & $sevenZip x $archive -o"$env:RUNNER_TEMP\mesa" -y | Out-Null
+          if (-not (Test-Path "$env:RUNNER_TEMP\mesa\x64\opengl32.dll")) {
+            throw "Mesa archive did not contain x64/opengl32.dll - check the pinned version"
+          }
+          "MESA_DLL_DIR=$env:RUNNER_TEMP\mesa\x64" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "GALLIUM_DRIVER=llvmpipe" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Mesa llvmpipe staged in $env:RUNNER_TEMP\mesa\x64"
 
       # gdm only uses an installed package when its version matches exactly, so
       # ask the packages themselves what they are and pin gdm to that. The probe
@@ -365,15 +425,20 @@ jobs:
           # which is a defect this job exists to catch, not a fallback to shrug at.
           gdm_require cfg-b-inst.log "\[GDM\] Found installed GLEW" "glew came from the system package"
           gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "glew-cmake was not built (the system package was used)"
-          if grep -q "\[GDM\] Found installed cpptrace" cfg-b-inst.log; then
-            echo "ok: cpptrace came from the package"
-          else
-            echo "NOTE: cpptrace was fetched - this platform does not package it"
-          fi
-          # glutil's header-only stb_image / tiny_obj_loader / dds-ktx are fetched
-          # into external/ and then reported as "[glutil] Found external files ..."
-          # there, so the pattern must be gdm's own tier message, or this would
-          # trip over the headers on the second configure.
+          # A dependency gdm downloads here is a defect in this job's contract,
+          # not a fallback to shrug at: everything this platform packages must be
+          # found by find_package. The blanket pattern covers glfw3, glm,
+          # glew-cmake, cpptrace and anything gdm learns to fetch later; glutil's
+          # header-only files print "[glutil] Fetching files ...", which this
+          # pattern deliberately does not match, so the one documented exception
+          # (the header-only libs) still passes - see the note below.
+          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching" "nothing was downloaded in the installed job"
+          gdm_require cfg-b-inst.log "\[GDM\] Found installed cpptrace" "cpptrace came from the package"
+          # glutil's header-only stb_image / tiny_obj_loader / dds-ktx are the one
+          # documented exception: nothing packages them for a distro, so they are
+          # fetched into external/ and then reported as "[glutil] Found external
+          # files ..." there, which is why the patterns above are gdm's own tier
+          # message and not the external/ one.
           gdm_forbid cfg-b-inst.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"
           gdm_build b-inst Release glutil gdm_example_1_HelloWindow
 
@@ -381,9 +446,9 @@ jobs:
       # gdm's own static builds. It reports only: a runner's software GL is not
       # what this job is checking.
       # A failed run fails the job: the DLLs the example needs are staged next to it
-      # by gdm_run (freeglut, and any shared package library), so a missing
-      # dependency here is a real defect. Linux only, for the same reason as the
-      # fetch job's runs.
+      # by gdm_run (freeglut, any shared package library, and the Mesa llvmpipe
+      # driver the step above installs), so a missing dependency here is a real
+      # defect. Run on Linux and Windows for the same reason as the fetch job's.
       - name: run the example
         shell: bash
         run: |
@@ -397,3 +462,8 @@ jobs:
           gdm_configure b-inst2 Release -DGDM_GL_LOADER=glew $CPPTRACE_ARGS
           gdm_require cfg-b-inst2.log "\[GDM\] Found installed glfw3" "glfw came from the package"
           gdm_forbid cfg-b-inst2.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"
+          # The same contract as the first configure: whatever gdm resolves the
+          # second time must come from the packages too, not from the external/
+          # copy the first configure may have left behind.
+          gdm_forbid cfg-b-inst2.log "\[GDM\] Fetching" "nothing was downloaded on re-configure"
+          gdm_forbid cfg-b-inst2.log "\[GDM\] Found external cpptrace" "cpptrace was reused, not re-fetched"

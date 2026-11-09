@@ -25,8 +25,9 @@ project(gdm_dependency_probe LANGUAGES C CXX)
 find_package(glfw3 QUIET CONFIG)
 find_package(glm QUIET CONFIG)
 # The same lookup gdm performs, module-first: CMake's own FindGLEW is what finds
-# the system package on Debian/Ubuntu, whose lib/<arch>/cmake/glev/ directory
-# does not match a config-mode GLEW* search on a case-sensitive filesystem.
+# the system package on Debian/Ubuntu, where the distro's GLEW config files are
+# named so that a config-mode GLEW* search does not find them on a
+# case-sensitive filesystem.
 find_package(GLEW QUIET)
 find_package(cpptrace QUIET CONFIG)
 
@@ -75,13 +76,13 @@ if (_glew_target)
     endif()
 endif()
 
-# GDM_GLEW_STATIC is a requirement: gdm only uses an installed GLEW that ships
-# that exact build type, and builds glew-cmake otherwise. The packages disagree
-# about what they define - vcpkg static, Homebrew and module-mode(Debian/Ubuntu)
-# shared-only - so the probe answers the question this job's configure depends on:
-# ON when a static target exists, OFF to ask for the shared one.
+# Same candidate names gdm itself tries, so the probe
+# answers the question gdm's configure depends on: ON when a static target
+# exists, OFF to ask for the shared one. The distros/packages disagree about
+# what they define - Homebrew and Ubuntu shared-only, vcpkg a plain GLEW::GLEW -
+# so the answer is read off the targets, never assumed.
 set(_glew_static "OFF")
-foreach(_static GLEW::glev_s GLEW::GLEW_static libglew_static)
+foreach(_static GLEW::glew_s GLEW::GLEW_static libglew_static)
     if (TARGET ${_static})
         set(_glew_static "ON")
         break()
@@ -98,15 +99,20 @@ message(STATUS "GDM_PROBE|GDM_GLFW_VERSION|${glfw3_VERSION}")
 message(STATUS "GDM_PROBE|GDM_GLFW_TARGET|${_glfw_target}")
 message(STATUS "GDM_PROBE|GDM_GLM_VERSION|${glm_VERSION}")
 message(STATUS "GDM_PROBE|GDM_GLM_TARGET|${_glm_target}")
-# Informational only: the workflow exports lines tagged GDM_PROBE as gdm options,
-# and exporting this one would set GDM_GLEW_VERSION to a concrete version - which
-# means "always build from source" and silently defeats the "installed" default
-# this job is testing. A distinct tag keeps it out of the way.
-message(STATUS "INFO|GLEW_VERSION|${_glew_version}")
 message(STATUS "GDM_PROBE|GDM_GLEW_TARGET|${_glew_target}")
 message(STATUS "GDM_PROBE|GDM_GLEW_STATIC|${_glew_static}")
 message(STATUS "GDM_PROBE|GDM_CPPTRACE_VERSION|${cpptrace_VERSION}")
 message(STATUS "GDM_PROBE|GDM_CPPTRACE_TARGET|${_cpptrace_target}")
+# Informational only, exporting this one would set GDM_GLEW_VERSION
+# to a concrete version - which means "always build from source"
+# and silently defeats the "installed" default this job is testing.
+# It records which GLEW this runner image ships, which makes the later
+# "glew came from the system package" failure readable.
+if (_glew_version)
+    message(STATUS "Note: GLEW_VERSION probed : ${_glew_version}")
+else()
+    message(STATUS "Note: GLEW_VERSION probed : unknown")
+endif()
 
 if (NOT _glfw_target OR NOT _glm_target)
     message(FATAL_ERROR
