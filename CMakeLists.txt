@@ -447,24 +447,9 @@ elseif (GDM_GL_LOADER STREQUAL "glew")
     # Whatever was chosen (an installed target, or the alias for the freshly built one)
     # is what the gdm::loader links.
     if (_gdm_glew_target)
-        # GLEW's config package carries no version file at all, so the version
-        # comes from where one exists: CMake's own FindGLEW reads it out of the
-        # headers (GLEW_VERSION, set when the system package is found through
-        # module mode), and the library name carries it otherwise
-        # (libGLEW.so.2.3.1). It stays empty where neither knows (GLEW32.lib on
-        # Windows), and the message then reads as it did before.
-        set(_gdm_glew_version "")
-        if (GLEW_VERSION)
-            set(_gdm_glew_version " ${GLEW_VERSION}")
-        else()
-            get_target_property(_gdm_glew_lib ${_gdm_glew_target} LOCATION)
-            if (_gdm_glew_lib MATCHES "[0-9]+\\.[0-9]+(\\.[0-9]+)*")
-                set(_gdm_glew_version " ${CMAKE_MATCH_0}")
-            endif()
-            unset(_gdm_glew_lib)
-        endif()
-        message(STATUS "[GDM] Found installed GLEW${_gdm_glew_version} target: ${_gdm_glew_target}")
-        unset(_gdm_glew_version)
+        # A GLEW config package carries no version file, so find_package cannot
+        # answer "which version" the way it does for glfw3 or glm. 
+        gdm_installed_glew_version(TARGET ${_gdm_glew_target})
     else()
         if (TARGET GLEW::GLEW)
             message(STATUS

@@ -438,3 +438,148 @@ function(gdm_fetch_files)
     message(STATUS "[${PROJECT_NAME}] Fetched files ${FF_NAME} ${_ff_tag_dir} -> ${_ff_dir}")
     set(${FF_OUT_DIR} "${_ff_dir}" PARENT_SCOPE)
 endfunction()
+
+
+# gdm_installed_glew_version(
+#   TARGET <imported GLEW target>
+# )
+#
+# Prints which GLEW the found target is:
+#
+#     [GDM] Found installed GLEW 2.3.1 target: GLEW::glew
+#     [GDM] Found installed GLEW 2.3.1 (from headers) target: GLEW::glew
+#
+# A GLEW config package carries no version file, so find_package cannot answer
+# "which version" the way it does for glfw3 or glm. The version is learned from
+# the most trustworthy source possible, in order:
+#
+#   1. the location of the linked library (libGLEW.so.2.3.1, libGLEW.2.3.1.dylib):
+#      the artifact that is linked, and the only source that describes it.
+#      Silent where the name carries no version: Windows (GLEW32.lib),
+#      vcpkg's debug half, and a static libGLEW.a.
+#   2. the VERSION block of GL/glew.h, read off the target's own include path:
+#      the API compiled against. Silent without dev headers.
+#   3. glew.pc's Version:, through pkg-config: the package's own declaration,
+#      which points at its own prefix rather than at this target - hence last,
+#      and only reached when 1 and 2 both came up empty.
+#
+# CMake's own FindGLEW is not a source in that list: it reads the same header,
+# but only in module mode, because it short-circuits on a config package - which
+# exists everywhere this matters.
+#
+# 1 and 2 are both about this installation, so when both know a version they are
+# compared: disagreement means a stale or half-upgraded GLEW, and the direction
+# decides the wording. 3 is never compared - a value reached only by 3 has
+# nothing about this target to disagree with.
+function(gdm_installed_glew_version)
+    set(options)
+    set(oneValueArgs TARGET)
+    cmake_parse_arguments(GV "${options}" "${oneValueArgs}" "" ${ARGN})
+
+    if(NOT GV_TARGET OR NOT TARGET ${GV_TARGET})
+        message(FATAL_ERROR
+            "[${PROJECT_NAME}] gdm_installed_glew_version requires TARGET <imported target>")
+    endif()
+
+    # The configuration whose file this build links: the build type for Make or Ninja,
+    # empty on the multi-config generators, which choose it at build time.
+    set(_cfg "RELEASE")
+    if(CMAKE_BUILD_TYPE)
+        string(TOUPPER "${CMAKE_BUILD_TYPE}" _cfg)
+    endif()
+
+    # 1. the linked library. Candidates, most specific first: 
+    #    no configuration, the one this build links, then release, then debug. 
+    #    The last two cover a multi-config configure, and a single-config when only one
+    #    build type of GLEW is provided(e.g. Homebrew ships no debug GLEW, only release).
+    #    Release first: the debug half is optional. The config part of the property name
+    #    is case-exact - RELEASE, never Release. LOCATION is not used:
+    #    for an imported target CMake picks the configuration itself,
+    #    and on Visual Studio it may pick the debug half.
+    set(_lib_props IMPORTED_LOCATION)
+    if(CMAKE_BUILD_TYPE)
+        list(APPEND _lib_props "IMPORTED_LOCATION_${_cfg}")
+    endif()
+    list(APPEND _lib_props IMPORTED_LOCATION_RELEASE IMPORTED_LOCATION_DEBUG)
+    set(_lib "")
+    foreach(_lib_prop IN LISTS _lib_props)
+        get_target_property(_lib ${GV_TARGET} ${_lib_prop})
+        if(_lib)
+            break()
+        endif()
+    endforeach()
+    unset(_lib_props)
+    unset(_lib_prop)
+    set(_lib_version "")
+    if(_lib MATCHES "[0-9]+\\.[0-9]+(\\.[0-9]+)*")
+        set(_lib_version "${CMAKE_MATCH_0}")
+    endif()
+
+    # 2. the header we use. Always read when present, not only as a fallback:
+    #    it is what makes the check at the end possible. GLEW's build
+    #    writes its version into GL/glew.h as a "VERSION 2.3.1" line; reading it
+    #    here also covers the platforms whose library name has no version.
+    set(_header_version "")
+    get_target_property(_incs ${GV_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
+    foreach(_inc IN LISTS _incs)
+        if(NOT _header_version AND EXISTS "${_inc}/GL/glew.h")
+            file(STRINGS "${_inc}/GL/glew.h" _glew_version_lines
+                 REGEX "^VERSION [0-9]+\\.[0-9]+(\\.[0-9]+)?$")
+            if(_glew_version_lines)
+                list(GET _glew_version_lines 0 _glew_version_line)
+                string(REGEX MATCH "[0-9]+\\.[0-9]+(\\.[0-9]+)*"
+                       _header_version "${_glew_version_line}")
+            endif()
+        endif()
+    endforeach()
+    unset(_glew_version_line)
+    unset(_glew_version_lines)
+
+    # 3. pkg-config, only when 1 and 2 both came up empty. The prefix is
+    #    deliberately not GDM_GLEW: pkg_check_modules would set GDM_GLEW_VERSION
+    #    in the caller's scope and shadow gdm's own cache option from then on.
+    set(_pkgconf_version "")
+    if(NOT _lib_version AND NOT _header_version)
+        find_package(PkgConfig QUIET)
+        if(PKG_CONFIG_FOUND)
+            pkg_check_modules(GDM_GLEW_PKG QUIET glew)
+            if(GDM_GLEW_PKG_VERSION)
+                set(_pkgconf_version "${GDM_GLEW_PKG_VERSION}")
+            endif()
+        endif()
+    endif()
+
+    set(_version "")
+    set(_from "")
+    if(_lib_version)
+        set(_version "${_lib_version}")
+    elseif(_header_version)
+        set(_version "${_header_version}")
+        set(_from " (from headers)")
+    elseif(_pkgconf_version)
+        set(_version "${_pkgconf_version}")
+        set(_from " (from pkg-config)")
+    endif()
+
+    if(_version)
+        message(STATUS "[GDM] Found installed GLEW ${_version}${_from} target: ${GV_TARGET}")
+    else()
+        # Nothing knows: a Windows GLEW32.lib with no dev headers on the path,
+        # or a digitless static name. The message reads as it did before.
+        message(STATUS "[GDM] Found installed GLEW target: ${GV_TARGET}")
+    endif()
+
+    if(_lib_version AND _header_version AND NOT _lib_version VERSION_EQUAL _header_version)
+        if(_header_version VERSION_GREATER _lib_version)
+            message(AUTHOR_WARNING
+                "[GDM] GLEW headers ${_header_version} are newer than the library linked "
+                "(${_lib_version}): entry points declared after ${_lib_version} will not link. "
+                "Install a GLEW whose dev package matches its library.")
+        else()
+            message(AUTHOR_WARNING
+                "[GDM] GLEW library ${_lib_version} is newer than its headers ${_header_version}: "
+                "this builds, but the newer extensions are unavailable at compile time. "
+                "Upgrade the dev package to match.")
+        endif()
+    endif()
+endfunction()
