@@ -265,7 +265,9 @@ int main(int argc, char** argv) {
     std::cout << "GL_KHR_debug supported: " << glutil::debug::hasGLExtension("GL_KHR_debug") << '\n';
 
     const glutil::debug::GLVersion ver = glutil::debug::availableGLversion();
-    std::cout << "\nHighest available GL version: " << ver.major << '.' << ver.minor << '\n';
+    // availableGLversion() returns {-1, -1} when probing is not possible.
+    // toString() prints that sentinel as UNKNOWN, not "-1.-1".
+    std::cout << "\nHighest available GL version: " << ver.toString() << '\n';
 #endif
 
     const std::array<float, 18> vertices = {

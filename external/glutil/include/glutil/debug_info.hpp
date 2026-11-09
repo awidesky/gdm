@@ -61,6 +61,21 @@ public:
     bool operator>=(const char* rhs) const {
         return compare(parseGLVersion(rhs)) >= 0;
     }
+
+    /**
+     * Format as "major.minor" (e.g. "4.6").
+     * Returns "UNKNOWN" if the version is invalid (major or minor < 0).
+     */
+    std::string toString() const {
+        if (major < 0 || minor < 0) return "UNKNOWN";
+
+        // OpenGL versions have a single digit in both components (1.0 - 4.6),
+        // so the digits go straight into the string, no conversion needed.
+        std::string ret = " . ";
+        ret[0] = static_cast<char>('0' + major);
+        ret[2] = static_cast<char>('0' + minor);
+        return ret;
+    }
 };
 /** Get current OpenGL context version */
 GLVersion getOpenGLVersion();
