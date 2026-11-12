@@ -787,6 +787,7 @@ static void debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum s
 
 static GladDebugCallbacksMode current = GladDebugCallbacksMode::noop;
 GladDebugCallbacksMode setGladDebugCallbacks(GladDebugCallbacksMode mode) {
+    (void)mode; // suppress unused warning if GLAD hooks are not available
     GladDebugCallbacksMode ret = current;
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
     if (mode == GladDebugCallbacksMode::noop) {
@@ -811,6 +812,9 @@ static void initGladCallbacks() {
 }
 
 static bool initOpenGLDebugExtension() {
+    // suppress unused warning if glDebugMessageCallback is not available
+    (void)&noopDebugMessageCallback;
+
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
     if (!support.compiledIn) return false;
     
@@ -833,6 +837,7 @@ void initDebugCallbacks() {
 }
 
 void disableDebugCallbacks(bool disable) {
+    (void)disable; // suppress unused warning if GLAD hooks are not available
 #if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
     if (disable) {
         LOG_INFO() << "Disabling GLAD/OpenGL debug callbacks.";

@@ -569,11 +569,14 @@ bool printGpuMemoryInfo(std::ostream& os) {
         os << "(GL_ATI_meminfo not available)\n";
 
 #ifdef __linux__
-    auto printFile = [&os](const char* name, const char* path) {
+    bool anyDrmStat = false;
+    auto printFile = [&os, &anyDrmStat](const char* name, const char* path) {
         std::ifstream f(path);
-        uint64_t value;
-        if (f >> value)
+        uint64_t value = 0;
+        if (f >> value) {
             os << name << " : " << value << '\n';
+            anyDrmStat = true;
+        }
     };
     printed = true;
     printFile("GPU Busy (%)", "/sys/class/drm/card0/device/gpu_busy_percent");
@@ -581,6 +584,8 @@ bool printGpuMemoryInfo(std::ostream& os) {
     printFile("VRAM Used", "/sys/class/drm/card0/device/mem_info_vram_used");
     printFile("GTT Total", "/sys/class/drm/card0/device/mem_info_gtt_total");
     printFile("GTT Used", "/sys/class/drm/card0/device/mem_info_gtt_used");
+    if (!anyDrmStat)
+        os << "(no DRM statistics under /sys/class/drm/card0)\n";
 #else
     os << "(Linux physical hardware symlink not available)\n";
 #endif
