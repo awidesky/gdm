@@ -521,33 +521,12 @@ bool printGpuMemoryInfo(std::ostream& os) {
     bool printed = false;
     os << "Vendor : " << glGetString(GL_VENDOR) << ", Renderer : " << glGetString(GL_RENDERER) << '\n';
 
-    // A GL query is only meaningful when the driver actually answered it: an
-    // unsupported pname leaves the buffer untouched and raises GL_INVALID_ENUM.
-    //
-    // None of these vendor queries can legitimately answer a negative number
-    // (memory is kB, the other is a count), so a negative result means no answer.
-    // So the return value(answered) will be false if the query raised GL error,
-    // or the value is negative(in case the GL error flag is reset by glutil debug callback).
-    auto query = [](GLenum pname, GLint* values, GLsizei count) {
-        for (GLsizei i = 0; i < count; ++i) values[i] = -1;
-        glGetIntegerv(pname, values);
-
-        bool answered = true;
-        for (GLsizei i = 0; i < count; ++i)
-            if (values[i] < 0) answered = false;
-#if defined(GDM_HAS_GLAD) && defined(GLAD_OPTION_GL_DEBUG)
-        return answered; // the glad post-callback already read the error flag
-#else
-        if (glGetError() != GL_NO_ERROR) answered = false;
-        return answered;
-#endif
-    };
     // Vendor memory queries answer in kB; the eviction count is a plain count.
-    auto printQuery = [&os, &query](const char* label, GLenum pname, bool inKb) {
+    auto printQuery = [&os](const char* label, GLenum pname, bool inKb) {
         GLint value = -1;
-        const bool answered = query(pname, &value, 1);
+        glGetIntegerv(pname, &value);
         os << label << " : ";
-        if (!answered) os << "(not supported by this driver)\n";
+        if (value < 0) os << "(not supported by this driver)\n";
         else if (inKb) os << (value / 1024) << " MB\n";
         else os << value << '\n';
     };
@@ -568,13 +547,13 @@ bool printGpuMemoryInfo(std::ostream& os) {
     // AMD: four ints per query (local/aux pool, free/total), all in kB.
     if (hasGLExtension("GL_ATI_meminfo")) {
         printed = true;
-        auto printAti = [&os, &query](const char* const labels[4], GLenum pname) {
-            GLint v[4];
-            const bool answered = query(pname, v, 4);
+        auto printAti = [&os](const char* const labels[4], GLenum pname) {
+            GLint v[4] = {-1, -1, -1, -1};
+            glGetIntegerv(pname, v);
             for (int i = 0; i < 4; ++i) {
                 os << labels[i] << " : ";
-                if (answered) os << (v[i] / 1024) << " MB\n";
-                else os << "(not supported by this driver)\n";
+                if (v[i] < 0) os << "(not supported by this driver)\n";
+                else os << (v[i] / 1024) << " MB\n";
             }
         };
         const char* tex[4] = {"ATI Texture Local Free", "ATI Texture Local Block",

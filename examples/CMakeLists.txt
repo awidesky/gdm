@@ -10,6 +10,8 @@ set_target_properties(gdm_example_1_HelloWindow PROPERTIES
     FOLDER "GDM_Examples"
 )
 
+target_compile_features(gdm_example_1_HelloWindow PUBLIC cxx_std_17)
+
 target_link_libraries(gdm_example_1_HelloWindow
     PRIVATE
         gdm
