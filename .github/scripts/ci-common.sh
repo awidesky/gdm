@@ -247,39 +247,50 @@ gdm_forbid() {
 
 # gdm_collect_warnings <build-log>...
 # Collects compiler warnings that belong to gdm itself (gdm's sources, gdm's
-# example, glutil) into warnings.txt and appends a section to the job summary.
+# example, glutil) into a per-OS warnings file and appends a section to the job
+# summary. The name carries the OS ($RUNNER_OS): each job's artifact unzips to a
+# file that says where it came from, instead of three identically named
+# warnings.txt that collide when the per-OS artifacts are downloaded together.
 # Warnings of fetched dependencies (glad's generated gl.c, glfw, glew-cmake,
 # glm, cpptrace, stb, tiny_obj_loader, dds-ktx) are not gdm's to fix.
+# Linker messages (ld's "ignoring duplicate libraries", ...) are not compiler
+# warnings either: they describe the link line, not gdm's code.
 # More than one log may be given, and the collection accumulates across calls:
 # every build directory compiles gdm's own sources again (the freeglut /
 # glew-glad configs build the glewToGlad bridge and the example's freeglut
 # path, which b-dbg alone does not cover), so a later call must not discard
 # what an earlier one found.
 gdm_collect_warnings() {
-    local log
+    local log warnings_file
+    warnings_file="warnings-$(printf '%s' "${RUNNER_OS:-unknown}" | tr '[:upper:]' '[:lower:]').txt"
     for log in "$@"; do
         # One pipeline with one trailing "|| true": grep exits 1 when a filter matches
         # nothing, and a step running under `bash -e` aborts on that. Note that `||`
         # must come after the whole pipeline - inside it, "A | B || true | C" parses
         # as "(A | B) || (true | C)" and C silently never runs.
         grep -E "warning" "${log}" 2>/dev/null \
+            | grep -viE "^[a-z0-9_.+/-]*(ld|collect2|link\.exe|clang\+\+|gcc|g\+\+): warning" \
             | grep -E "(include|src|examples)[/\]|glutil[/\]" \
             | grep -viE "external[/\\](glfw3|freeglut|glad-|glew-cmake|glm-|cpptrace|stb_image|tiny_obj_loader|dds-ktx)" \
-            >> warnings.txt || true
+            >> "${warnings_file}" || true
     done
+    # The upload step runs in a later shell, so it needs the file name too.
+    if [ -n "${GITHUB_ENV:-}" ]; then
+        echo "WARNINGS_FILE=${warnings_file}" >> "${GITHUB_ENV}"
+    fi
     # No warnings means no file, so the artifact step has nothing to upload - an
     # artifact that only exists to be empty is not worth a name.
-    if [ ! -s warnings.txt ]; then
-        rm -f warnings.txt
+    if [ ! -s "${warnings_file}" ]; then
+        rm -f "${warnings_file}"
     fi
     local count=0
-    [ -s warnings.txt ] && count=$(grep -c "" warnings.txt)
+    [ -s "${warnings_file}" ] && count=$(grep -c "" "${warnings_file}")
     echo "gdm warnings: ${count} (collected from: $*)"
     if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         {
             echo "## gdm warnings (${RUNNER_OS}): ${count} - collected from: $*"
             echo '```'
-            [ -s warnings.txt ] && cat warnings.txt
+            [ -s "${warnings_file}" ] && cat "${warnings_file}"
             echo '```'
         } >>"${GITHUB_STEP_SUMMARY}"
     fi

@@ -144,8 +144,9 @@ jobs:
 
       # Nothing is installed and external/ is empty, so every dependency is
       # fetched: gdm's download tier, and glad generated on the fly.
-      # cpptrace cloning libdwarf-lite at configure time, 
-      # the installed job is where the system libdwarf is used instead.
+      # On the *nix runners cpptrace then configures the libdwarf symbol
+      # and fetches it (libdwarf-lite, git clone) together with zstd(URL tarball)
+      # at configure time; MSVC picks dbghelp instead, so windows-latest fetches neither.
       # This build also carries the warning flags, and it is what the Debug
       # payload ships.
       - name: "1 · default (glfw + glad + glm) · Debug · download tier"
@@ -245,7 +246,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: gdm-warnings-${{ runner.os }}
-          path: warnings.txt
+          path: ${{ env.WARNINGS_FILE }}
           retention-days: 14
           if-no-files-found: ignore
 
@@ -285,16 +286,16 @@ jobs:
       - name: install dependencies (linux)
         if: runner.os == 'Linux'
         run: |
-          # Everything this platform packages: glfw3, glm, glew (which gdm's
-          # default prefers over building glew-cmake), libdwarf + zstd, and the
-          # X11 client/GL headers, because glew-cmake - the fallback when the
-          # installed GLEW cannot be used - does find_package(X11 REQUIRED) and
+          # Everything this platform packages that gdm needs: glfw3, glm, glew
+          # (which gdm's default prefers over building glew-cmake), pkg-config,
+          # and the X11 client/GL headers, because glew-cmake - the fallback when
+          # the installed GLEW cannot be used - does find_package(X11 REQUIRED) and
           # links X11::X11/Xext; a missing libxext-dev is what "Target libglew_static
           # links to X11::Xext but the target was not found" means.
           sudo apt-get install -y --no-install-recommends \
             libgl1-mesa-dev libglu1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev \
-            libglfw3-dev libglm-dev libglew-dev libdwarf-dev libzstd-dev pkg-config \
+            libglfw3-dev libglm-dev libglew-dev pkg-config \
             mesa-utils libgl1-mesa-dri xvfb
           # cpptrace is the one dependency this distro does not ship: Ubuntu only
           # has libcpptrace-dev from 26.10 on (packages.ubuntu.com: stonking and
@@ -302,9 +303,9 @@ jobs:
           # predates Debian's first upload (2026-03-13). Take it from vcpkg, the
           # same package manager the windows entry of this matrix uses, so the job
           # stays "everything from a package manager" and the gate above (no
-          # "[GDM] Fetching" in the configure log) holds. vcpkg's cpptrace is
-          # prebuilt with its own libdwarf/zstd, so there is no source build and no
-          # libdwarf-lite clone here either.
+          # "[GDM] Fetching" in the configure log) holds. vcpkg builds cpptrace's
+          # port itself, together with its own libdwarf/zstd, so nothing here enters
+          # cpptrace's libdwarf-lite/zstd fetch path and no clone happens.
           vcpkg_triplet="x64-linux"
           vcpkg_bin="$VCPKG_INSTALLATION_ROOT/vcpkg"
           [ -x "$vcpkg_bin" ] || vcpkg_bin="vcpkg" # the image ships a prebuilt copy
@@ -405,8 +406,9 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          # cpptrace is built from source here, and this is the only way it uses
-          # the system libdwarf instead of cloning libdwarf-lite (its default).
+          # cpptrace is an imported target here (vcpkg / Homebrew), so cpptrace's
+          # own cmake never runs and neither the libdwarf-lite clone nor the zstd
+          # fetch can happen: the packaged library already carries its back-end.
           gdm_configure b-inst Release -DGDM_GL_LOADER=glew $CPPTRACE_ARGS
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glfw3" "glfw came from the package"
           gdm_require cfg-b-inst.log "\[GDM\] Found installed glm" "glm came from the package"
