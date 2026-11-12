@@ -153,11 +153,11 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-dbg Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS"
-          gdm_build b-dbg Debug
-          gdm_require cfg-b-dbg.log "\[GDM\] Fetching glfw3" "glfw was fetched"
-          gdm_require cfg-b-dbg.log "\[GDM\] Fetching cpptrace" "cpptrace was fetched"
-          gdm_collect_warnings build-b-dbg.log
+          gdm_configure b-default-debug Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS"
+          gdm_build b-default-debug Debug
+          gdm_require cfg-b-default-debug.log "\[GDM\] Fetching glfw3" "glfw was fetched"
+          gdm_require cfg-b-default-debug.log "\[GDM\] Fetching cpptrace" "cpptrace was fetched"
+          gdm_collect_warnings build-b-default-debug.log
 
       # Same external/ directory, so gdm's first tier wins and nothing is
       # downloaded again - and the download itself never has to be repeated.
@@ -165,10 +165,10 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-rel Release
-          gdm_build b-rel Release
-          gdm_require cfg-b-rel.log "\[GDM\] Found external glfw3" "the fetched sources were reused"
-          gdm_forbid cfg-b-rel.log "Fetching" "nothing was downloaded a second time"
+          gdm_configure b-default-release Release
+          gdm_build b-default-release Release
+          gdm_require cfg-b-default-release.log "\[GDM\] Found external glfw3" "the fetched sources were reused"
+          gdm_forbid cfg-b-default-release.log "Fetching" "nothing was downloaded a second time"
 
       # A different window backend and loader, sharing the same external/
       # directory: freeglut and glew-cmake are fetched next to the already
@@ -182,18 +182,18 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-fg Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS" -DGDM_WINDOW_BACKEND=freeglut -DGDM_GL_LOADER=glew
-          gdm_require cfg-b-fg.log "\[GDM\] Fetching freeglut" "freeglut was fetched"
-          gdm_require cfg-b-fg.log "\[GDM\] Fetching glew-cmake" "glew-cmake was fetched (version resolved from its tags)"
-          gdm_require cfg-b-fg.log "\[GDM\] Found external glm" "glm was reused from external/"
-          gdm_build b-fg Debug gdm_example_1_HelloWindow
-          gdm_collect_warnings build-b-fg.log
+          gdm_configure b-freeglut-glew Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS" -DGDM_WINDOW_BACKEND=freeglut -DGDM_GL_LOADER=glew
+          gdm_require cfg-b-freeglut-glew.log "\[GDM\] Fetching freeglut" "freeglut was fetched"
+          gdm_require cfg-b-freeglut-glew.log "\[GDM\] Fetching glew-cmake" "glew-cmake was fetched (version resolved from its tags)"
+          gdm_require cfg-b-freeglut-glew.log "\[GDM\] Found external glm" "glm was reused from external/"
+          gdm_build b-freeglut-glew Debug gdm_example_1_HelloWindow
+          gdm_collect_warnings build-b-freeglut-glew.log
           # An attempted run that fails fails the job. It is attempted on Linux and
           # Windows: Linux has Xvfb + Mesa llvmpipe, and the "Mesa llvmpipe" step
           # above gives the Windows runner a software WGL driver. The macOS runners
           # cannot create a context at all (NSGL requires an accelerated renderer
           # and Apple's software renderer is 2.1 compat), so macOS stays build+link.
-          gdm_run_example b-fg
+          gdm_run_example b-freeglut-glew
 
       # The hybrid loader: glew-cmake plus glad with every extension, the
       # generated GL/glew.h wrapper and the glewToGlad bridge. The bridge is
@@ -202,15 +202,15 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-gw Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS" -DGDM_GL_LOADER=glew-glad
+          gdm_configure b-glew-glad Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS" -DGDM_GL_LOADER=glew-glad
           # step 3 already downloaded glew-cmake (its version resolved from its own
           # tags), so here it is reused - which is what proves the two providers
           # share the version-keyed external directory
-          gdm_require cfg-b-gw.log "\[GDM\] Found external glew-cmake" "glew-cmake was reused from external/"
-          gdm_require cfg-b-gw.log "\[GDM\] Found external glm" "glm was reused from external/"
-          gdm_build b-gw Debug gdm_example_1_HelloWindow
-          gdm_collect_warnings build-b-gw.log
-          gdm_run_example b-gw
+          gdm_require cfg-b-glew-glad.log "\[GDM\] Found external glew-cmake" "glew-cmake was reused from external/"
+          gdm_require cfg-b-glew-glad.log "\[GDM\] Found external glm" "glm was reused from external/"
+          gdm_build b-glew-glad Debug gdm_example_1_HelloWindow
+          gdm_collect_warnings build-b-glew-glad.log
+          gdm_run_example b-glew-glad
 
       # Verifies that every target of the default build produced an executable
       # and stages them with their assets; the Debug payload keeps symbols, the
@@ -221,11 +221,11 @@ jobs:
           payload="${{ runner.temp }}/payload"
           cfg=""
           if [ "$RUNNER_OS" = "Windows" ]; then cfg="--config Debug"; fi
-          python .github/scripts/package.py --build-dir b-dbg $cfg --no-strip \
+          python .github/scripts/package.py --build-dir b-default-debug $cfg --no-strip \
             --payload-dir "$payload/gdm-examples-${{ runner.os }}-Debug"
           cfg=""
           if [ "$RUNNER_OS" = "Windows" ]; then cfg="--config Release"; fi
-          python .github/scripts/package.py --build-dir b-rel $cfg \
+          python .github/scripts/package.py --build-dir b-default-release $cfg \
             --payload-dir "$payload/gdm-examples-${{ runner.os }}-Release"
 
       # upload-artifact always zips what it is handed, so hand it the unpacked
@@ -409,12 +409,12 @@ jobs:
           # cpptrace is an imported target here (vcpkg / Homebrew), so cpptrace's
           # own cmake never runs and neither the libdwarf-lite clone nor the zstd
           # fetch can happen: the packaged library already carries its back-end.
-          gdm_configure b-inst Release -DGDM_GL_LOADER=glew $CPPTRACE_ARGS
-          gdm_require cfg-b-inst.log "\[GDM\] Found installed glfw3" "glfw came from the package"
-          gdm_require cfg-b-inst.log "\[GDM\] Found installed glm" "glm came from the package"
-          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
-          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glm" "glm was not downloaded"
-          gdm_forbid cfg-b-inst.log "Cloning into" "nothing was cloned at configure time"
+          gdm_configure b-installed Release -DGDM_GL_LOADER=glew $CPPTRACE_ARGS
+          gdm_require cfg-b-installed.log "\[GDM\] Found installed glfw3" "glfw came from the package"
+          gdm_require cfg-b-installed.log "\[GDM\] Found installed glm" "glm came from the package"
+          gdm_forbid cfg-b-installed.log "\[GDM\] Fetching glfw3" "glfw was not downloaded"
+          gdm_forbid cfg-b-installed.log "\[GDM\] Fetching glm" "glm was not downloaded"
+          gdm_forbid cfg-b-installed.log "Cloning into" "nothing was cloned at configure time"
           # Either outcome is correct here: "installed" prefers the system package,
           # and falls back to the latest glew-cmake with a warning. Both are
           # gdm working as documented; what would be wrong is a surprise.
@@ -425,8 +425,8 @@ jobs:
           # shared GLEW::GLEW only), so it is always OFF here. Building
           # glew-cmake here instead would mean the package failed to be found,
           # which is a defect this job exists to catch, not a fallback to shrug at.
-          gdm_require cfg-b-inst.log "\[GDM\] Found installed GLEW" "glew came from the system package"
-          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching glew-cmake" "glew-cmake was not built (the system package was used)"
+          gdm_require cfg-b-installed.log "\[GDM\] Found installed GLEW" "glew came from the system package"
+          gdm_forbid cfg-b-installed.log "\[GDM\] Fetching glew-cmake" "glew-cmake was not built (the system package was used)"
           # A dependency gdm downloads here is a defect in this job's contract,
           # not a fallback to shrug at: everything this platform packages must be
           # found by find_package. The blanket pattern covers glfw3, glm,
@@ -434,15 +434,15 @@ jobs:
           # header-only files print "[glutil] Fetching files ...", which this
           # pattern deliberately does not match, so the one documented exception
           # (the header-only libs) still passes - see the note below.
-          gdm_forbid cfg-b-inst.log "\[GDM\] Fetching" "nothing was downloaded in the installed job"
-          gdm_require cfg-b-inst.log "\[GDM\] Found installed cpptrace" "cpptrace came from the package"
+          gdm_forbid cfg-b-installed.log "\[GDM\] Fetching" "nothing was downloaded in the installed job"
+          gdm_require cfg-b-installed.log "\[GDM\] Found installed cpptrace" "cpptrace came from the package"
           # glutil's header-only stb_image / tiny_obj_loader / dds-ktx are the one
           # documented exception: nothing packages them for a distro, so they are
           # fetched into external/ and then reported as "[glutil] Found external
           # files ..." there, which is why the patterns above are gdm's own tier
           # message and not the external/ one.
-          gdm_forbid cfg-b-inst.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"
-          gdm_build b-inst Release glutil gdm_example_1_HelloWindow
+          gdm_forbid cfg-b-installed.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"
+          gdm_build b-installed Release glutil gdm_example_1_HelloWindow
 
       # The one place a binary links against the system packages rather than
       # gdm's own static builds. It reports only: a runner's software GL is not
@@ -455,17 +455,17 @@ jobs:
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_run_example b-inst
+          gdm_run_example b-installed
 
       - name: re-configure (determinism)
         shell: bash
         run: |
           source .github/scripts/ci-common.sh
-          gdm_configure b-inst2 Release -DGDM_GL_LOADER=glew $CPPTRACE_ARGS
-          gdm_require cfg-b-inst2.log "\[GDM\] Found installed glfw3" "glfw came from the package"
-          gdm_forbid cfg-b-inst2.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"
+          gdm_configure b-installed2 Release -DGDM_GL_LOADER=glew $CPPTRACE_ARGS
+          gdm_require cfg-b-installed2.log "\[GDM\] Found installed glfw3" "glfw came from the package"
+          gdm_forbid cfg-b-installed2.log "\[GDM\] Found external glfw3" "no external/ glfw3 was used"
           # The same contract as the first configure: whatever gdm resolves the
           # second time must come from the packages too, not from the external/
           # copy the first configure may have left behind.
-          gdm_forbid cfg-b-inst2.log "\[GDM\] Fetching" "nothing was downloaded on re-configure"
-          gdm_forbid cfg-b-inst2.log "\[GDM\] Found external cpptrace" "cpptrace was reused, not re-fetched"
+          gdm_forbid cfg-b-installed2.log "\[GDM\] Fetching" "nothing was downloaded on re-configure"
+          gdm_forbid cfg-b-installed2.log "\[GDM\] Found external cpptrace" "cpptrace was reused, not re-fetched"

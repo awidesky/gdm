@@ -22,7 +22,7 @@ Two outputs:
 
 Usage (usually called from the workflow, but works locally, too):
 
-    python3 .github/scripts/package.py --build-dir b-dbg --payload-dir payload
+    python3 .github/scripts/package.py --build-dir b-default-debug --payload-dir payload
 
 Exits non-zero if any expected executable is missing, so the workflow step
 fails as well.

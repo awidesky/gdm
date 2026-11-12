@@ -258,7 +258,7 @@ gdm_forbid() {
 # More than one log may be given, and the collection accumulates across calls:
 # every build directory compiles gdm's own sources again (the freeglut /
 # glew-glad configs build the glewToGlad bridge and the example's freeglut
-# path, which b-dbg alone does not cover), so a later call must not discard
+# path, which b-default-debug alone does not cover), so a later call must not discard
 # what an earlier one found.
 gdm_collect_warnings() {
     local log warnings_file
