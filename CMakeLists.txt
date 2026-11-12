@@ -148,16 +148,6 @@ elseif (GDM_GL_LOADER STREQUAL "glew" OR GDM_GL_LOADER STREQUAL "glew-glad")
     endif()
 
     option(GDM_GLEW_STATIC "Use static GLEW when available" ON)
-
-    if (GDM_GL_LOADER STREQUAL "glew-glad")
-        # GLEW (public interface) + GLAD (actual GL entrypoints via gdm_fetch_glad_allEXT)
-        # glew-glad's bridge (glewToGlad.cpp) hard-depends on glutil::debug::init(),
-        # GLUtil must be enabled, or glew-glad looses it's whole point.
-        if (NOT GDM_USE_GLUTIL)
-            message(STATUS "[GDM] GDM_GL_LOADER=glew-glad requires GLUtil; enabling GDM_USE_GLUTIL")
-            set(GDM_USE_GLUTIL ON CACHE BOOL "Enable GLUtil module" FORCE)
-        endif()
-    endif()
 endif()
 
 # Clean up stale cache variables when provider selection changes
@@ -686,10 +676,12 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
         $<${_gdm_dbg}:gdm_glad_allext_debug>
         $<$<NOT:${_gdm_dbg}>:gdm_glad_allext_release>
     )
+    # linke gdm::defs so that glew-glad know if GDM_DEBUG and GDM_HAS_GLUTIL is defined.
     target_link_libraries(gdm_glew_glad
         PUBLIC
             gdm_glewglad_glad
         PRIVATE
+            gdm::defs
             gdm::window
             ${_gdm_glewglad_glew_target}
     )
@@ -798,9 +790,6 @@ if (GDM_USE_GLUTIL)
     add_library(gdm_glutil INTERFACE)
     add_library(gdm::glutil ALIAS gdm_glutil)
     target_link_libraries(gdm_glutil INTERFACE glutil)
-    if (GDM_GL_LOADER STREQUAL "glew-glad")
-        target_link_libraries(gdm_glew_glad PRIVATE glutil)
-    endif()
 endif()
 
 # compile-time definitions

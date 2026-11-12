@@ -16,7 +16,14 @@
 
 #include <stdio.h>
 
-#include <glutil/debug.hpp>
+// If the glew-glad target linked glutil, that would close a circular link:
+// glutil -> gdm::gdm -> gdm::loader -> gdm_glew_glad -> glutil,
+// So glew-glad doesn't link glutil; it only names the symbol it needs in a debug build,
+// and the consumer must links glutil if glutil debug utilities are needed.
+#if defined(GDM_HAS_GLUTIL) && GDM_DEBUG
+// the real definition lives in glutil's debug.cpp
+namespace glutil { namespace debug { void init(); } }
+#endif
 
 extern "C" GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void) {
 // If the shim header was accidentally included first, avoid recursion.
@@ -43,7 +50,11 @@ extern "C" GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void) {
         return GLEW_ERROR_NO_GL_VERSION;
     }
 
+#if defined(GDM_HAS_GLUTIL) && GDM_DEBUG
+    // Start glutil's debug engine (callbacks, error tracking, auto-labelling)
+    // for this context. Only reachable when the consumer also links glutil.
     glutil::debug::init();
+#endif
 
     return GLEW_OK;
 }
