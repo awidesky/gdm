@@ -666,16 +666,20 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
     target_include_directories(gdm_glew_glad
         PUBLIC ${_gdm_glewglad_gen_inc}
     )
-    unset(_gdm_real_glew_root)
-    unset(_gdm_glewglad_gen_inc)
-    unset(_gdm_glewglad_gen_root)
 
     add_library(gdm_glewglad_glad INTERFACE)
+    # glutil links gdm_glewglad_glad instead of gdm::gdm, so it needs <GL/glew.h> from it.
+    target_include_directories(gdm_glewglad_glad INTERFACE
+        $<BUILD_INTERFACE:${_gdm_glewglad_gen_inc}>
+    )
     add_dependencies(gdm_glewglad_glad gdm_glad_allext_debug gdm_glad_allext_release)
     target_link_libraries(gdm_glewglad_glad INTERFACE
         $<${_gdm_dbg}:gdm_glad_allext_debug>
         $<$<NOT:${_gdm_dbg}>:gdm_glad_allext_release>
     )
+    unset(_gdm_real_glew_root)
+    unset(_gdm_glewglad_gen_inc)
+    unset(_gdm_glewglad_gen_root)
     # linke gdm::defs so that glew-glad know if GDM_DEBUG and GDM_HAS_GLUTIL is defined.
     target_link_libraries(gdm_glew_glad
         PUBLIC
@@ -790,6 +794,12 @@ if (GDM_USE_GLUTIL)
     add_library(gdm_glutil INTERFACE)
     add_library(gdm::glutil ALIAS gdm_glutil)
     target_link_libraries(gdm_glutil INTERFACE glutil)
+
+    # The bridge calls glutil::debug::init() in debug builds (src/glewToGlad.cpp).
+    # Acyclic only because glutil links the loader's leaves, not gdm::gdm.
+    if (GDM_GL_LOADER STREQUAL "glew-glad")
+        target_link_libraries(gdm_glew_glad PRIVATE $<${_gdm_dbg}:glutil>)
+    endif()
 endif()
 
 # compile-time definitions

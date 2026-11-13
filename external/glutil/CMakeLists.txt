@@ -101,9 +101,19 @@ target_include_directories(glutil PRIVATE
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+# Link the loader's leaves, never gdm::gdm: the glew-glad bridge links glutil,
+# and glutil -> gdm -> deps -> loader -> gdm_glew_glad will be a static-archive cycle
+# ("ld: warning: ignoring duplicate libraries" on macOS, and ld.bfd cannot link at all).
 target_link_libraries(glutil PRIVATE
-  gdm::gdm
+  gdm::opengl
+  gdm::window
+  gdm::math
 )
+if (GDM_GL_LOADER STREQUAL "glew-glad")
+  target_link_libraries(glutil PRIVATE gdm_glewglad_glad)
+else()
+  target_link_libraries(glutil PRIVATE gdm::loader)
+endif()
 
 # C++ standard
 target_compile_features(glutil PUBLIC cxx_std_17)
