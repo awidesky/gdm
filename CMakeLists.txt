@@ -698,6 +698,7 @@ GLEWAPI GLenum GLEWAPIENTRY gdm_glew_glad_glewInit(void);
     # a pile of unresolved __imp_* externals.
     if (GDM_GLEW_STATIC)
         target_compile_definitions(gdm_glew_glad PUBLIC GLEW_STATIC)
+        target_compile_definitions(gdm_glewglad_glad INTERFACE GLEW_STATIC)
     endif()
 
     add_library(gdm_loader INTERFACE)
