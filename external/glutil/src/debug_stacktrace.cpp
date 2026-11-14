@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <sstream>
-#include <regex>
 
 
 namespace glutil::debug {
@@ -40,32 +39,34 @@ std::string stringStackTrace(std::string header, int skip, int depth, bool snipp
 }
 
 std::string getCalledGLfunctionName(int skip) {
-    std::stringstream ss;
-    cpptrace::formatter{}
-      .header("")
-      .colors(cpptrace::formatter::color_mode::none)
-      .addresses(cpptrace::formatter::address_mode::raw)
-      .paths(cpptrace::formatter::path_mode::basename)
-      .snippets(true)               // source snippet
-      .snippet_context(0) // How many lines of source context to show in a snippet	
-      .columns(true)
-      .print(ss, cpptrace::stacktrace::current(skip, 1));
-    std::string out = ss.str();
-    // content of out:
-    //# 0 0x00007ff6d850ef6a in glutil::ShaderLoader::loadShaderToGL(std::filesystem::path &) at shader.cpp : 207
-    //    > 207 : GLuint shader = glCreateShader(type);
+    cpptrace::stacktrace trace = cpptrace::stacktrace::current(skip, 1);
+    if (trace.frames.empty()) return "unknown source location";
+    
+    const cpptrace::stacktrace_frame& frame = trace.frames.front();
+    if (!frame.line.has_value() || frame.filename.empty()) return "unknown source location";
 
-    const std::regex rgx(R"(at ([^:]+):([0-9]+)[\s\S]*?>\s*[0-9]+:\s*(.*))");
-    std::smatch m;
-    if (std::regex_search(out, m, rgx)) {
-        std::string file = m[1];
-        std::string line = m[2];
-        std::string code = m[3];
-
-        return file + ":" + line + " -> " + code;
+    // get_snippet returns "       > 39: glBufferData(GL_ARRAY_BUFFER, ...);"
+    // or "" when the source file is not available (e.g. artifact run on another machine)
+    std::string code;
+    std::string snippet = cpptrace::get_snippet(frame.filename, frame.line.value(), 0, false);
+    std::size_t marker = snippet.find('>');
+    if (marker != std::string::npos) {
+        std::size_t colon = snippet.find(':', marker);
+        if (colon != std::string::npos) {
+            code = snippet.substr(colon + 1);
+            const char* ws = " \t\r\n";
+            std::size_t begin = code.find_first_not_of(ws);
+            std::size_t end = code.find_last_not_of(ws);
+            if (begin == std::string::npos) {
+                code.clear();
+            } else {
+                code = code.substr(begin, end - begin + 1);
+            }
+        }
     }
 
-    return out;
+    std::string location = cpptrace::basename(frame.filename) + ":" + std::to_string(frame.line.value());
+    return code.empty() ? location : location + " -> " + code;
 }
 } // namespace glutil::debug
 #endif

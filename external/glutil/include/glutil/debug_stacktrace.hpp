@@ -35,12 +35,14 @@ std::string stringStackTrace(std::string header = "Stack trace:", int skip = 3, 
                              bool snippets = true, int snippet_context = 2, bool color = false);
 
 /**
- * Extracts a line of code from a single-frame stack trace in given depth.
- * 
- * This function is used to get the GL function call line from gladPostAallback, hence the name.
+ * Extracts the GL call site from a single-frame stack trace at given depth.
+ *
+ * Uses cpptrace's stacktrace_frame data (filename/line) and cpptrace::get_snippet.
+ * If the source file is not available on the machine, only "file:line" is returned;
+ * if even line info is missing, returns "unknown location".
  *
  * @param skip Number of stack frames to skip before capturing.
- * @return something like: "    > 207 : GLuint shader = glCreateShader(type);"
+ * @return something like: "tracker.cpp:39 -> glBindBuffer(GL_ARRAY_BUFFER, VBO);"
  */
 std::string getCalledGLfunctionName(int skip = 4);
 
