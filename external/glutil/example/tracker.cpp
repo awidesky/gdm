@@ -82,7 +82,8 @@ int main() {
 
     auto& tracker = glutil::debug::GLStateTracker::instance();
 
-    for (auto& [id, info] : tracker.buffers.getAll()) {
+    for (GLuint id : tracker.buffers.sortedIds()) {
+        const auto& info = tracker.buffers.getAll().at(id);
         LOG_INFO() << "Buffer id=" << id
                    << " role="
                    << (info.role == glutil::debug::BufferRole::VBO   ? "VBO"
@@ -92,28 +93,15 @@ int main() {
                    << " dataType=0x" << std::hex << info.dataType << std::dec;
     }
 
-    for (auto& [key, info] : tracker.objects.getAll()) {
-        const auto& [type, id] = key;
+    for (const auto& [id, type] : tracker.objects.sortedIdTypePairs()) {
         LOG_INFO() << "Object id=" << id << " type=" << glutil::glLabelObjectTypeToString(type);
     }
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &EBO);
 
-    LOG_INFO() << "=== Leak Check(in trackerExample, not dtor of GLStateTracker) ===";
-    for (auto& [id, info] : tracker.buffers.getAll()) {
-        LOG_ERROR() << "[LEAK] Buffer id=" << id
-                    << " role="
-                    << (info.role == glutil::debug::BufferRole::VBO   ? "VBO"
-                        : info.role == glutil::debug::BufferRole::EBO ? "EBO"
-                                                                      : "Unknown")
-                    << " label=" << (info.label.empty() ? "(none)" : info.label);
-    }
-    for (auto& [key, info] : tracker.objects.getAll()) {
-        const auto& [type, id] = key;
-        LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << glutil::glLabelObjectTypeToString(type)
-                    << " label=" << (info.label.empty() ? "(none)" : info.label);
-    }
+    glutil::debug::printLeakReport(tracker,
+                                   "Leak Check in trackerExample, not the dtor of GLStateTracker");
 
     glfwDestroyWindow(window);
     glfwTerminate();

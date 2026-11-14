@@ -1068,7 +1068,6 @@ void Snapshot::captureAllVBOInfo(SnapshotSink& out) const {
     bool bHasVBO = false;
 
     const auto& buffers = tracker.buffers.getAll();
-    // TODO_think : would it be better to return value of sortedBufferIds as a reference to avoid copying?
     for (GLuint id : sortedBufferIds(buffers)) {
         const auto& buffer = buffers.at(id);
         if (buffer.role != BufferRole::VBO)

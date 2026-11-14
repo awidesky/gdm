@@ -763,7 +763,7 @@ In function glBindTexture
 [ERROR] ---- End of "GL_INVALID_OPERATION(1282) in function glBindTexture"
 
 // when the program is terminated, the GLStateTracker will check and report for unreleased GL object
-[INFO] === OpenGL Object Leak Check ===
+[INFO] === OpenGL Leak Check (0 buffer(s), 1 object(s) not released) ===
 [ERROR] [LEAK] Object id=1 type=GL_TEXTURE label=Tex2D#1(stacktrace.cpp:53 -&gt; glBindTexture(GL_TEXTURE_2D, tex);)
 </pre>
 </details>

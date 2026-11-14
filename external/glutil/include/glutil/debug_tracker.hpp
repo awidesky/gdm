@@ -1,10 +1,12 @@
 ﻿#ifndef GLUTIL_DEBUG_TRACKER_HPP
 #define GLUTIL_DEBUG_TRACKER_HPP
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <glutil/gl.hpp>
 #include <glutil/glToString.hpp>
@@ -88,6 +90,15 @@ public:
     }
     const std::unordered_map<GLuint, BufferInfo>& getAll() const { return buffers; }
 
+    /** Buffer ids in ascending order, for deterministic report output. */
+    std::vector<GLuint> sortedIds() const {
+        std::vector<GLuint> ids;
+        ids.reserve(buffers.size());
+        for (const auto& [id, info] : buffers) ids.push_back(id);
+        std::sort(ids.begin(), ids.end());
+        return ids;
+    }
+
 private:
     std::unordered_map<GLuint, BufferInfo> buffers;
 };
@@ -126,6 +137,15 @@ public:
     }
     const std::unordered_map<ObjectKey, ObjectInfo, ObjectKeyHash>& getAll() const { return objects; }
 
+    /** (id, type) pairs sorted by id then type, for deterministic report output. */
+    std::vector<std::pair<GLuint, GLenum>> sortedIdTypePairs() const {
+        std::vector<std::pair<GLuint, GLenum>> pairs;
+        pairs.reserve(objects.size());
+        for (const auto& [key, info] : objects) pairs.emplace_back(key.second, key.first);
+        std::sort(pairs.begin(), pairs.end());
+        return pairs;
+    }
+
 private:
     std::unordered_map<ObjectKey, ObjectInfo, ObjectKeyHash> objects;
 };
@@ -135,6 +155,9 @@ private:
  *
  * Stores mirrored binding state and registered GL objects.
  */
+class GLStateTracker;
+void printLeakReport(const GLStateTracker& tracker, const char* title = "OpenGL Leak Check");
+
 class GLStateTracker {
 public:
     static GLStateTracker& instance() {
@@ -162,39 +185,49 @@ private:
     /** Debug-only destructor that reports remaining tracked GL objects. */
     ~GLStateTracker() {
         if (config.disableLeakCheck) return;
-
-        bool hasLeak = false;
-
-        for (auto& [id, info] : buffers.getAll()) {
-            if (!hasLeak) {
-                LOG_INFO() << "=== OpenGL Buffer Leak Check ===";
-                hasLeak = true;
-            }
-            const char* role = (info.role == BufferRole::VBO)   ? "VBO"
-                               : (info.role == BufferRole::EBO) ? "EBO"
-                                                                : "Unknown";
-
-            LOG_ERROR() << "[LEAK] Buffer id=" << id << " role=" << role
-                        << " label=" << (info.label.empty() ? "(none)" : info.label);
-        }
-
-        for (auto& [key, info] : objects.getAll()) {
-            const auto& [type, id] = key;
-            if (!hasLeak) {
-                LOG_INFO() << "=== OpenGL Object Leak Check ===";
-                hasLeak = true;
-            }
-            LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << glLabelObjectTypeToString(type)
-                        << " label=" << (info.label.empty() ? "(none)" : info.label);
-        }
-
-        if (!hasLeak && !config.disableNoLeakReport)
-            LOG_INFO() << "=== No OpenGL Object Leaks Detected ===";
+        printLeakReport(*this);
     }
 #else
     ~GLStateTracker() = default;
 #endif // GDM_DEBUG
 };
+
+/**
+ * Reports every tracked GL object still registered in the tracker (i.e. not released
+ * via the corresponding glDelete* call) as a leak.
+ *
+ * Buffers are printed in ascending id order and objects in (id, type) order, so the
+ * output is deterministic and roughly follows the allocation timeline.
+ *
+ * @param title Report title, without the surrounding "=== ... ===" decoration.
+ */
+inline void printLeakReport(const GLStateTracker& tracker, const char* title) {
+    const auto& buffers = tracker.buffers.getAll();
+    const auto& objects = tracker.objects.getAll();
+    if (buffers.empty() && objects.empty()) {
+        if (!config.disableNoLeakReport)
+            LOG_INFO() << "=== No OpenGL Object Leaks Detected ===";
+        return;
+    }
+
+    LOG_INFO() << "=== " << title << " (" << buffers.size() << " buffer(s), " << objects.size()
+               << " object(s) not released) ===";
+
+    for (GLuint id : tracker.buffers.sortedIds()) {
+        const BufferInfo& info = buffers.at(id);
+        const char* role = (info.role == BufferRole::VBO)   ? "VBO"
+                           : (info.role == BufferRole::EBO) ? "EBO"
+                                                            : "Unknown";
+        LOG_ERROR() << "[LEAK] Buffer id=" << id << " role=" << role
+                    << " label=" << (info.label.empty() ? "(none)" : info.label);
+    }
+
+    for (const auto& [id, type] : tracker.objects.sortedIdTypePairs()) {
+        const ObjectInfo& info = objects.at({type, id});
+        LOG_ERROR() << "[LEAK] Object id=" << id << " type=" << glLabelObjectTypeToString(type)
+                    << " label=" << (info.label.empty() ? "(none)" : info.label);
+    }
+}
 
 } // namespace glutil::debug
 
