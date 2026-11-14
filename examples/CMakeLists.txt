@@ -17,12 +17,5 @@ target_link_libraries(gdm_example_1_HelloWindow
         gdm
 )
 
-if (TARGET glutil)
-    target_link_libraries(gdm_example_1_HelloWindow
-        PRIVATE
-            glutil
-    )
-endif()
-
 target_compile_options(gdm_example_1_HelloWindow PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 

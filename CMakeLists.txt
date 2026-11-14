@@ -795,12 +795,6 @@ if (GDM_USE_GLUTIL)
     add_library(gdm_glutil INTERFACE)
     add_library(gdm::glutil ALIAS gdm_glutil)
     target_link_libraries(gdm_glutil INTERFACE glutil)
-
-    # The bridge calls glutil::debug::init() in debug builds (src/glewToGlad.cpp).
-    # Acyclic only because glutil links the loader's leaves, not gdm::gdm.
-    if (GDM_GL_LOADER STREQUAL "glew-glad")
-        target_link_libraries(gdm_glew_glad PRIVATE $<${_gdm_dbg}:glutil>)
-    endif()
 endif()
 
 # compile-time definitions
@@ -850,6 +844,10 @@ target_link_libraries(gdm
     INTERFACE
         gdm::deps
 )
+
+if (GDM_USE_GLUTIL AND TARGET glutil)
+    target_link_libraries(gdm INTERFACE glutil)
+endif()
 
 if (GDM_BUILD_EXAMPLES)
     add_subdirectory(examples)

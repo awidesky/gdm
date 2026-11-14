@@ -124,7 +124,6 @@ function(add_glutil_example TARGET_NAME)
     target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
     target_link_libraries(${TARGET_NAME} PRIVATE
-        glutil
         gdm::gdm
     )
 
@@ -149,7 +148,6 @@ function(add_glutil_test TARGET_NAME TEST_NAME)
     target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
     target_link_libraries(${TARGET_NAME} PRIVATE
-        glutil
         gdm::gdm
     )
 
