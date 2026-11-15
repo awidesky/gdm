@@ -1070,7 +1070,7 @@ void Snapshot::captureAllVBOInfo(SnapshotSink& out) const {
     const auto& buffers = tracker.buffers.getAll();
     for (GLuint id : sortedBufferIds(buffers)) {
         const auto& buffer = buffers.at(id);
-        if (buffer.role != BufferRole::VBO)
+        if (!buffer.targets.count(GL_ARRAY_BUFFER))
             continue;
 
         bHasVBO = true;
@@ -1354,7 +1354,7 @@ void Snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
 
     // ── VBO 파일 저장 ──
     for (auto& [id, info] : tracker.buffers.getAll()) {
-        if (info.role != BufferRole::VBO)
+        if (!info.targets.count(GL_ARRAY_BUFFER))
             continue;
 
         glBindBuffer(GL_ARRAY_BUFFER, id);

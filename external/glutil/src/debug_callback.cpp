@@ -165,7 +165,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
                 GLuint id = ids[i];
                 if (tracker.boundArrayBuffer == id) tracker.boundArrayBuffer = 0;
                 if (tracker.boundElementArrayBuffer == id) tracker.boundElementArrayBuffer = 0;
-                if(tracker.buffers.get(id)->role == BufferRole::EBO)
+                if(tracker.buffers.get(id)->targets.count(GL_ELEMENT_ARRAY_BUFFER))
                     for (auto& [vao, ebo] : tracker.vaoToElementBuffer) if (ebo == id) ebo = 0;
                 tracker.buffers.destroy(id);
             }
@@ -227,12 +227,10 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
             else if (target == GL_ELEMENT_ARRAY_BUFFER) {
                 tracker.boundElementArrayBuffer = id;
                 if (tracker.boundVAO != 0) tracker.vaoToElementBuffer[tracker.boundVAO] = id;
-            } else {
-                LOG_WARNING() << "[glBindBuffer] Unknown buffer binding target : " << glBufferTypeToString(target);
-                break;
             }
-            if (auto* info = tracker.buffers.get(id)) // TODO_think : there are many buffer types. maybe use GLenum than BufferRole?
-                info->role = (target == GL_ARRAY_BUFFER) ? BufferRole::VBO : BufferRole::EBO;
+            // Record whatever target was bound: the set, not a guessed role.
+            if (auto* info = tracker.buffers.get(id))
+                info->targets.insert(target);
 
             break;
         }
@@ -280,7 +278,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
                 break;
             }
             if (auto* info = tracker.buffers.get(id)) {
-                info->role = (target == GL_ARRAY_BUFFER) ? BufferRole::VBO : BufferRole::EBO;
+                info->targets.insert(target);
                 info->size = size;
             }
             break;

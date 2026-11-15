@@ -46,22 +46,28 @@ inline DebugConfig config{/*disableAutoLabelGLObjects=*/true,
 #endif
 
 /**
- * Buffer classification used by debug tracking.
- */
-enum class BufferRole {
-    Unknown,
-    VBO,
-    EBO,
-};
-
-/**
  * Debug-tracked metadata for a GL buffer object.
  *
  * This structure does not own GPU memory.
  * It mirrors runtime state for debugging and leak detection.
  */
 struct BufferInfo {
-    BufferRole role = BufferRole::Unknown;
+    /**
+     * GL binding targets this buffer has been bound to. 
+     * GL has no per-buffer "role"; the target belongs to the binding,
+     * and one buffer can be bound as GL_ARRAY_BUFFER, GL_UNIFORM_BUFFER, ... at once.
+     */
+    std::unordered_set<GLenum> targets;
+
+    /** Comma-separated names of the targets this buffer was bound to, "(none)" if untracked. */
+    std::string targetNames() const {
+        std::string names;
+        for (GLenum target : targets) {
+            if (!names.empty()) names.push_back(',');
+            names.append(glBufferTypeToShortString(target));   // append the literal: no per-target temporary
+        }
+        return names.empty() ? "(none)" : names;
+    }
     /** Last recorded GL data type for this buffer. */
     GLenum dataType = 0;
     /** Last recorded buffer size in bytes. */
@@ -215,10 +221,7 @@ inline void printLeakReport(const GLStateTracker& tracker, const char* title) {
 
     for (GLuint id : tracker.buffers.sortedIds()) {
         const BufferInfo& info = buffers.at(id);
-        const char* role = (info.role == BufferRole::VBO)   ? "VBO"
-                           : (info.role == BufferRole::EBO) ? "EBO"
-                                                            : "Unknown";
-        LOG_ERROR() << "[LEAK] Buffer id=" << id << " role=" << role
+        LOG_ERROR() << "[LEAK] Buffer id=" << id << " targets=" << info.targetNames()
                     << " label=" << (info.label.empty() ? "(none)" : info.label);
     }
 

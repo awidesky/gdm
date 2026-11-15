@@ -85,10 +85,7 @@ int main() {
     for (GLuint id : tracker.buffers.sortedIds()) {
         const auto& info = tracker.buffers.getAll().at(id);
         LOG_INFO() << "Buffer id=" << id
-                   << " role="
-                   << (info.role == glutil::debug::BufferRole::VBO   ? "VBO"
-                       : info.role == glutil::debug::BufferRole::EBO ? "EBO"
-                                                                     : "Unknown")
+                   << " targets=" << info.targetNames()
                    << " size=" << static_cast<long long>(info.size)
                    << " dataType=0x" << std::hex << info.dataType << std::dec;
     }
