@@ -120,7 +120,7 @@ ShaderLoadResult ShaderLoader::loadFile(const std::filesystem::path& inputPath) 
     GLchar* converted = buffer.get();
     size_t convertedSize = static_cast<size_t>(fileSize);
 
-    if (checkEncoding) { // TODO_think : check will be done twice
+    if (checkEncoding) {
         LOG_INFO() << "Checking text encoding of file: " << pr.resolvedPath;
         if (fileSize >= 3 &&
                 static_cast<unsigned char>(buffer.get()[0]) == 0xEF &&
