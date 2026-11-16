@@ -341,6 +341,11 @@ function(gdm_fetch_glad_allEXT)
   set(GL_XML_URL "https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/xml/gl.xml")
   set(GL_XML_PATH "${CMAKE_BINARY_DIR}/_gdm_downloads/gl.xml")
 
+  # Remove old gl.xml if exists, so that fresh, up-to-date one can be fetched and used.
+  if(EXISTS "${GL_XML_PATH}")
+    file(REMOVE "${GL_XML_PATH}")
+  endif()
+
   # Time the download of gl.xml from Khronos
   string(TIMESTAMP _xml_start_time "%s" UTC)
 
