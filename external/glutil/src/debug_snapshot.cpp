@@ -1190,14 +1190,13 @@ class ScopeTimer {
     std::chrono::steady_clock::time_point m_start;
 public:
     ScopeTimer(const char* name, bool enable, SnapshotSink& out)
-        : m_name(name), m_enable(enable), m_out(&out) {
-        if (m_enable) m_start = std::chrono::steady_clock::now();
-    }
+        : m_name(name), m_enable(enable), m_out(&out), m_start(std::chrono::steady_clock::now()) {}
     ~ScopeTimer() {
         if (!m_enable) return;
         stop();
     }
     void stop() {
+        if (!m_enable) return;
         m_enable = false;
         auto end = std::chrono::steady_clock::now();
         auto ms = std::chrono::duration<double, std::milli>(end - m_start).count();
@@ -1370,6 +1369,7 @@ void Snapshot::saveBufferInfoToFile(const std::filesystem::path& dir) const {
         std::ofstream f(dir / (std::to_string(id) + ".vbo"));
         f << "VBO_ID=" << id << "\n";
         f << "LABEL=" << (label.empty() ? "" : label) << "\n";
+        f << "TARGETS=" << info.targetNames() << "\n";
 
         std::vector<unsigned char> data(size);
         glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, data.data());

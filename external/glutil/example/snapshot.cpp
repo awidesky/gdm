@@ -4,6 +4,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <filesystem>
+#include <system_error>
 #include "config.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) { (void)window; glViewport(0, 0, width, height); }
@@ -194,9 +195,28 @@ int main()
 
     //glutil::debug::snapshot();
     //glutil::debug::snapshot ss = glutil::debug::snapshot{}.bufferVAOInfo(true, true, true, true);
-    std::filesystem::path p1("C:/Temp/");
+
+    // Dump snapshot files next to the executable; fall back to the OS temp dir.
+    std::filesystem::path snapshotDir;
+    std::error_code ec;
+    const std::filesystem::path exeDir = glutil::getExecutableDirectory();
+    if (!exeDir.empty()) {
+        snapshotDir = exeDir / "snapshots";
+        std::filesystem::create_directories(snapshotDir, ec);
+    }
+    if (snapshotDir.empty() || ec) {
+        ec.clear();
+        snapshotDir = std::filesystem::temp_directory_path(ec) / "gdm-snapshots";
+        if (!ec) std::filesystem::create_directories(snapshotDir, ec);
+    }
+
     glutil::debug::Snapshot ss = glutil::debug::Snapshot{}.bufferVAOInfo(true, true, true, true).printPerCall(true);
-    ss.capture(p1,true);
+    if (ec) {
+        std::cerr << "[Snapshot] Skipping file dump, cannot create output directory: " << ec.message() << std::endl;
+    } else {
+        std::cout << "[Snapshot] File dumps will be saved to: " << snapshotDir << std::endl;
+        ss.capture(snapshotDir, true);
+    }
     ss.capture();
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)

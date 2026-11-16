@@ -179,6 +179,7 @@ static void trackGLFunctions(void* ret, const char* name, int len_args, va_list 
                 GLuint id = ids[i];
                 if (tracker.boundVAO == id) tracker.boundVAO = 0;
                 tracker.vaoToElementBuffer.erase(id);
+                tracker.buffers.eraseAssociatedVao(id); // else the report names deleted VAOs
                 tracker.objects.destroy(GL_VERTEX_ARRAY, id);
             }
             break;

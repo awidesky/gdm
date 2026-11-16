@@ -405,8 +405,6 @@ function(gdm_fetch_glad_allEXT)
 
   # Overwrite CONFIG with our own (which marks EXTENSIONS=ALLEXT instead of
   # the actual parsed list, so the directory is stable across gl.xml updates).
-  # TODO_think this will not update when new extension is added in OpenGL registry.
-  # but fetchting 2.5MB of xml & checking 13KB of string each configuaring would be waste of time.
   file(WRITE "${_fg_out_dir}/CONFIG" "${_fg_config_string}")
 
   set(${FGAE_OUT_VAR} "${_glad_src}" PARENT_SCOPE)

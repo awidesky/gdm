@@ -96,6 +96,11 @@ public:
     }
     const std::unordered_map<GLuint, BufferInfo>& getAll() const { return buffers; }
 
+    /** Forget a deleted VAO's association with every buffer (glVertexAttribPointer records it). */
+    void eraseAssociatedVao(GLuint vao) {
+        for (auto& [id, info] : buffers) info.associatedVaos.erase(vao);
+    }
+
     /** Buffer ids in ascending order, for deterministic report output. */
     std::vector<GLuint> sortedIds() const {
         std::vector<GLuint> ids;
