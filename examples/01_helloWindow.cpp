@@ -165,14 +165,62 @@ bool initializeLoader() {
         return false;
     }
 
-    std::cout << "GLAD loaded OpenGL: "
-              << GLAD_VERSION_MAJOR(gladVersion) << "."
-              << GLAD_VERSION_MINOR(gladVersion) << std::endl;
+    std::cout << "gladLoadGL returned: "
+              << GLAD_VERSION_MAJOR(gladVersion) << '.'
+              << GLAD_VERSION_MINOR(gladVersion) << '\n' <<  std::endl;
     return true;
 #else
     std::cerr << "No loader selected. (expected GLAD or GLEW)" << std::endl;
     return false;
 #endif
+}
+
+// Prints the build configuration macros injected by CMake (see CMakeLists.txt).
+void printBuildConfig() {
+    std::cout << "=== Build config macros ===\n";
+#ifdef GDM_DEBUG
+    std::cout << "  GDM_DEBUG                     = " << GDM_DEBUG << '\n';
+#endif
+#ifdef GLUTIL_DISABLE_LOG_ON_RELEASE
+    std::cout << "  GLUTIL_DISABLE_LOG_ON_RELEASE = " << GLUTIL_DISABLE_LOG_ON_RELEASE << '\n';
+#endif
+#ifdef GDM_BUILD_TYPE_DEBUG
+    std::cout << "  GDM_BUILD_TYPE_DEBUG\n";
+#endif
+#ifdef GDM_BUILD_TYPE_RELEASE
+    std::cout << "  GDM_BUILD_TYPE_RELEASE\n";
+#endif
+#ifdef GDM_BUILD_TYPE_RELWITHDEBINFO
+    std::cout << "  GDM_BUILD_TYPE_RELWITHDEBINFO\n";
+#endif
+#ifdef GDM_BUILD_TYPE_MINSIZEREL
+    std::cout << "  GDM_BUILD_TYPE_MINSIZEREL\n";
+#endif
+#ifdef GDM_HAS_OPENGL
+    std::cout << "  GDM_HAS_OPENGL\n";
+#endif
+#ifdef GDM_HAS_GLFW
+    std::cout << "  GDM_HAS_GLFW\n";
+#endif
+#ifdef GDM_HAS_FREEGLUT
+    std::cout << "  GDM_HAS_FREEGLUT\n";
+#endif
+#ifdef GDM_HAS_GLAD
+    std::cout << "  GDM_HAS_GLAD\n";
+#endif
+#ifdef GDM_HAS_GLEW
+    std::cout << "  GDM_HAS_GLEW\n";
+#endif
+#ifdef GDM_HAS_GLEW_GLAD
+    std::cout << "  GDM_HAS_GLEW_GLAD\n";
+#endif
+#ifdef GDM_HAS_GLM
+    std::cout << "  GDM_HAS_GLM\n";
+#endif
+#ifdef GDM_HAS_GLUTIL
+    std::cout << "  GDM_HAS_GLUTIL\n";
+#endif
+    std::cout << "=== Build config macros end ===\n\n";
 }
 
 } // namespace
@@ -184,6 +232,8 @@ int main(int argc, char** argv) {
     // The report below is written with '\n', which does not flush.
     // A CI runner kills this process after a few seconds may discards whole report.
     std::cout << std::unitbuf;
+    
+    printBuildConfig();
 
     int context_version_major = 3;
     int context_version_minor = 3;
@@ -262,7 +312,7 @@ int main(int argc, char** argv) {
     std::cout << "\n== glutil::debug::printGpuMemoryInfo() end ==\n";
 
     std::cout << "\nSupported extensions: " << glutil::debug::getGLExtensions().size() << '\n';
-    std::cout << "GL_KHR_debug supported: " << glutil::debug::hasGLExtension("GL_KHR_debug") << '\n';
+    std::cout << "GL_KHR_debug supported: " << std::boolalpha << glutil::debug::hasGLExtension("GL_KHR_debug") << '\n';
 
     const glutil::debug::GLVersion ver = glutil::debug::availableGLversion();
     // availableGLversion() returns {-1, -1} when probing is not possible.
