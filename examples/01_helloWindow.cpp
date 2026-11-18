@@ -17,6 +17,9 @@
 #endif
 
 #ifdef GDM_HAS_GLUTIL
+// glutil/gl.hpp provides gladLoadGL function hijacks the glad loading function,
+// and initialize glutil::debug if loading was successful.
+// Explicit glutil::debug::init() call is only needed for GLEW path.
 #include <glutil/glutil.hpp>
 #endif
 
@@ -151,6 +154,10 @@ bool initializeLoader() {
                   << std::endl;
         return false;
     }
+    // GLEW has no auto-init hook; explicitly initialize glutil debug engine
+#ifdef GDM_HAS_GLUTIL
+    glutil::debug::init();
+#endif
     return true;
 #elif defined(GDM_HAS_GLAD)
     int gladVersion = 0;
@@ -177,50 +184,69 @@ bool initializeLoader() {
 
 // Prints the build configuration macros injected by CMake (see CMakeLists.txt).
 void printBuildConfig() {
-    std::cout << "=== Build config macros ===\n";
+    std::string options;
+    auto option = [&options](const std::string& key_value) {
+        if (!options.empty()) options += "  ";
+        options += key_value;
+    };
 #ifdef GDM_DEBUG
-    std::cout << "  GDM_DEBUG                     = " << GDM_DEBUG << '\n';
+    option("GDM_DEBUG=" + std::to_string(GDM_DEBUG));
 #endif
 #ifdef GLUTIL_DISABLE_LOG_ON_RELEASE
-    std::cout << "  GLUTIL_DISABLE_LOG_ON_RELEASE = " << GLUTIL_DISABLE_LOG_ON_RELEASE << '\n';
+    option("GLUTIL_DISABLE_LOG_ON_RELEASE=" + std::to_string(GLUTIL_DISABLE_LOG_ON_RELEASE));
 #endif
-#ifdef GDM_BUILD_TYPE_DEBUG
-    std::cout << "  GDM_BUILD_TYPE_DEBUG\n";
+    std::cout << "Options      : " << (options.empty() ? "(none)" : options) << '\n';
+
+    std::cout << "Build type   : ";
+#if defined(GDM_BUILD_TYPE_DEBUG)
+    std::cout << "GDM_BUILD_TYPE_DEBUG";
+#elif defined(GDM_BUILD_TYPE_RELEASE)
+    std::cout << "GDM_BUILD_TYPE_RELEASE";
+#elif defined(GDM_BUILD_TYPE_RELWITHDEBINFO)
+    std::cout << "GDM_BUILD_TYPE_RELWITHDEBINFO";
+#elif defined(GDM_BUILD_TYPE_MINSIZEREL)
+    std::cout << "GDM_BUILD_TYPE_MINSIZEREL";
+#else
+    std::cout << "(not set)";
 #endif
-#ifdef GDM_BUILD_TYPE_RELEASE
-    std::cout << "  GDM_BUILD_TYPE_RELEASE\n";
-#endif
-#ifdef GDM_BUILD_TYPE_RELWITHDEBINFO
-    std::cout << "  GDM_BUILD_TYPE_RELWITHDEBINFO\n";
-#endif
-#ifdef GDM_BUILD_TYPE_MINSIZEREL
-    std::cout << "  GDM_BUILD_TYPE_MINSIZEREL\n";
-#endif
+    std::cout << '\n';
+
+    std::string dependencies;
+    auto dependency = [&dependencies](const char* name) {
+        if (!dependencies.empty()) dependencies += ", ";
+        dependencies += name;
+    };
 #ifdef GDM_HAS_OPENGL
-    std::cout << "  GDM_HAS_OPENGL\n";
+    dependency("GDM_HAS_OPENGL");
+#endif
+#ifdef GDM_HAS_WINDOW_NONE
+    dependency("GDM_HAS_WINDOW_NONE");
 #endif
 #ifdef GDM_HAS_GLFW
-    std::cout << "  GDM_HAS_GLFW\n";
+    dependency("GDM_HAS_GLFW");
 #endif
 #ifdef GDM_HAS_FREEGLUT
-    std::cout << "  GDM_HAS_FREEGLUT\n";
+    dependency("GDM_HAS_FREEGLUT");
+#endif
+#ifdef GDM_HAS_LOADER_NONE
+    dependency("GDM_HAS_LOADER_NONE");
 #endif
 #ifdef GDM_HAS_GLAD
-    std::cout << "  GDM_HAS_GLAD\n";
+    dependency("GDM_HAS_GLAD");
 #endif
 #ifdef GDM_HAS_GLEW
-    std::cout << "  GDM_HAS_GLEW\n";
+    dependency("GDM_HAS_GLEW");
 #endif
 #ifdef GDM_HAS_GLEW_GLAD
-    std::cout << "  GDM_HAS_GLEW_GLAD\n";
+    dependency("GDM_HAS_GLEW_GLAD");
 #endif
 #ifdef GDM_HAS_GLM
-    std::cout << "  GDM_HAS_GLM\n";
+    dependency("GDM_HAS_GLM");
 #endif
 #ifdef GDM_HAS_GLUTIL
-    std::cout << "  GDM_HAS_GLUTIL\n";
+    dependency("GDM_HAS_GLUTIL");
 #endif
-    std::cout << "=== Build config macros end ===\n\n";
+    std::cout << "Dependencies : " << (dependencies.empty() ? "(none)" : dependencies) << "\n\n";
 }
 
 } // namespace
@@ -256,6 +282,8 @@ int main(int argc, char** argv) {
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
+    // GLFW_OPENGL_DEBUG_CONTEXT is a soft hint and safe to use unconditionally.
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "GDM Example 1 - Hello Window", nullptr, nullptr);
     if (window == nullptr) {
@@ -279,6 +307,11 @@ int main(int argc, char** argv) {
 #ifdef GLUT_CORE_PROFILE
     glutInitContextProfile(GLUT_CORE_PROFILE);
 #endif
+
+    // Note: glutInitContextFlags(GLUT_DEBUG); is NOT set here because freeglut's behavior
+    // when debug context is unavailable is platform-dependent:
+    // - Windows/Linux (GLX): hard failure(calls fgError -> exit)
+    // - macOS (Cocoa): soft, silently ignored with warning
 
     const int window = glutCreateWindow("GDM Example 1 - Hello Window");
     if (window <= 0) {

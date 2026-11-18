@@ -266,6 +266,8 @@ static GLFWwindow* initGLFWAndContext() {
 
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
+    // gladLoadGL is macro-hooked by glutil/gl.hpp to call glutil::debug::init()
+    // automatically on success. No explicit init() needed here.
     if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD." << std::endl;
         glfwDestroyWindow(window);

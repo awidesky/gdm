@@ -147,12 +147,12 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
 
 static void checkOpenGLDebugExtension(std::ostream& os) {
     const GL_KHR_DebugSupport support = isGL_KHR_debugSupported();
-    os << "[OpenGL] Debug output API available at compile time : " << (support.compiledIn ? "YES" : "NO") << "\n";
+    os << "[OpenGL] Debug output API compiled in : " << (support.compiledIn ? "YES" : "NO") << "\n";
     if (!support.compiledIn) return;
 
 // this guard is needed in case the glDebugMessageCallback does not exist.
 #if defined(GL_VERSION_4_3) || defined(GL_KHR_debug)
-    os << "[OpenGL] Debug output supported by the current context: " << (support ? "YES" : "NO") << '\n';
+    os << "[OpenGL] GL_KHR_debug supported : " << (support ? "YES" : "NO") << '\n';
     if (support) {
         const GLboolean debugOutputEnabled = glIsEnabled(GL_DEBUG_OUTPUT);
         const GLboolean debugOutputSyncEnabled = glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -160,7 +160,7 @@ static void checkOpenGLDebugExtension(std::ostream& os) {
         os << "[OpenGL] GL_DEBUG_OUTPUT=" << (debugOutputEnabled ? "Enabled" : "Disabled")
            << ", GL_DEBUG_OUTPUT_SYNCHRONOUS=" << (debugOutputSyncEnabled ? "Enabled" : "Disabled") << '\n';
     } else {
-        os << "[OpenGL] glDebugMessageCallback=" << support.glDebugMessageCallbackPtr << ", "
+        os << "[OpenGL] glDebugMessageCallback() ptr=" << support.glDebugMessageCallbackPtr << ", "
         #if defined(GDM_HAS_GLAD) && !defined(GDM_HAS_GLEW_GLAD)
             #if defined(GL_VERSION_4_3)
             << "GLAD_GL_VERSION_4_3=" << GLAD_GL_VERSION_4_3 << ", GLAD_GL_KHR_debug=" 
@@ -501,7 +501,6 @@ GLVersion availableGLversion() {
     return {};
 #endif // GDM_HAS_FREEGLUT (on the top of the function)
 }
-
 
 #ifndef GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
 #define GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX 0x9047

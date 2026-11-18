@@ -9,7 +9,7 @@
 #include <glad/gl.h>
     #if GDM_DEBUG
     namespace glutil::debug { void init(); } // debug function declaration
-    // Helper functions hijacks the glad loading function, and initialize glutil::debug if leading was successful.
+    // Helper functions hijacks the glad loading function, and initialize glutil::debug if loading was successful.
     // So that user doesn't have to call it manually, making it easier to embed glutil debug functionality into existing lagacy codebase.
 
     /* This function acts if it's gladLoadGL, run real gladLoadGL, and init glutil debug engine */
