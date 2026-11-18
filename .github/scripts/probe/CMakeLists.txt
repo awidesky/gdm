@@ -7,8 +7,12 @@ project(gdm_dependency_probe LANGUAGES C CXX)
 # ${GDM_EXTERNAL_DIR}/<name>-<version>/ directory, then
 # find_package(<name> CONFIG EXACT <version>), then a download. An installed
 # package is only *used* when its version equals the requested one exactly, so
-# the CI must pin GDM_<lib>_VERSION to whatever the package manager actually
+# the CI must pin the version to whatever the package manager actually
 # installed - hardcoding that would drift every time a runner image changes.
+#
+# cpptrace's version variable is GLUTIL_CPPTRACE_VERSION, not GDM_CPPTRACE_*:
+# cpptrace is glutil's own dependency, pinned in external/glutil/CMakeLists.txt.
+# Probe that the package manager here provides, and override GLUTIL_CPPTRACE_VERSION
 #
 # This is a real project rather than a `cmake -P` script, because glfw's config
 # file calls find_dependency(Threads), which only works with languages enabled.
@@ -101,8 +105,8 @@ message(STATUS "GDM_PROBE|GDM_GLM_VERSION|${glm_VERSION}")
 message(STATUS "GDM_PROBE|GDM_GLM_TARGET|${_glm_target}")
 message(STATUS "GDM_PROBE|GDM_GLEW_TARGET|${_glew_target}")
 message(STATUS "GDM_PROBE|GDM_GLEW_STATIC|${_glew_static}")
-message(STATUS "GDM_PROBE|GDM_CPPTRACE_VERSION|${cpptrace_VERSION}")
-message(STATUS "GDM_PROBE|GDM_CPPTRACE_TARGET|${_cpptrace_target}")
+message(STATUS "GDM_PROBE|GLUTIL_CPPTRACE_VERSION|${cpptrace_VERSION}")
+message(STATUS "GDM_PROBE|GLUTIL_CPPTRACE_TARGET|${_cpptrace_target}")
 # Informational only, exporting this one would set GDM_GLEW_VERSION
 # to a concrete version - which means "always build from source"
 # and silently defeats the "installed" default this job is testing.

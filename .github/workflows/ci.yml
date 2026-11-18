@@ -42,9 +42,10 @@ env:
   # ships no GLX headers). GLEW is unpinned in the fetch job on purpose: with
   # "installed" and nothing installed, gdm reads Perlmint/glew-cmake's tags
   # feed and derives both version and git tag from it.
+  # cpptrace needs no pin here: it is glutil's own convention, pinned in
+  # external/glutil/CMakeLists.txt and reported from there ("[glutil] ...").
   GDM_GLFW_VERSION: "3.5.1"
   GDM_GLM_VERSION: "1.0.3"
-  GDM_CPPTRACE_VERSION: "1.0.4"
 
 jobs:
   fetch:
@@ -156,7 +157,7 @@ jobs:
           gdm_configure b-default-debug Debug -DCMAKE_CXX_FLAGS="$WARN_FLAGS"
           gdm_build b-default-debug Debug
           gdm_require cfg-b-default-debug.log "\[GDM\] Fetching glfw3" "glfw was fetched"
-          gdm_require cfg-b-default-debug.log "\[GDM\] Fetching cpptrace" "cpptrace was fetched"
+          gdm_require cfg-b-default-debug.log "\[glutil\] Fetching cpptrace" "cpptrace was fetched (glutil's own dependency)"
           gdm_collect_warnings build-b-default-debug.log
 
       # Same external/ directory, so gdm's first tier wins and nothing is
@@ -430,12 +431,13 @@ jobs:
           # A dependency gdm downloads here is a defect in this job's contract,
           # not a fallback to shrug at: everything this platform packages must be
           # found by find_package. The blanket pattern covers glfw3, glm,
-          # glew-cmake, cpptrace and anything gdm learns to fetch later; glutil's
-          # header-only files print "[glutil] Fetching files ...", which this
-          # pattern deliberately does not match, so the one documented exception
-          # (the header-only libs) still passes - see the note below.
+          # glew-cmake and anything else gdm learns to fetch; glutil's own tiers
+          # print "[glutil] ...", which this pattern deliberately does not match,
+          # so the one documented exception (the header-only libs) still passes -
+          # and cpptrace gets its own check below instead.
           gdm_forbid cfg-b-installed.log "\[GDM\] Fetching" "nothing was downloaded in the installed job"
-          gdm_require cfg-b-installed.log "\[GDM\] Found installed cpptrace" "cpptrace came from the package"
+          gdm_forbid cfg-b-installed.log "\[glutil\] Fetching cpptrace" "cpptrace was not downloaded (the package version was used)"
+          gdm_require cfg-b-installed.log "\[glutil\] Found installed cpptrace" "cpptrace came from the package"
           # glutil's header-only stb_image / tiny_obj_loader / dds-ktx are the one
           # documented exception: nothing packages them for a distro, so they are
           # fetched into external/ and then reported as "[glutil] Found external
@@ -468,4 +470,5 @@ jobs:
           # second time must come from the packages too, not from the external/
           # copy the first configure may have left behind.
           gdm_forbid cfg-b-installed2.log "\[GDM\] Fetching" "nothing was downloaded on re-configure"
-          gdm_forbid cfg-b-installed2.log "\[GDM\] Found external cpptrace" "cpptrace was reused, not re-fetched"
+          gdm_forbid cfg-b-installed2.log "\[glutil\] Fetching cpptrace" "cpptrace was not downloaded on re-configure"
+          gdm_forbid cfg-b-installed2.log "\[glutil\] Found external cpptrace" "cpptrace was reused, not re-fetched"

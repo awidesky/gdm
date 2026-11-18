@@ -752,29 +752,6 @@ else()
     add_library(gdm::math ALIAS gdm_math)
 endif()
 
-if (GDM_USE_GLUTIL)
-    if(NOT DEFINED GDM_CPPTRACE_VERSION)
-        gdm_get_latest_version(
-            REPO "jeremy-rifkin/cpptrace"
-            TAG_RE "^v?([0-9]+\\.[0-9]+(\\.[0-9]+)?)$"
-            OUT_VERSION GDM_CPPTRACE_VERSION
-        )
-        set(GDM_CPPTRACE_VERSION "${GDM_CPPTRACE_VERSION}" CACHE STRING "cpptrace version")
-    endif()
-    # cpptrace is a debug-only dependency of glutil; glutil links cpptrace::cpptrace
-    # only for the Debug/RelWithDebInfo configurations (see the link line below).
-    # A Release "all" build no longer compiles cpptrace and it's dependencies
-    # (possibly libdwarf and zstd), and it only builds when needed.
-    gdm_use_or_fetch_package(
-        NAME cpptrace
-        VERSION ${GDM_CPPTRACE_VERSION}
-        GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace
-        GIT_TAG v${GDM_CPPTRACE_VERSION}
-        CANDIDATE_TARGETS cpptrace::cpptrace
-        EXCLUDE_FROM_ALL
-    )
-endif()
-
 # measure end time for dependency fetching and generation
 string(TIMESTAMP END_TIME "%s" UTC)
 math(EXPR ELAPSED_TIME "${END_TIME} - ${START_TIME}")
@@ -785,7 +762,6 @@ message(STATUS "[GDM] Resolving dependencies took ${ELAPSED_TIME} seconds")
 # -----------------------
 if (GDM_USE_GLUTIL)
     add_subdirectory(external/glutil)
-    target_link_libraries(glutil PRIVATE $<${_gdm_dbg}:cpptrace::cpptrace>)
     target_link_libraries(glutil PUBLIC gdm_defs)
     list(APPEND _gdm_defs GDM_HAS_GLUTIL)
 

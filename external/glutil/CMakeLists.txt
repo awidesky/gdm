@@ -115,6 +115,35 @@ else()
   target_link_libraries(glutil PRIVATE gdm::loader)
 endif()
 
+# src/debug_stacktrace.cpp uses cpptrace's formatter API and cpptrace::basename():
+# both exist from 1.0.0 on and 0.x has none of it, so a lower version is a clear
+# error here instead of a compile surprise in that file.
+set(GLUTIL_CPPTRACE_MIN "1.0.0")
+set(GLUTIL_CPPTRACE_VERSION "1.0.4" CACHE STRING "cpptrace version glutil is built against")
+if(GLUTIL_CPPTRACE_VERSION VERSION_LESS ${GLUTIL_CPPTRACE_MIN})
+  message(FATAL_ERROR
+    "[glutil] cpptrace ${GLUTIL_CPPTRACE_VERSION} is too old for glutil's debug "
+    "stack traces: ${GLUTIL_CPPTRACE_MIN} or newer is required. "
+    "Raise GLUTIL_CPPTRACE_VERSION."
+  )
+endif()
+
+# cpptrace is for debug-only EXCLUDE_FROM_ALL keeps it out of the "all" target,
+# and glutil links it only for the configurations that compile the debug code,
+# so release "all" build no longer compiles cpptrace and it's dependencies
+# (possibly libdwarf and zstd), and it only builds when needed.
+gdm_use_or_fetch_package(
+  NAME cpptrace
+  VERSION ${GLUTIL_CPPTRACE_VERSION}
+  GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace
+  GIT_TAG v${GLUTIL_CPPTRACE_VERSION}
+  CANDIDATE_TARGETS cpptrace::cpptrace
+  EXCLUDE_FROM_ALL
+)
+
+target_link_libraries(glutil PRIVATE $<${_gdm_dbg}:cpptrace::cpptrace>)
+unset(GLUTIL_CPPTRACE_MIN)
+
 # C++ standard
 target_compile_features(glutil PUBLIC cxx_std_17)
 

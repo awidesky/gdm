@@ -82,7 +82,7 @@ gdm_configure() {
             GDM_GLFW_VERSION|GDM_GLFW_STATIC) [ "$backend" = glfw ] || want=no ;;
             GDM_FREEGLUT_VERSION)  [ "$backend" = freeglut ] || want=no ;;
             GDM_GLM_VERSION)       [ "$have_glm" != "OFF" ] || want=no ;;
-            GDM_CPPTRACE_VERSION)  [ "$have_glutil" != "OFF" ] || want=no ;;
+            GLUTIL_CPPTRACE_VERSION) [ "$have_glutil" != "OFF" ] || want=no ;;
             GDM_GLEW_VERSION|GDM_GLEW_STATIC)
                 case "$loader" in glew|glew-glad) ;; *) want=no ;; esac ;;
             GDM_GLAD_API|GDM_GLAD_PROFILE|GDM_GLAD_EXTENSION)
@@ -97,7 +97,7 @@ gdm_configure() {
     for var in GDM_WINDOW_BACKEND GDM_GL_LOADER GDM_USE_GLM GDM_USE_GLUTIL \
                GDM_BUILD_EXAMPLES GDM_BUILD_TESTS GDM_EXTERNAL_DIR \
                GDM_GLFW_VERSION GDM_FREEGLUT_VERSION GDM_GLM_VERSION \
-               GDM_CPPTRACE_VERSION GDM_GLEW_VERSION GDM_GLEW_STATIC \
+               GLUTIL_CPPTRACE_VERSION GDM_GLEW_VERSION GDM_GLEW_STATIC \
                GDM_GLAD_API GDM_GLAD_PROFILE GDM_GLAD_EXTENSION GDM_TLS_VERIFY; do
         forward "${var}"
     done
