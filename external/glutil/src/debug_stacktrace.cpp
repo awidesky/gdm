@@ -27,9 +27,28 @@ namespace {
 constexpr const char* kForce   = "FORCE_COLOR";   // force-color.org informal standard
 constexpr const char* kNoColor = "NO_COLOR";      // no-color.org informal standard
 
+// Cross-platform safe getenv wrapper
+const char* safe_getenv(const char* name) {
+#ifdef _WIN32
+    size_t len = 0;
+    char* buf = nullptr;
+    if (_dupenv_s(&buf, &len, name) == 0 && buf) {
+        // Note: buf is allocated by _dupenv_s, caller must free
+        // We'll use a static thread_local buffer to avoid leaks
+        static thread_local std::string cached;
+        cached = buf;
+        free(buf);
+        return cached.c_str();
+    }
+    return nullptr;
+#else
+    return std::getenv(name);
+#endif
+}
+
 // Present, non-empty, and not literally "0"
 bool envSet(const char* name) {
-    const char* v = std::getenv(name);
+    const char* v = safe_getenv(name);
     return v && *v && std::strcmp(v, "0") != 0;
 }
 
@@ -57,7 +76,7 @@ bool resolveColor(ColorMode mode, std::ostream& out) {
     if(envSet(kNoColor)) return false;                            // 1. NO_COLOR (highest priority)
     if(envSet(kForce)) return true;                               // 2. FORCE_COLOR
     if(envSet("XCODE_VERSION_ACTUAL") && !envSet("TERM_PROGRAM")) return false; // 3. Xcode console (but not Terminal.app/iTerm)
-    if(const char* t = std::getenv("TERM"); t && !std::strcmp(t, "dumb")) return false; // 4. TERM=dumb
+    if(const char* t = safe_getenv("TERM"); t && !std::strcmp(t, "dumb")) return false; // 4. TERM=dumb
     const FILE* f = fileOf(out);                                  // 5. Real terminal check
     return f && isTerminal(const_cast<FILE*>(f));
 }
