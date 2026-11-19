@@ -97,7 +97,7 @@ bool isInternalFrame(const cpptrace::stacktrace_frame& frame) {
         "glutil::debug::printStackTrace",
         "glutil::debug::stringStackTrace",
         "glutil::debug::getCalledGLfunctionName",
-        "glad_debug_impl_",
+        "_glad_debug_impl_",
     };
     const std::string_view symbol = frame.symbol;
     for (std::string_view prefix : kPrefixes)
