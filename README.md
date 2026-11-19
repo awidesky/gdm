@@ -25,6 +25,7 @@ so that your dependencies would work..
 - [GDM - OpenGL Dependency Manager](#gdm---opengl-dependency-manager)
   - [Table of Contents](#table-of-contents)
   - [Supported OpenGL Libraries](#supported-opengl-libraries)
+  - [Getting GDM into your project](#getting-gdm-into-your-project)
   - [Usage Examples](#usage-examples)
     - [1. Minimum Example - Project with `glfw`, `glad`, `glm`](#1-minimum-example---project-with-glfw-glad-glm)
     - [2. Detailed Example - Specifying versions and options](#2-detailed-example---specifying-versions-and-options)
@@ -52,6 +53,7 @@ so that your dependencies would work..
     - [gdm_use_or_fetch_package](#gdm_use_or_fetch_package)
     - [gdm_fetch_files](#gdm_fetch_files)
 - [GLUtil - OpenGL Utility Library](#glutil---opengl-utility-library)
+  - [Dependencies](#dependencies)
   - [Core Modules](#core-modules)
     - [Shader example](#shader-example)
   - [Debug System Overview](#debug-system-overview)
@@ -73,6 +75,57 @@ so that your dependencies would work..
 - **OpenGL debugging & resource utility(optional, explained later)** (`glutil`)
 
 After you specified the desired library and versions, `GDM` will search for installed libraries, download the source if installed package does not exist, and provide targets that resolve to specified dependencies (like `gdm::window`, `gdm::loader`, `gdm::math`, `gdm::opengl`).
+
+## Getting GDM into your project
+
+`GDM` must live **inside your own project's source tree** - conventionally `external/gdm`, since `GDM` stores the dependencies in `${GDM_EXTERNAL_DIR}`, that defaults to `${CMAKE_SOURCE_DIR}/external`. Any other path works too; the usage examples below just stick to the convention. Pick one of these ways to download `GDM` :
+
+**Option 1 — let CMake download it (recommended; no git required)**
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(gdm
+    URL      https://github.com/awidesky/gdm/archive/refs/heads/master.tar.gz
+    SOURCE_DIR "${CMAKE_SOURCE_DIR}/external/gdm"
+)
+FetchContent_MakeAvailable(gdm)
+```
+
+**Option 2 — same, but from git (use it if you already work with git)**
+
+```cmake
+FetchContent_Declare(gdm
+    GIT_REPOSITORY https://github.com/awidesky/gdm.git
+    GIT_TAG        v1.1.0       # or a commit SHA
+    GIT_SHALLOW    TRUE
+    SOURCE_DIR     "${CMAKE_SOURCE_DIR}/external/gdm"
+)
+```
+
+**Option 3 — download the archive(nothing runs at configure time)** Go to the [tags page](https://github.com/awidesky/gdm/tags) (or `Code -> Download ZIP` on any branch) and download the archive by hand, and extract it so that `CMakeLists.txt` sits at `your-project/external/gdm/CMakeLists.txt`. Or run following bash script:
+
+```bash
+curl -L -o /tmp/gdm.tar.gz https://github.com/awidesky/gdm/archive/refs/heads/master.tar.gz
+mkdir -p external/gdm
+tar -xzf /tmp/gdm.tar.gz -C external/gdm --strip-components=1
+```
+
+```cmake
+add_subdirectory(external/gdm)
+```
+
+**Option 4 — git submodule (only if you prefer managing it with git).** Remember the second command after every fresh clone, or the directory is silently empty:
+
+```bash
+git submodule add https://github.com/awidesky/gdm external/gdm
+git submodule update --init
+```
+
+```cmake
+add_subdirectory(external/gdm)
+```
+
+**"Which should I pick?"** No CMake knowledge at all → **Option 3**. Happy to let the build fetch it → **Option 1**. Already using git submodules elsewhere → **Option 4**. Each option above is complete on its own; the examples in [Usage Examples](#usage-examples) assume the directory is there.
 
 ## Usage Examples
 
@@ -168,6 +221,14 @@ Examples with default options (`GDM_GLAD_API=4.6`, `GDM_GLAD_PROFILE=core`):
 If a directory already exists, GDM reads its `CONFIG` file and reuses it if the configuration matches (same API, profile, options, extensions). If the config differs, it tries `_2`, `_3`, ... suffixes to find a matching slot.
 
 From the consumer's point of view, the source of a dependency (installed package or download) doesn't matter: every resolved dependency is exposed through the same namespaced `gdm::*` targets, so your link lines stay identical either way.
+
+### Advantages over plain `FetchContent`
+
+- **No version surprise** — every dependency's version is a plain CMake variable in *your* build (`GDM_GLFW_VERSION`, ...), not a gitlink SHA you have to dig out, and bumping is a one-line edit.
+- **Faster** — a release tarball is fetched instead of a full git clone and history (~1.8x), and the result is cached in `external/` where the next configure reuses it as-is.
+- **Use Installed packages** — `find_package` is tried before any download, so a distro/Homebrew/vcpkg package of the exact version is used instead of building from source.
+- **Works without git** — no submodule state and no `.gitmodules`; a zip-exported source tree still configures.
+- **Offline-friendly once populated** — with `external/<name>-<version>/` present, nothing is re-downloaded, even from a fresh build directory.
   
 
 ## Generated CMake Targets
@@ -387,7 +448,6 @@ These are created on-demand based on your provider selections. For GitHub-hosted
 | `GDM_GLFW_VERSION` | `GDM_WINDOW_BACKEND=glfw` | Newest tag |
 | `GDM_FREEGLUT_VERSION` | `GDM_WINDOW_BACKEND=freeglut` | Newest tag |
 | `GDM_GLM_VERSION` | `GDM_USE_GLM=ON` | Newest tag |
-| `GDM_CPPTRACE_VERSION` | `GDM_USE_GLUTIL=ON` | Newest tag |
 | `GDM_GLAD_API` | `GDM_GL_LOADER=glad` | `4.6` |
 | `GDM_GLAD_PROFILE` | `GDM_GL_LOADER=glad` | `core` |
 | `GDM_GLAD_EXTENSION` | `GDM_GL_LOADER=glad` | `GL_KHR_debug;GL_EXT_texture_compression_s3tc` |
@@ -424,7 +484,7 @@ Notes:
 - On failure (feed unreachable, or no tag matches `TAG_RE`) configuration stops and tells you to set the option manually.
 - The result is a **version**, not a tag: derive the tag yourself when calling `gdm_use_or_fetch_package()` (`v${MYLIB_VERSION}`, or the version unchanged). A repo whose tags are two-component (`3.4`) resolves to `3.4.0`, so strip the added `.0` when rebuilding the tag.
 - Repositories with no tags (e.g. `nothings/stb`) or only pre-release tags (e.g. `v2.0.0rc1`) cannot be resolved this way; pin the tag and use `gdm_use_or_fetch_package()` / `gdm_fetch_files()` instead.
-- GDM uses this to default `GDM_GLFW_VERSION`, `GDM_FREEGLUT_VERSION`, `GDM_GLM_VERSION`, `GDM_GLEW_VERSION` and `GDM_CPPTRACE_VERSION`.
+- GDM uses this to default `GDM_GLFW_VERSION`, `GDM_FREEGLUT_VERSION`, `GDM_GLM_VERSION` and `GDM_GLEW_VERSION`.
 
 ### gdm_use_or_fetch_package
 
@@ -530,6 +590,28 @@ target_include_directories(my_target PRIVATE ${STB_IMAGE_DIR})
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](CMakeLists.txt)
 
 GLUtil is a built-in utility library shipped under `external/glutil/`. It provides shader/texture/model wrappers, loaders, and a comprehensive debug system for OpenGL applications.
+
+## Dependencies
+
+GLUtil resolves its own dependencies, and pins them the way a library pins its
+API requirements: the versions in `external/glutil/CMakeLists.txt` are the ones
+its code compiles against, so they are not part of GDM's version options and no
+downstream project has to set them. They land in `${GDM_EXTERNAL_DIR}` like every
+other dependency, so the same version-keyed directory is shared across builds.
+
+| Dependency | Version | Where |
+|------------|---------|-------|
+| `stb_image` | `013ac3b` (v2.30) | [glutil/CMakeLists.txt](external/glutil/CMakeLists.txt) |
+| `tiny_obj_loader` | `release` branch | [glutil/CMakeLists.txt](external/glutil/CMakeLists.txt) |
+| `dds-ktx` | `5560d77` (v1.2.1) | [glutil/CMakeLists.txt](external/glutil/CMakeLists.txt) |
+| `cpptrace` | `1.0.4` | [glutil/CMakeLists.txt](external/glutil/CMakeLists.txt) |
+
+`cpptrace` is the only one a package manager is likely to provide, so it is the
+only one with an installed tier: an exact `1.0.4` package is used when present,
+and the source is downloaded into `external/cpptrace-1.0.4/` when it is not. It
+is debug-only (`EXCLUDE_FROM_ALL`, linked for the `Debug`/`RelWithDebInfo`
+configurations only), so a Release `all` build neither compiles it nor pulls in
+the libdwarf/zstd chain it may fetch.
 
 ## Core Modules
 
