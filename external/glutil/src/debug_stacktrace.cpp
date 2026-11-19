@@ -6,8 +6,11 @@
 #include <cpptrace/cpptrace.hpp>
 #include <cpptrace/formatting.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <iostream>
 #include <sstream>
+#include <string_view>
 #include <regex>
 
 #include <cstdio>    // FILE, stdout, stderr, fileno
@@ -81,6 +84,56 @@ bool resolveColor(ColorMode mode, std::ostream& out) {
     return f && isTerminal(const_cast<FILE*>(f));
 }
 
+// A frame belongs to the GL debug-callback machinery when its function is one of
+// these. Matching on the symbol name (prefix) instead of counting frames keeps this
+// correct under optimization: an inlined callee still gets its own (inline) frame
+// from cpptrace, a tail-called wrapper is simply absent, and compiler suffixes such
+// as ".constprop.0" / "[clone .cold]" are absorbed by the prefix match.
+// glutil's own code that calls GL (shader.cpp, ...) is deliberately NOT listed:
+// its GL calls are reported at their own location.
+bool isInternalFrame(const cpptrace::stacktrace_frame& frame) {
+    static constexpr std::string_view kPrefixes[] = {
+        "glutil::debug::callbacks::",
+        "glutil::debug::printStackTrace",
+        "glutil::debug::stringStackTrace",
+        "glutil::debug::getCalledGLfunctionName",
+        "glad_debug_impl_",
+    };
+    const std::string_view symbol = frame.symbol;
+    for (std::string_view prefix : kPrefixes)
+        if (symbol.substr(0, prefix.size()) == prefix) return true;
+    return false;
+}
+
+// How many extra frames are captured so the internal ones at the top can be found.
+constexpr std::size_t kInternalScanDepth = 12;
+
+// Drops the leading run of internal frames, then `extraSkip` more, and keeps at most
+// `depth` frames. `trace` must have been captured inside one of the public functions
+// below (never inside a helper), so its top frame is always an internal one.
+// Returns false when that top frame is not recognized: the binary carries no usable
+// symbols, nothing can be classified, and `trace` is left untouched.
+bool keepCallerFrames(cpptrace::stacktrace& trace, int extraSkip, int depth) {
+    auto& frames = trace.frames;
+    if (frames.empty() || !isInternalFrame(frames.front())) return false;
+
+    auto firstUser = std::find_if_not(frames.begin(), frames.end(), isInternalFrame);
+    const auto remaining = static_cast<std::size_t>(frames.end() - firstUser);
+    firstUser += static_cast<std::ptrdiff_t>(
+        std::min<std::size_t>(remaining, static_cast<std::size_t>(std::max(extraSkip, 0))));
+    frames.erase(frames.begin(), firstUser);
+
+    const auto keep = static_cast<std::size_t>(std::max(depth, 0));
+    if (frames.size() > keep) frames.erase(frames.begin() + static_cast<std::ptrdiff_t>(keep), frames.end());
+    return true;
+}
+
+// Frames to capture: the internal ones + what the caller asked to skip + what it wants.
+std::size_t captureDepth(int skip, int depth) {
+    return kInternalScanDepth + static_cast<std::size_t>(std::max(skip, 0))
+                              + static_cast<std::size_t>(std::max(depth, 0));
+}
+
 } // namespace
 
 bool colorForced() {
@@ -94,6 +147,10 @@ bool colorEnabled(std::ostream& out) {
 void printStackTrace(std::ostream& out, std::string header, int skip, int depth, bool snippets,
                      int snippet_context, ColorMode color) {
     const bool useColor = resolveColor(color, out);
+    cpptrace::stacktrace trace = cpptrace::stacktrace::current(0, captureDepth(skip, depth));
+    if (!keepCallerFrames(trace, skip, depth)) {
+        out << "[glutil] no symbols available: internal frames cannot be skipped, raw trace follows\n";
+    }
     cpptrace::formatter{}
       .header(header)                                     // header
       .colors(useColor ? cpptrace::formatter::color_mode::always
@@ -103,13 +160,17 @@ void printStackTrace(std::ostream& out, std::string header, int skip, int depth,
       .snippets(snippets)                                 // source snippet
       .snippet_context(snippet_context)                   // How many lines of source context to show in a snippet
       .columns(true)                                      // column number enable
-      .print(out, cpptrace::stacktrace::current(skip, depth));
+      .print(out, trace);
 }
 
 std::string stringStackTrace(std::string header, int skip, int depth, bool snippets,
                              int snippet_context, ColorMode color) {
     const bool useColor = (color == ColorMode::Always) || (color == ColorMode::Auto && colorForced());
     std::ostringstream ss;
+    cpptrace::stacktrace trace = cpptrace::stacktrace::current(0, captureDepth(skip, depth));
+    if (!keepCallerFrames(trace, skip, depth)) {
+        ss << "[glutil] no symbols available: internal frames cannot be skipped, raw trace follows\n";
+    }
     cpptrace::formatter{}
       .header(header)                                     // header
       .colors(useColor ? cpptrace::formatter::color_mode::always
@@ -119,14 +180,15 @@ std::string stringStackTrace(std::string header, int skip, int depth, bool snipp
       .snippets(snippets)                                 // source snippet
       .snippet_context(snippet_context)                   // How many lines of source context to show in a snippet
       .columns(true)                                      // column number enable
-      .print(ss, cpptrace::stacktrace::current(skip, depth));
+      .print(ss, trace);
     return ss.str();
 }
 
 std::string getCalledGLfunctionName(int skip) {
-    cpptrace::stacktrace trace = cpptrace::stacktrace::current(skip, 1);
-    if (trace.frames.empty()) return "unknown source location";
-    
+    cpptrace::stacktrace trace = cpptrace::stacktrace::current(0, captureDepth(skip, 1));
+    // No symbols means no file/line either, so there is nothing to report.
+    if (!keepCallerFrames(trace, skip, 1) || trace.frames.empty()) return "unknown source location";
+
     const cpptrace::stacktrace_frame& frame = trace.frames.front();
     if (!frame.line.has_value() || frame.filename.empty()) return "unknown source location";
 

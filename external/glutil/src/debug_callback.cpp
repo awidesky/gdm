@@ -658,7 +658,7 @@ static void fullPostCallback(void* ret, const char* name, GLADapiproc apiproc, i
     const GLenum err = glad_glGetError();
 
     if (err != GL_NO_ERROR) {
-        const ErrorHash hash = hashError(err, name, getCalledGLfunctionName(3));
+        const ErrorHash hash = hashError(err, name, getCalledGLfunctionName());
         const ErrorReport report = logErrorOccurrence(hash, g_gladCallbackMap);
 
         if (report.count == 0) return; // Multiple occurrence - accumulating.

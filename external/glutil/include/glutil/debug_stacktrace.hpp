@@ -44,7 +44,10 @@ bool colorEnabled(std::ostream& out = std::cerr);
  * Prints a formatted stack trace to the given output stream using cpptrace.
  *
  * Stack trace configuration:
- * - skip: number of top frames to ignore
+ * - skip: frames to ignore in addition to glutil's own GL-callback frames (glad's debug
+ *         wrapper, the callbacks, this function), which are always skipped by name, so the
+ *         trace starts at the user's GL call. Default 0; raise it only when the GL call
+ *         is wrapped in your own function(s). Independent of inlining/optimization.
  * - depth: maximum number of frames to print
  * - snippets: enables source code snippets per frame
  * - snippet_context: number of surrounding source lines
@@ -52,7 +55,7 @@ bool colorEnabled(std::ostream& out = std::cerr);
  * Color defaults to Auto (decide based on stream and environment).
  * Pass Always/Never to override.
  */
-void printStackTrace(std::ostream& out = std::cerr, std::string header = "Stack trace:", int skip = 3,
+void printStackTrace(std::ostream& out = std::cerr, std::string header = "Stack trace:", int skip = 0,
                      int depth = 15, bool snippets = true, int snippet_context = 2,
                      ColorMode color = ColorMode::Auto);
 
@@ -63,7 +66,7 @@ void printStackTrace(std::ostream& out = std::cerr, std::string header = "Stack 
  * explicitly requested (Always) or forced via the environment (FORCE_COLOR).
  * Only enable when you know the string will land on an ANSI-capable sink.
  */
-std::string stringStackTrace(std::string header = "Stack trace:", int skip = 3, int depth = 15,
+std::string stringStackTrace(std::string header = "Stack trace:", int skip = 0, int depth = 15,
                              bool snippets = true, int snippet_context = 2, ColorMode color = ColorMode::Never);
 
 /**
@@ -73,10 +76,14 @@ std::string stringStackTrace(std::string header = "Stack trace:", int skip = 3, 
  * If the source file is not available on the machine, only "file:line" is returned;
  * if even line info is missing, returns "unknown source location".
  *
- * @param skip Number of stack frames to skip before capturing.
+ * glutil's own GL-callback frames are skipped by name, so the result is the user's GL call
+ * site regardless of optimization or of where in glutil this is called from. When no
+ * symbols are available at all, returns "unknown source location".
+ *
+ * @param skip Frames to skip in addition to those (default 0; for GL calls wrapped in user code).
  * @return something like: "tracker.cpp:39 -> glBindBuffer(GL_ARRAY_BUFFER, VBO);"
  */
-std::string getCalledGLfunctionName(int skip = 4);
+std::string getCalledGLfunctionName(int skip = 0);
 
 #else
 /** Debug stub: color policy is a debug-only concern. */
