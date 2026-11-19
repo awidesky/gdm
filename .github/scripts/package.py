@@ -168,7 +168,8 @@ To run them all, one at a time:
     Windows:        .\\smoke-test.ps1
 
 If Windows says it cannot run scripts on this system (the execution policy),
-allow it for this one run only - nothing is changed permanently:
+run smoke-test.cmd instead (or double-click it), or allow it for this one run
+only - nothing is changed permanently:
 
     powershell -NoProfile -ExecutionPolicy Bypass -File .\\smoke-test.ps1
 
@@ -634,7 +635,7 @@ def stage_smoke_tests(stage_root: Path, plat: str):
     run every executable at once instead of one by one. Only this platform's
     script is copied - the other is dead weight there."""
     for script in sorted(SCRIPT_DIR.glob("smoke-test.*")):
-        if plat == "windows" and script.suffix != ".ps1":
+        if plat == "windows" and script.suffix not in (".ps1", ".cmd"):
             continue
         if plat != "windows" and script.suffix != ".sh":
             continue

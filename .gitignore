@@ -580,3 +580,6 @@ FodyWeavers.xsd
 # GLUtil is internal library
 !external/glutil/
 !external/glutil/example/model/*.obj
+
+# the Windows launcher shipped in the payload (see the *.cmd rule above)
+!.github/scripts/smoke-test.cmd
