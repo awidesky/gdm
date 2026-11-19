@@ -167,6 +167,14 @@ To run them all, one at a time:
     macOS / Linux:  ./smoke-test.sh
     Windows:        .\\smoke-test.ps1
 
+If Windows says it cannot run scripts on this system (the execution policy),
+allow it for this one run only - nothing is changed permanently:
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\\smoke-test.ps1
+
+Add a file name after the script name to write all output to that file instead
+of the console, e.g. .\\smoke-test.ps1 log.txt
+
 By default each one waits until you close its window (Esc), with its output
 inline here. The timed mode runs each for a few seconds and just reports whether
 it started - which is what proves it found its assets and loaded its libraries:

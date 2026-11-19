@@ -32,6 +32,17 @@
     Defender exclusion, because unsigned executables are scanned on every launch
     (that needs an elevated shell, and is skipped with a warning if it fails).
 
+    "running scripts is disabled on this system" (PSSecurityException): the
+    execution policy is checked before this file is read, so nothing in here can
+    prevent it. Allow it for one run only - no permanent change - with either:
+        powershell -NoProfile -ExecutionPolicy Bypass -File .\smoke-test.ps1
+    or, in an already open PowerShell, for that window only:
+        Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+
+.PARAMETER LogFile
+    Positional. Write everything - this script's messages and the executables'
+    own output - to this file instead of the console (no "Press Enter" pause).
+
 .PARAMETER List
     Only print the executables that would run.
 
@@ -48,13 +59,31 @@
     .\smoke-test.ps1 -DefenderBypass
 .EXAMPLE
     .\smoke-test.ps1 -Timed 3
+.EXAMPLE
+    .\smoke-test.ps1 hello.txt
 #>
 [CmdletBinding()]
 param(
+    [string]$LogFile,         # save everything to this file instead of the console
     [switch]$List,
     [int]$Timed = 0,          # 0 = interactive (wait for the window to close)
     [switch]$DefenderBypass
 )
+
+# -LogFile: run this same script again with the OS-level redirect `> file 2>&1`.
+# The redirect is on the process handles, so the executables' own output lands in
+# the file too (Start-Transcript would miss it), unchanged and in order.
+if ($LogFile -and -not $env:SMOKE_LOGGING) {
+    $LogFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LogFile)
+    $fwd = @()
+    if ($List) { $fwd += '-List' }
+    if ($PSBoundParameters.ContainsKey('Timed')) { $fwd += '-Timed', $Timed }
+    if ($DefenderBypass) { $fwd += '-DefenderBypass' }
+    $env:SMOKE_LOGGING = '1'
+    Write-Host "writing all output to $LogFile"
+    cmd /c "powershell -NoProfile -File `"$PSCommandPath`" $fwd > `"$LogFile`" 2>&1"
+    exit $LASTEXITCODE
+}
 
 $ErrorActionPreference = 'Stop'
 # only a value that was actually passed is checked: absent means interactive,
@@ -188,6 +217,6 @@ Write-Host "$passed passed, $failed failed"
 
 # hold the console open so the output above can be read
 Write-Host ''
-try { Read-Host 'Press Enter to exit' | Out-Null } catch { }
+if (-not $env:SMOKE_LOGGING) { try { Read-Host 'Press Enter to exit' | Out-Null } catch { } }
 
 if ($failed -ne 0) { exit 1 }
