@@ -68,7 +68,7 @@ static void printOpenGLLimits(GLVersion& ver, std::ostream& os) {
         glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
 
         os << "[OpenGL] Vertex Attributes: " << maxVertexAttribs << "\n";
-        os << "[OpenGL] Shader Uniform Components (Vertex/Fragment): " << maxVertexUniform << "/ " << maxFragUniform << "\n";
+        os << "[OpenGL] Shader Uniform Components (Vertex/Fragment): " << maxVertexUniform << " / " << maxFragUniform << "\n";
         os << "[OpenGL] Shader Texture Units (Fragment/Combined): " << maxTexImageUnits << " / " << maxCombinedTexUnits << "\n";
         os << "[OpenGL] Color Buffers in a Framebuffer: " << maxDrawBuffers << "\n";
     }
