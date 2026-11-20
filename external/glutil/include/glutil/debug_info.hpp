@@ -43,11 +43,22 @@ struct GLVersion {
         return 0;
     }
 public:
+    /** Returns true if the version is valid (major >= 0 and minor >= 0) */
+    explicit operator bool() const {
+        return major >= 0 && minor >= 0;
+    }
+
     bool operator==(const char* rhs) const {
         return compare(parseGLVersion(rhs)) == 0;
     }
     bool operator!=(const char* rhs) const {
         return compare(parseGLVersion(rhs)) != 0;
+    }
+    bool operator==(const GLVersion& rhs) const {
+        return compare(rhs) == 0;
+    }
+    bool operator!=(const GLVersion& rhs) const {
+        return compare(rhs) != 0;
     }
     bool operator<(const char* rhs) const {
         return compare(parseGLVersion(rhs)) < 0;
