@@ -220,7 +220,7 @@ jobs:
           GDM_BUILD_TESTS: ON
         run: |
           cd b-default-debug
-          xvfb-run -a ctest -R "PathResolveTest|ShaderTest|EncodingCheckBenchmark"
+          xvfb-run -a ctest -V -R "PathResolveTest|ShaderTest|EncodingCheckBenchmark"
 
       # Run glutil tests on Windows (with Mesa llvmpipe)
       - name: Run glutil tests (Windows)
@@ -230,7 +230,7 @@ jobs:
         shell: pwsh
         run: |
           cd b-default-debug
-          ctest -C Debug -R "PathResolveTest|ShaderTest|EncodingCheckBenchmark"
+          ctest -C Debug -V -R "PathResolveTest|ShaderTest|EncodingCheckBenchmark"
 
       # Verifies that every target of the default build produced an executable
       # and stages them with their assets; the Debug payload keeps symbols, the
