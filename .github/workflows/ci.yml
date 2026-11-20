@@ -213,6 +213,25 @@ jobs:
           gdm_collect_warnings build-b-glew-glad.log
           gdm_run_example b-glew-glad
 
+      # Run glutil tests on Linux (with xvfb-run)
+      - name: Run glutil tests (Linux)
+        if: runner.os == 'Linux'
+        env:
+          GDM_BUILD_TESTS: ON
+        run: |
+          cd b-default-debug
+          xvfb-run -a ctest -R "PathResolveTest|ShaderTest|EncodingCheckBenchmark"
+
+      # Run glutil tests on Windows (with Mesa llvmpipe)
+      - name: Run glutil tests (Windows)
+        if: runner.os == 'Windows'
+        env:
+          GDM_BUILD_TESTS: ON
+        shell: pwsh
+        run: |
+          cd b-default-debug
+          ctest -C Debug -R "PathResolveTest|ShaderTest|EncodingCheckBenchmark"
+
       # Verifies that every target of the default build produced an executable
       # and stages them with their assets; the Debug payload keeps symbols, the
       # Release payload is stripped.

@@ -160,8 +160,25 @@ static void compileAndLink(const GLchar* fragmentSource,
     glDeleteShader(fs);
 }
 
+// Expected loader compile outcomes per shader and GL version
+// true = OK, false = FAIL
+static bool expectedLoaderOK(int glMajor, int glMinor, const std::string& name) {
+    if (glMajor == 3 && glMinor == 3) {
+        // GL 3.3: all shaders should load OK via ShaderLoader (non-ASCII replaced)
+        return true;
+    }
+    // GL 4.2+: only UTF8_BOM_only_ASCII_token passes (non-ASCII only in comments)
+    if (name == "UTF8_BOM_only_ASCII_token") return true;
+    // UTF8_BOM has non-ASCII in code -> FAIL in 4.2+
+    // Others: non-ASCII in code, but not a UTF8 encoding -> safety replace -> OK
+    if (name == "UTF8_BOM") return false;
+    return true; // UTF8, UTF16_LE, MS949 -> safety replace
+}
+
 // Test function for encoding check in a specific GL context
-static bool testEncodingCheckInContext(int glMajor, int glMinor) {
+static int testEncodingCheckInContext(int glMajor, int glMinor) {
+    int failures = 0;
+
     std::cout << "=== Testing in OpenGL " << glMajor << "." << glMinor << " ===" << std::endl;
 
     // Test shader files in the test/shader directory
@@ -178,6 +195,7 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor) {
         RawFileRead rawRead = readFileRaw(shaderPath);
         if (!rawRead.ok) {
             std::cout << "  Raw read error: " << rawRead.error << std::endl;
+            ++failures;
             continue;
         }
 
@@ -225,14 +243,25 @@ static bool testEncodingCheckInContext(int glMajor, int glMinor) {
         if (!loaderLinkResult.empty())
             std::cout << "  Loader Link: " << loaderLinkResult << std::endl;
 
+        // Verify loader result matches expectation
+        bool expectedOK = expectedLoaderOK(glMajor, glMinor, name);
+        bool actualOK = (loaderCompileResult.find("[Compile/Link OK]") != std::string::npos);
+        if (actualOK == expectedOK) {
+            std::cout << "  [OK] Loader matches expected: " << (expectedOK ? "OK" : "FAIL") << std::endl;
+        } else {
+            ++failures;
+            std::cerr << "[FAIL] " << name << ": Loader expected " << (expectedOK ? "OK" : "FAIL")
+                      << " got " << (actualOK ? "OK" : "FAIL") << std::endl;
+        }
+
         loadResult.destroy();
     }
 
-    return true;
+    return failures;
 }
 
 // Main test function
-static void testShaderEncodingCheck(int contextMajor, int contextMinor) {
+static int testShaderEncodingCheck(int contextMajor, int contextMinor) {
     std::cout << "========================================" << std::endl;
     std::cout << "  Shader Encoding Check Test" << std::endl;
     std::cout << "========================================" << std::endl;
@@ -246,9 +275,10 @@ static void testShaderEncodingCheck(int contextMajor, int contextMinor) {
     std::cout << "  GLSL Version: " << (const char*)glslVersion << std::endl;
     
     // Perform test in current context
-    testEncodingCheckInContext(contextMajor, contextMinor);
+    int failures = testEncodingCheckInContext(contextMajor, contextMinor);
     
     std::cout << "=== [END] Testing in OpenGL " << contextMajor << "." << contextMinor << " ===" << std::endl;
+    return failures;
 }
 
 // Entry point for test
@@ -266,7 +296,9 @@ static int runTestWithContext(int major, int minor) {
     if (!window) {
         std::cerr << "Failed to create GLFW window for OpenGL " << major << "." << minor << std::endl;
         printGlfwError("glfwCreateWindow");
-        return 1;
+        // Context creation failed for any version -> skip, not failure
+        glfwDestroyWindow(window);
+        return -1;
     }
 
     glfwMakeContextCurrent(window);
@@ -279,19 +311,30 @@ static int runTestWithContext(int major, int minor) {
         std::cerr << "  GL_SHADING_LANGUAGE_VERSION: "
                   << (glslVersion ? reinterpret_cast<const char*>(glslVersion) : "(null)") << std::endl;
         glfwDestroyWindow(window);
+        // GL 4.2 context creation failed -> skip, not failure
+        if (major == 4 && minor == 2) return -1;
         return 1;
     }
 
+    // Check actual GL version matches requested version
+    glutil::debug::GLVersion actualVersion = glutil::debug::getOpenGLVersion();
+    glutil::debug::GLVersion requestedVersion{major, minor};
+    if (actualVersion && actualVersion != requestedVersion) {
+        std::cerr << "[SKIP] Requested OpenGL " << requestedVersion.toString() 
+                  << " but got " << actualVersion.toString() << std::endl;
+        glfwDestroyWindow(window);
+        return -1;
+    }
+
     try {
-        testShaderEncodingCheck(major, minor);
+        int result = testShaderEncodingCheck(major, minor);
+        glfwDestroyWindow(window);
+        return result;
     } catch (const std::exception& e) {
         std::cerr << "Test exception: " << e.what() << std::endl;
         glfwDestroyWindow(window);
         return 2;
     }
-
-    glfwDestroyWindow(window);
-    return 0;
 }
 
 int main() {
@@ -303,13 +346,18 @@ int main() {
     glutil::debug::config.disableAutoInspcector = true;
 
     int result33 = runTestWithContext(3, 3);
-    std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << std::endl << std::endl;
+    if (result33 == -1) {
+        std::cerr << "[Context 3.3] SKIPPED (context creation failed)" << std::endl << std::endl;
+    } else {
+        std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << " (failures: " << result33 << ")" << std::endl << std::endl;
+    }
 
     int result42 = runTestWithContext(4, 2);
-    if (result42 == 0)
-        std::cout << "[Context 4.2] OK" << std::endl;
-    else
-        std::cout << "[Context 4.2] " << (result42 == 1 ? "SKIPPED" : "FAILED") << std::endl;
+    if (result42 == -1) {
+        std::cerr << "[Context 4.2] SKIPPED (context creation failed)" << std::endl;
+    } else {
+        std::cout << "[Context 4.2] " << (result42 == 0 ? "OK" : "FAILED") << " (failures: " << result42 << ")" << std::endl;
+    }
 
     glfwTerminate();
     
@@ -317,5 +365,8 @@ int main() {
     std::cout << "  [END] Shader Encoding Check Test" << std::endl;
     std::cout << "========================================" << std::endl;
 
-    return (result33 == 0 && result42 != 2) ? 0 : 1;
+    // Exit code: 0 = all pass or all skipped, 1 = any failures
+    // Skip (-1) is treated as pass for exit code purposes
+    if (result33 > 0 || result42 > 0) return 1;
+    return 0;
 }

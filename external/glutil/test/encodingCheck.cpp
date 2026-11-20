@@ -186,6 +186,8 @@ static BenchResult benchmarkChecking(const std::string& source,
 
 int main() {
 #ifdef GLUTIL_ENABLE_BENCHMARKS
+    bool allSane = true; // all benchmark sanity checks passed
+
     const std::filesystem::path ms949Path = glutil::testAssetDir() / "shader" / "MS949.fs";
     const std::string ms949 = readFileRaw(ms949Path);
 
@@ -218,35 +220,45 @@ int main() {
             std::string work = data;
             algoNoOp(work.data(), work.size());
             noOp.sane = (work == data);
-            if (!noOp.sane)
+            if (!noOp.sane) {
                 noOp.mismatchDetail = "no-op modified buffer unexpectedly";
+                allSane = false;
+            }
         }
         {
             std::string work = data;
             glutil::replaceNonASCIIWithSpace(work.data(), work.size());
             qword.sane = !glutil::hasNonASCII(work.data(), work.size());
-            if (!qword.sane)
+            if (!qword.sane) {
                 qword.mismatchDetail = "qword replace still has non-ASCII bytes";
+                allSane = false;
+            }
         }
         {
             std::string work = data;
             algoDwordReplace(work.data(), work.size());
             dword.sane = !glutil::hasNonASCII(work.data(), work.size());
-            if (!dword.sane)
+            if (!dword.sane) {
                 dword.mismatchDetail = "dword replace still has non-ASCII bytes";
+                allSane = false;
+            }
         }
         {
             std::string work = data;
             algoByteReplace(work.data(), work.size());
             byte.sane = !glutil::hasNonASCII(work.data(), work.size());
-            if (!byte.sane)
+            if (!byte.sane) {
                 byte.mismatchDetail = "byte replace still has non-ASCII bytes";
+                allSane = false;
+            }
         }
         {
             const bool has = glutil::hasNonASCII(data.data(), data.size());
             check.sane = has;
-            if (!check.sane)
+            if (!check.sane) {
                 check.mismatchDetail = "check-only returned false on MS949-derived data";
+                allSane = false;
+            }
         }
 
         auto printResult = [](const std::string& label, const BenchResult& r) {
@@ -275,6 +287,10 @@ int main() {
         std::cout << "\n";
     }
 
+    if (!allSane) {
+        std::cerr << "[FAIL] Some sanity checks failed\n";
+        return 1;
+    }
     return 0;
 #else
     std::cerr << "GLUTIL_ENABLE_BENCHMARKS is not enabled.\n";

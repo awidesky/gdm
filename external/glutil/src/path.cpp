@@ -68,7 +68,12 @@ std::filesystem::path getExecutableDirectory() {
 #endif
 }
 
-std::filesystem::path getProjectRootDirectory() { return PROJECT_ROOT; }
+std::filesystem::path getProjectRootDirectory() {
+    std::error_code ec;
+    auto normalized = fs::weakly_canonical(PROJECT_ROOT, ec);
+    if (!ec) return normalized;
+    return PROJECT_ROOT;
+}
 
 namespace {
 std::filesystem::path resolveAssetDir(const std::filesystem::path& compileTimeDir) {

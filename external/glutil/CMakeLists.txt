@@ -197,26 +197,29 @@ function(add_glutil_test TARGET_NAME TEST_NAME)
     add_test(NAME ${TEST_NAME} COMMAND ${TARGET_NAME})
 endfunction()
 
-# Tests (only when GDM is standalone project)
+# Tests
 if (GDM_BUILD_TESTS)
+  # pathResolveTest has no GL dependency
+  add_glutil_test(glutil_pathResolveTest
+        PathResolveTest
+        test/pathResolveTest.cpp
+    )
+
   if (GDM_WINDOW_BACKEND STREQUAL "glfw" AND GDM_GL_LOADER STREQUAL "glad" AND GDM_USE_GLM)
+    # shaderTest - needs GL context
     add_glutil_test(glutil_shaderTest
           ShaderTest
           test/shaderTest.cpp
     )
 
+    # encodingCheck - benchmark
     add_glutil_test(glutil_encodingCheckBenchMark
           EncodingCheckBenchmark
           test/encodingCheck.cpp
     )
     target_compile_definitions(glutil_encodingCheckBenchMark PRIVATE GLUTIL_ENABLE_BENCHMARKS)
-
-    add_glutil_test(glutil_pathResolveTest
-          PathResolveTest
-          test/pathResolveTest.cpp
-    )
   else()
-    message(STATUS "[glutil] Tests skipped: require GDM_WINDOW_BACKEND=glfw, GDM_GL_LOADER=glad, and GDM_USE_GLM=ON")
+    message(STATUS "[glutil] shaderTest/encodingCheck skipped: require GDM_WINDOW_BACKEND=glfw, GDM_GL_LOADER=glad, and GDM_USE_GLM=ON")
   endif()
 endif()
 

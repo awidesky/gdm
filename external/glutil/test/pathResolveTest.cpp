@@ -18,6 +18,7 @@
 #include <iostream>
 
 #include <glutil/path.hpp>
+#include "config.hpp"
 
 namespace fs = std::filesystem;
 
@@ -33,7 +34,9 @@ static std::string findExistingFile(const fs::path& dir) {
     return {};
 }
 
-static void printResult(const std::string& title, const std::string& testPath) {
+static int failures = 0;
+
+static void printResult(const std::string& title, const std::string& testPath, bool expectedSuccess) {
     const glutil::PathResolveResult r = glutil::pathResolve(testPath);
 
     std::cout << "==============================\n"
@@ -42,12 +45,22 @@ static void printResult(const std::string& title, const std::string& testPath) {
               << "original path : " << testPath << '\n'
               << "resolved path : " << r.resolvedPath << '\n'
               << "message : \n" << r.message << '\n';
+
+    if (r.success != expectedSuccess) {
+        ++failures;
+        std::cerr << "[FAIL] " << title << ": expected success=" << std::boolalpha << expectedSuccess << " got " << r.success << '\n';
+    } else {
+        std::cout << "[OK] " << title << '\n';
+    }
 }
 
 int main() {
 
     fs::path cwd = fs::current_path();
-    std::cout << "Current Directory:\n" << cwd << "\n\n";
+    std::cout << "Current Directory: " << cwd << "\n";
+    std::cout << "PROJECT_ROOT     : " << glutil::PROJECT_ROOT << "\n";
+    std::cout << "TEST_ASSET_DIR   : " << glutil::TEST_ASSET_DIR << "\n";
+    std::cout << "EXAMPLE_ASSET_DIR: " << glutil::EXAMPLE_ASSET_DIR << "\n\n";
 
     // 1. Absolute path success
     printResult("1. Absolute path success", 
@@ -56,7 +69,7 @@ int main() {
 #else
         "/usr/bin/curl"
 #endif
-    );
+    , true);
 
     // 2. Absolute path fail
     printResult("2. Absolute path fail", 
@@ -65,13 +78,13 @@ int main() {
 #else
         "/usr/bin/asdfqwer"
 #endif
-    );
+    , false);
 
     // 3. Relative path(working directory) success
-    printResult("3. Relative path success", findExistingFile(fs::current_path()));
+    printResult("3. Relative path success", findExistingFile(fs::current_path()), true);
     
     // 4. Relative path(working dir) fail
-    printResult("4. Relative path fail", findExistingFile(fs::current_path()) + "asdfasdf.qwer");
+    printResult("4. Relative path fail", findExistingFile(fs::current_path()) + "asdfasdf.qwer", false);
 
     // 5. Executable directory
     printResult("5. Executable directory branch success",
@@ -80,10 +93,15 @@ int main() {
 #else
         "glutil_pathResolveTest"
 #endif
-    );
+    , true);
 
     // 6. PROJECT_ROOT
-    printResult("6. PROJECT_ROOT branch success", "CMakeLists.txt");
+    printResult("6. PROJECT_ROOT branch success", "CMakeLists.txt", true);
 
-    return 0;
+    if (failures > 0) {
+        std::cerr << "\n[SUMMARY] " << failures << " test(s) FAILED\n";
+    } else {
+        std::cout << "\n[SUMMARY] All tests PASSED\n";
+    }
+    return failures > 0 ? 1 : 0;
 }

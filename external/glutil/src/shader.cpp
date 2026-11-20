@@ -26,7 +26,7 @@ bool isGLSLSupportUTF8() {
     const int major = version[0] - '0';
     const int minor = version[2] - '0';
 
-    return (major > 4) || (major == 4 && minor >= 2);;
+    return (major > 4) || (major == 4 && minor >= 2);
 }
 
 static GLchar* utf16_to_ascii(const GLchar* data, size_t size, bool littleEndian, size_t& outSize) {
