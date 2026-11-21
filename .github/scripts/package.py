@@ -682,6 +682,7 @@ def collect_dlls(build_dir, config):
         return []
     dlls, seen = [], set()
     prune = ("CMakeFiles", "_gdm_deps", "_gdm_extract", "_gdm_downloads")
+    build_dir = Path(build_dir).resolve()
     for root, dirs, files in os.walk(build_dir):
         if any(part in prune for part in Path(root).parts):
             dirs[:] = []
@@ -690,7 +691,7 @@ def collect_dlls(build_dir, config):
         for filename in sorted(files):
             if filename.lower().endswith(".dll") and filename not in seen:
                 seen.add(filename)
-                dlls.append(Path(root) / filename)
+                dlls.append(Path(root).resolve() / filename)
     return dlls
 
 

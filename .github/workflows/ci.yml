@@ -230,6 +230,27 @@ jobs:
         shell: pwsh
         run: |
           cd b-default-debug
+          # Copy Mesa llvmpipe DLLs next to test executables for software OpenGL
+          $mesaDllDir = $env:MESA_DLL_DIR
+          if (Test-Path $mesaDllDir) {
+            $dlls = Get-ChildItem "$mesaDllDir\*.dll"
+            # Copy to build root (where ctest runs from)
+            $dlls | ForEach-Object { Copy-Item $_.FullName -Destination "." -Force }
+            # Also copy to test executable directories
+            $testDirs = @(
+              "external/glutil/Debug",
+              "examples/Debug"
+            )
+            foreach ($dir in $testDirs) {
+              if (Test-Path $dir) {
+                $dlls | ForEach-Object { Copy-Item $_.FullName -Destination $dir -Force }
+              }
+            }
+            Write-Host "Copied Mesa DLLs to build and test directories"
+          } else {
+            Write-Warning "MESA_DLL_DIR not found: $mesaDllDir"
+          }
+          $env:GALLIUM_DRIVER = "llvmpipe"
           ctest -C Debug -V -R "PathResolveTest|ShaderTest|EncodingCheckBenchmark"
 
       # Verifies that every target of the default build produced an executable
