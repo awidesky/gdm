@@ -319,11 +319,24 @@ static int runTestWithContext(int major, int minor) {
     // Check actual GL version matches requested version
     glutil::debug::GLVersion actualVersion = glutil::debug::getOpenGLVersion();
     glutil::debug::GLVersion requestedVersion{major, minor};
-    if (actualVersion && actualVersion != requestedVersion) {
-        std::cerr << "[SKIP] Requested OpenGL " << requestedVersion.toString() 
-                  << " but got " << actualVersion.toString() << std::endl;
-        glfwDestroyWindow(window);
-        return -1;
+    if (actualVersion) {
+        bool compatible = actualVersion == requestedVersion;
+        if (!compatible && requestedVersion == glutil::debug::GLVersion{3, 3}) {
+            // 3.3 request: accept >= 2.0 (shader support) but < 4.2
+            // Shader encoding handling works on any GL with shader support (2.0+)
+            compatible = glutil::debug::GLVersion{2, 0} <= actualVersion && 
+                         actualVersion < glutil::debug::GLVersion{4, 2};
+        } else if (!compatible && requestedVersion == glutil::debug::GLVersion{4, 2}) {
+            // 4.2 request: accept >= 4.2
+            compatible = glutil::debug::GLVersion{4, 2} <= actualVersion;
+        }
+        
+        if (!compatible) {
+            std::cerr << "[SKIP] Requested OpenGL " << requestedVersion.toString() 
+                      << " but got " << actualVersion.toString() << std::endl;
+            glfwDestroyWindow(window);
+            return -1;
+        }
     }
 
     try {
@@ -347,14 +360,14 @@ int main() {
 
     int result33 = runTestWithContext(3, 3);
     if (result33 == -1) {
-        std::cerr << "[Context 3.3] SKIPPED (context creation failed)" << std::endl << std::endl;
+        std::cout << "[Context 3.3] SKIPPED (context creation failed)" << std::endl << std::endl;
     } else {
         std::cout << "[Context 3.3] " << (result33 == 0 ? "OK" : "FAILED") << " (failures: " << result33 << ")" << std::endl << std::endl;
     }
 
     int result42 = runTestWithContext(4, 2);
     if (result42 == -1) {
-        std::cerr << "[Context 4.2] SKIPPED (context creation failed)" << std::endl;
+        std::cout << "[Context 4.2] SKIPPED (context creation failed)" << std::endl;
     } else {
         std::cout << "[Context 4.2] " << (result42 == 0 ? "OK" : "FAILED") << " (failures: " << result42 << ")" << std::endl;
     }

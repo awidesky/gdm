@@ -57,10 +57,15 @@ static void printResult(const std::string& title, const std::string& testPath, b
 int main() {
 
     fs::path cwd = fs::current_path();
-    std::cout << "Current Directory: " << cwd << "\n";
-    std::cout << "PROJECT_ROOT     : " << glutil::PROJECT_ROOT << "\n";
-    std::cout << "TEST_ASSET_DIR   : " << glutil::TEST_ASSET_DIR << "\n";
-    std::cout << "EXAMPLE_ASSET_DIR: " << glutil::EXAMPLE_ASSET_DIR << "\n\n";
+    std::cout 
+        << "Current Directory        : " << cwd << '\n'
+        << "PROJECT_ROOT             : " << glutil::PROJECT_ROOT << '\n'
+        << "getProjectRootDirectory(): " << glutil::getProjectRootDirectory() << '\n'
+        << "TEST_ASSET_DIR           : " << glutil::TEST_ASSET_DIR << '\n'
+        << "testAssetDir()           : " << glutil::testAssetDir() << '\n'
+        << "EXAMPLE_ASSET_DIR        : " << glutil::EXAMPLE_ASSET_DIR << '\n'
+        << "exampleAssetDir()        : " << glutil::exampleAssetDir() << '\n'
+        << "getExecutableDirectory() : " << glutil::getExecutableDirectory() << '\n';
 
     // 1. Absolute path success
     printResult("1. Absolute path success", 

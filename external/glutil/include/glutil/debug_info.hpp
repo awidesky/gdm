@@ -60,6 +60,18 @@ public:
     bool operator!=(const GLVersion& rhs) const {
         return compare(rhs) != 0;
     }
+    bool operator<(const GLVersion& rhs) const {
+        return compare(rhs) < 0;
+    }
+    bool operator<=(const GLVersion& rhs) const {
+        return compare(rhs) <= 0;
+    }
+    bool operator>(const GLVersion& rhs) const {
+        return compare(rhs) > 0;
+    }
+    bool operator>=(const GLVersion& rhs) const {
+        return compare(rhs) >= 0;
+    }
     bool operator<(const char* rhs) const {
         return compare(parseGLVersion(rhs)) < 0;
     }
