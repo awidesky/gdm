@@ -779,7 +779,7 @@ def main(argv=None):
                 if candidate.is_file():
                     shutil.copy2(candidate, stage_root / candidate.name)
         for dll in dlls:
-            target = dest / dll.name
+            target = stage_root / dll.name
             if not target.exists():
                 shutil.copy2(dll, target)
                 relax_permissions(target)
